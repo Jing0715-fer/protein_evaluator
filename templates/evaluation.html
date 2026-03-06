@@ -1129,9 +1129,7 @@ function loadPromptTemplateFromBackend(callback) {
         fetch('/api/evaluation/templates').then(r => r.json())
     ])
     .then(([settingsData, templatesData]) => {
-        if (settingsData.success && settingsData.prompt_template) {
-            document.getElementById('ai-prompt').value = settingsData.prompt_template;
-        }
+        // 模板现在通过模板管理功能来管理
         // 加载模板列表到下拉框
         const select = document.getElementById('template-select');
         select.innerHTML = '<option value="">-- 快速切换模板 --</option>';
@@ -1164,7 +1162,6 @@ function useSelectedTemplate() {
         .then(response => response.json())
         .then(data => {
             if (data.success && data.template) {
-                document.getElementById('ai-prompt').value = data.template.content;
                 localStorage.setItem('ai_prompt', data.template.content);
             }
         })
@@ -1416,7 +1413,9 @@ function showCreateTemplateForm() {
     currentTemplateId = null;
     document.getElementById('template-name').value = '';
     document.getElementById('template-description').value = '';
-    document.getElementById('template-content').value = document.getElementById('ai-prompt').value || '';
+    // 从localStorage获取当前保存的prompt，没有则使用默认
+    var savedPrompt = localStorage.getItem('ai_prompt') || '';
+    document.getElementById('template-content').value = savedPrompt;
     document.getElementById('template-editor').style.display = 'block';
     document.getElementById('template-empty').style.display = 'none';
 
@@ -1495,10 +1494,9 @@ function setAsDefault() {
     .then(data => {
         if (data.success) {
             alert('已设为默认模板');
-            // 同步到 AI 分析提示词模板
+            // 同步到 localStorage
             const template = templatesData.find(t => t.id === currentTemplateId);
             if (template) {
-                document.getElementById('ai-prompt').value = template.content;
                 localStorage.setItem('ai_prompt', template.content);
             }
             loadTemplatesFromServer();
@@ -1550,34 +1548,15 @@ function saveSettings() {
     localStorage.setItem('ai_api_key', document.getElementById('ai-api-key').value);
     localStorage.setItem('ai_temperature', document.getElementById('ai-temperature').value);
     localStorage.setItem('ai_max_tokens', document.getElementById('ai-max-tokens').value);
-    localStorage.setItem('ai_prompt', document.getElementById('ai-prompt').value);
+    // ai_prompt 现在通过模板管理来设置，不在这里保存
     localStorage.setItem('max_pdb', document.getElementById('max-pdb').value);
     localStorage.setItem('max_literature', document.getElementById('max-literature').value);
 
     // 更新当前配置显示
     updateCurrentConfigDisplay();
 
-    // 保存模板到后端
-    var promptTemplate = document.getElementById('ai-prompt').value;
-    fetch('/api/evaluation/settings', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({prompt_template: promptTemplate})
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            closeSettings();
-            alert('配置已保存到文件。请重启应用使新模板生效。');
-        } else {
-            alert('保存失败: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('保存模板失败:', error);
-        closeSettings();
-        alert('配置已保存（本地）');
-    });
+    closeSettings();
+    alert('AI配置已保存');
 }
 
 // Initialize
