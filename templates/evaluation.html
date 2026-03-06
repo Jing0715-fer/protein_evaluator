@@ -1226,12 +1226,17 @@ function loadBatchTemplates() {
     fetch('/api/evaluation/batch-templates')
         .then(response => response.json())
         .then(data => {
+            console.log('批量模板数据:', data);
             if (data.success) {
                 batchTemplatesData = data.templates || [];
                 renderBatchTemplateList(data.default_id);
             }
         })
-        .catch(error => console.error('加载批量模板失败:', error));
+        .catch(error => {
+            console.error('加载批量模板失败:', error);
+            document.getElementById('batch-template-list').innerHTML =
+                '<div style="color: red; text-align: center;">加载失败: ' + error.message + '</div>';
+        });
 }
 
 function renderBatchTemplateList(defaultId) {
@@ -1383,6 +1388,7 @@ function loadTemplatesFromServer() {
     fetch('/api/evaluation/templates')
         .then(response => response.json())
         .then(data => {
+            console.log('单个模板数据:', data);
             if (data.success) {
                 templatesData = data.templates || [];
                 renderTemplateList(data.default_id);
