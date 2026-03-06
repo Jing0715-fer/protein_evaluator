@@ -403,8 +403,7 @@ class UniProtAPIClient:
             logger.info(f"从PDBe API提取到 {len(uniprot_ids)} 个UniProt ID: {uniprot_ids}")
             
             # 并行获取所有UniProt条目
-            if self.uniprot_client:
-                entries = self._batch_get_uniprot_entries(uniprot_ids, pdb_id)
+            entries = self._batch_get_uniprot_entries(uniprot_ids, pdb_id)
             
             return entries
             

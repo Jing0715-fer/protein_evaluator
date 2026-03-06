@@ -201,7 +201,6 @@ class AnthropicClient:
                 if self.base_url and 'minimaxi' in self.base_url.lower():
                     os.environ['ANTHROPIC_BASE_URL'] = self.base_url
                     os.environ['ANTHROPIC_API_KEY'] = self.api_key
-                    print(f"[DEBUG] Setting ANTHROPIC_BASE_URL={self.base_url}")
 
                 # 创建客户端 - 明确传递base_url
                 client_kwargs = {
@@ -211,8 +210,6 @@ class AnthropicClient:
                 # 如果有base_url，传递给客户端
                 if self.base_url:
                     client_kwargs['base_url'] = self.base_url
-                    print(f"[DEBUG] Passing base_url to Anthropic client: {self.base_url}")
-                print(f"[DEBUG] Creating Anthropic client with kwargs: {client_kwargs}")
                 self._client = anthropic.Anthropic(**client_kwargs)
             except ImportError:
                 self._anthropic_available = False
@@ -251,8 +248,6 @@ class AnthropicClient:
                 'max_tokens': max_tokens if max_tokens else 4096,
                 'timeout': timeout
             }
-
-            print(f"[DEBUG] API Request: model={self.model}, max_tokens={kwargs['max_tokens']}, timeout={timeout}")
 
             response = self.client.messages.create(**kwargs)
 
