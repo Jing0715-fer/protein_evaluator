@@ -221,6 +221,21 @@ def get_all_prompt_templates() -> List[PromptTemplate]:
         session.close()
 
 
+def get_single_templates() -> List[PromptTemplate]:
+    """获取单个蛋白评估模板"""
+    session = get_session()
+    try:
+        templates = session.query(PromptTemplate).filter(
+            PromptTemplate.template_type == 'single'
+        ).order_by(PromptTemplate.is_default.desc(), PromptTemplate.name).all()
+        return templates
+    except Exception as e:
+        logger.error(f"获取单个模板列表失败: {e}")
+        return []
+    finally:
+        session.close()
+
+
 def get_default_prompt_template() -> Optional[PromptTemplate]:
     """获取默认提示模板"""
     session = get_session()

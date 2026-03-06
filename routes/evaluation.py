@@ -204,11 +204,32 @@ def get_settings():
 
 @bp.route('/templates', methods=['GET'])
 def get_templates():
-    """获取所有模板"""
-    from src.database import get_all_prompt_templates, get_default_prompt_template, create_prompt_template
+    """获取单个蛋白评估模板"""
+    from src.database import get_single_templates, create_prompt_template
 
-    templates = get_all_prompt_templates()
-    default_template = get_default_prompt_template()
+    # Import the filtered function
+    from src.database import get_session, PromptTemplate
+    session = None
+    try:
+        session = get_session()
+        # Get only single templates
+        templates = session.query(PromptTemplate).filter(
+            PromptTemplate.template_type == 'single'
+        ).order_by(PromptTemplate.is_default.desc(), PromptTemplate.name).all()
+
+        # Get default (only single templates)
+        default_template = session.query(PromptTemplate).filter(
+            PromptTemplate.is_default == True,
+            PromptTemplate.template_type == 'single'
+        ).first()
+
+    except Exception as e:
+        logger.error(f"获取模板失败: {e}")
+        templates = []
+        default_template = None
+    finally:
+        if session:
+            session.close()
 
     # 如果没有模板，自动创建默认模板
     if not templates:
@@ -222,7 +243,6 @@ def get_templates():
         if template:
             templates = [template]
             default_template = template
-            default_content = template.content
 
     return jsonify({
         'success': True,
