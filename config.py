@@ -5,9 +5,9 @@ Simplified configuration for the standalone protein evaluation module
 import os
 
 # AI Model Configuration
-AI_MODEL = os.environ.get('AI_MODEL', 'gpt-4o')
+AI_MODEL = os.environ.get('AI_MODEL', 'deepseek-reasoner')
 AI_TEMPERATURE = float(os.environ.get('AI_TEMPERATURE', '0.3'))
-AI_MAX_TOKENS = int(os.environ.get('AI_MAX_TOKENS', '6000'))
+AI_MAX_TOKENS = int(os.environ.get('AI_MAX_TOKENS', '20000'))
 AI_API_KEY = os.environ.get('AI_API_KEY', '')
 
 # Database Configuration
