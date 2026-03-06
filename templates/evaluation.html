@@ -1643,8 +1643,6 @@ function deleteBatchResult(batchId) {
         alert('删除失败: ' + error.message);
     });
 }
-    resultSection.innerHTML = html;
-}
 
 function loadBatchHistory() {
     fetch('/api/evaluation/batch')
