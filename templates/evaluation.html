@@ -1260,16 +1260,29 @@ function exportPDF() {
     var reportContent = aiReportSection.cloneNode(true);
     reportContent.style.width = '100%';
     reportContent.style.fontSize = '11px';
+
+    // 添加页面样式防止文字被截断
+    var style = document.createElement('style');
+    style.textContent = `
+        .pdf-page-break { page-break-inside: avoid; }
+        table { page-break-inside: avoid; }
+        tr { page-break-inside: avoid; }
+        h1, h2, h3, h4 { page-break-after: avoid; }
+        p { orphans: 3; widows: 3; }
+    `;
+    reportContent.insertBefore(style, reportContent.firstChild);
+
     tempDiv.appendChild(reportContent);
 
     document.body.appendChild(tempDiv);
 
     var opt = {
-        margin: [5, 5, 5, 5],
+        margin: [15, 15, 15, 15],
         filename: 'protein_evaluation_' + eval.uniprot_id + '_' + new Date().toISOString().slice(0,10) + '.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
     html2pdf().set(opt).from(tempDiv).save().then(function() {
