@@ -1480,11 +1480,13 @@ function exportPDF() {
     // 添加页面样式防止文字被截断
     var style = document.createElement('style');
     style.textContent = `
-        .pdf-page-break { page-break-inside: avoid; }
-        table { page-break-inside: avoid; }
-        tr { page-break-inside: avoid; }
-        h1, h2, h3, h4 { page-break-after: avoid; }
-        p { orphans: 3; widows: 3; }
+        .pdf-page-break { page-break-inside: avoid !important; }
+        table, tr, td, th { page-break-inside: avoid !important; }
+        h1, h2, h3, h4, h5, h6 { page-break-after: avoid !important; }
+        p { orphans: 4; widows: 4; margin-bottom: 0.5em; }
+        ul, ol { page-break-inside: avoid !important; }
+        li { page-break-inside: avoid !important; }
+        * { page-break-inside: avoid !important; }
     `;
     reportContent.insertBefore(style, reportContent.firstChild);
 
@@ -1493,12 +1495,12 @@ function exportPDF() {
     document.body.appendChild(tempDiv);
 
     var opt = {
-        margin: [15, 15, 15, 15],
+        margin: [5, 5, 5, 5],
         filename: 'protein_evaluation_' + eval.uniprot_id + '_' + new Date().toISOString().slice(0,10) + '.pdf',
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2, useCORS: true, windowWidth: 800 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        pagebreak: { mode: ['avoid-all', 'legacy', 'css'] }
     };
 
     html2pdf().set(opt).from(tempDiv).save().then(function() {
