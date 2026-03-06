@@ -216,8 +216,21 @@ class ProteinEvaluationService:
         step_times = {}  # 记录每个步骤的耗时
         logs = []  # 本地日志列表，用于批量更新
 
+        # Set config for this evaluation
+        default_config = {
+            'max_pdb': 100,
+            'max_literature': 20,
+            'ai_temperature': 0.3,
+            'ai_max_tokens': 6000,
+            'ai_prompt': ''
+        }
+        if config:
+            default_config.update(config)
+        self.config = default_config
+
         try:
             logger.info(f"========== 开始评估任务 [ID={evaluation_id}, UniProt={uniprot_id}] ==========")
+            logger.info(f"使用AI配置: provider={self.config.get('ai_provider')}, model={self.config.get('ai_model')}")
 
             # 添加开始日志
             self._add_log(evaluation_id, f"开始评估任务: UniProt ID = {uniprot_id}")
@@ -2264,7 +2277,20 @@ class ProteinEvaluationService:
     def _run_batch_evaluation_task(self, batch_id: int, uniprot_ids: List[str], config: Dict):
         """在后台线程中执行批量评估任务"""
         try:
+            # Set config for this batch evaluation
+            default_config = {
+                'max_pdb': 100,
+                'max_literature': 20,
+                'ai_temperature': 0.3,
+                'ai_max_tokens': 6000,
+                'ai_prompt': ''
+            }
+            if config:
+                default_config.update(config)
+            self.config = default_config
+
             logger.info(f"========== 开始批量评估任务 [ID={batch_id}, UniProt IDs={uniprot_ids}] ==========")
+            logger.info(f"使用AI配置: provider={self.config.get('ai_provider')}, model={self.config.get('ai_model')}")
 
             # Update status to processing
             update_batch_evaluation(batch_id, {
