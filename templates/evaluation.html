@@ -739,18 +739,18 @@
                         <h3 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 500; color: #1E1B4B;">批量评估</h3>
                         <span class="batch-input-hint">支持多个 UniProt ID（每行一个或用逗号分隔）</span>
                     </div>
-                    <textarea id="batch-uniprot-ids" class="batch-textarea" placeholder="P04637&#10;P00533&#10;P00720"></textarea>
+                    <div style="position: relative;">
+                        <textarea id="batch-uniprot-ids" class="batch-textP04637&#area" placeholder="10;P00533&#10;P00720" style="padding-right: 100px;"></textarea>
+                        <button class="btn-start" onclick="startBatchEvaluation()" style="position: absolute; right: 8px; top: 8px; padding: 8px 16px; font-size: 13px;">
+                            开始
+                        </button>
+                    </div>
                     <div class="batch-name-input" style="margin-top: 12px;">
-                        <label for="batch-name" style="display: block; font-size: 14px; font-weight: 500; color: #1E1B4B; margin-bottom: 6px;">任务名称（可选）</label>
+                        <label for="batch-name" style="display: block; font-size: 14px; font-weight: 500; color: #1E1B4B; margin-bottom: 6px;">任务名称（可选，默认用ID组合）</label>
                         <input type="text" id="batch-name" placeholder="例如: 细胞周期相关蛋白评估" style="width: 100%; padding: 10px 14px; border: 1px solid #E0E7FF; border-radius: 8px; font-size: 14px; background: #F9FAFB; box-sizing: border-box;" />
                     </div>
-                    <div class="batch-actions" style="margin-top: 16px;">
-                        <button class="btn-start" onclick="startBatchEvaluation()">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                            </svg>
-                            开始批量评估
-                        </button>
+                    <div id="batch-config-display" style="font-size: 12px; color: #6366F1; margin-top: 10px; padding: 6px 12px; background: #EEF2FF; border-radius: 6px; display: inline-block;">
+                        当前模型: <span id="batch-display-ai-model">-</span>
                     </div>
                 </div>
 
@@ -853,35 +853,34 @@
 
 <!-- Settings Modal -->
 <div class="modal-overlay" id="settings-modal">
-    <div class="modal">
+    <div class="modal" style="max-width: 500px;">
         <div class="modal-header">
             <h2>AI 模型配置</h2>
             <button class="modal-close" onclick="closeSettings()">&times;</button>
         </div>
 
+        <div style="padding: 20px; overflow-y: auto; max-height: calc(90vh - 60px);">
         <div class="config-section">
             <h4>API 配置</h4>
             <div class="form-group">
                 <label for="ai-provider">API 协议</label>
                 <select id="ai-provider">
-                    <option value="openai">OpenAI (兼容) - DeepSeek, OpenAI 等</option>
+                    <option value="openai">OpenAI (兼容)</option>
                     <option value="anthropic">Anthropic Claude</option>
                 </select>
             </div>
             <div class="form-group">
                 <label for="ai-model">模型名称</label>
-                <input type="text" id="ai-model" value="gpt-4o" placeholder="例如: gpt-4o, deepseek-chat, claude-sonnet-4-20250514">
-                <div class="form-hint">常用模型: gpt-4o, deepseek-chat, claude-sonnet-4-20250514</div>
+                <input type="text" id="ai-model" value="gpt-4o" placeholder="例如: gpt-4o, deepseek-chat">
             </div>
             <div class="form-group">
                 <label for="ai-base-url">Base URL</label>
                 <input type="text" id="ai-base-url" value="https://api.deepseek.com" placeholder="例如: https://api.deepseek.com">
-                <div class="form-hint">留空使用默认地址</div>
             </div>
             <div class="form-group">
                 <label for="ai-api-key">API Key</label>
                 <input type="password" id="ai-api-key" value="" placeholder="输入您的 API Key">
-                <div class="form-hint">API 密钥仅保存在浏览器本地，不会发送到服务器</div>
+                <div class="form-hint">仅保存在浏览器本地</div>
             </div>
         </div>
 
@@ -890,29 +889,27 @@
             <div class="form-group">
                 <label for="max-pdb">最大 PDB 数量</label>
                 <input type="number" id="max-pdb" value="100" min="10" max="500">
-                <div class="form-hint">最多获取的PDB结构数量</div>
             </div>
             <div class="form-group">
                 <label for="max-literature">最大文献数</label>
                 <input type="number" id="max-literature" value="20" min="5" max="100">
-                <div class="form-hint">每个PDB关联的最大文献数</div>
             </div>
         </div>
 
         <div class="config-section">
             <h4>AI 参数</h4>
             <div class="form-group">
-                <label for="ai-temperature">AI 温度参数</label>
+                <label for="ai-temperature">温度参数</label>
                 <input type="number" id="ai-temperature" value="0.3" min="0" max="1" step="0.1">
-                <div class="form-hint">越低越确定性，越高越创造性</div>
             </div>
             <div class="form-group">
-                <label for="ai-max-tokens">AI 最大 Token</label>
+                <label for="ai-max-tokens">最大 Token</label>
                 <input type="number" id="ai-max-tokens" value="6000" min="1000" max="16000" step="1000">
             </div>
         </div>
 
         <button class="btn-save" onclick="saveSettings()">保存配置</button>
+        </div>
     </div>
 </div>
 
@@ -1601,7 +1598,11 @@ function updateCurrentConfigDisplay() {
     } else if (baseUrlDisplay && baseUrlDisplay.includes('minimax')) {
         providerDisplay += ' (minimax)';
     }
-    document.getElementById('display-ai-model').textContent = providerDisplay + ' / ' + modelDisplay;
+    var displayText = providerDisplay + ' / ' + modelDisplay;
+    document.getElementById('display-ai-model').textContent = displayText;
+    if (document.getElementById('batch-display-ai-model')) {
+        document.getElementById('batch-display-ai-model').textContent = displayText;
+    }
 }
 
 function loadHistory() {
@@ -1865,11 +1866,19 @@ function showBatchResults(data) {
     let html = '<div class="batch-result-card">';
     html += '<div class="batch-result-header">';
     html += '<h3>批量评估结果</h3>';
+    html += '<div style="display: flex; gap: 8px;">';
+    html += '<button class="btn-secondary" style="padding: 6px 12px; font-size: 13px;" onclick="exportBatchResult(' + batch.id + ')">';
+    html += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
+    html += '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>';
+    html += '<polyline points="7 10 12 15 17 10"></polyline>';
+    html += '<line x1="12" y1="15" x2="12" y2="3"></line>';
+    html += '</svg>导出PDF</button>';
     html += '<button class="batch-delete-btn-result" onclick="deleteBatchResult(' + batch.id + ')">';
     html += '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
     html += '<polyline points="3 6 5 6 21 6"></polyline>';
     html += '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>';
-    html += '</svg>删除</button></div>';
+    html += '</svg>删除</button>';
+    html += '</div></div>';
 
     // Protein list
     html += '<div class="batch-protein-list">';
@@ -1890,7 +1899,7 @@ function showBatchResults(data) {
         html += '<div class="batch-report-section">';
         html += '<h4>综合关系分析报告</h4>';
         html += '<div class="ai-analysis" style="padding: 16px; max-height: 500px; overflow-y: auto;">';
-        html += batch.batch_report.replace(/\n/g, '<br>');
+        html += marked.parse(batch.batch_report);
         html += '</div>';
         html += '</div>';
     }
@@ -2502,6 +2511,87 @@ function exportPDF() {
     var opt = {
         margin: [5, 5, 5, 5],
         filename: 'protein_evaluation_' + eval.uniprot_id + '_' + new Date().toISOString().slice(0,10) + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, windowWidth: 800 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'legacy', 'css'] }
+    };
+
+    html2pdf().set(opt).from(tempDiv).save().then(function() {
+        document.body.removeChild(tempDiv);
+    });
+}
+
+// Export batch result to PDF
+function exportBatchResult(batchId) {
+    var batch = allBatchEvaluations.find(b => b.id === batchId);
+    if (!batch) {
+        alert('没有可导出的数据');
+        return;
+    }
+
+    // 创建临时容器
+    var tempDiv = document.createElement('div');
+    tempDiv.style.width = '190mm';
+    tempDiv.style.padding = '15mm';
+    tempDiv.style.background = '#fff';
+    tempDiv.style.fontFamily = 'Arial, sans-serif';
+    tempDiv.style.boxSizing = 'border-box';
+
+    // 添加标题
+    var title = document.createElement('h2');
+    title.textContent = '批量蛋白质评估报告 - ' + (batch.name || batch.uniprot_ids.join(', '));
+    title.style.marginBottom = '20px';
+    title.style.color = '#1f2937';
+    title.style.fontSize = '18px';
+    tempDiv.appendChild(title);
+
+    // 添加基本信息
+    var infoDiv = document.createElement('div');
+    infoDiv.style.marginBottom = '20px';
+    infoDiv.style.padding = '12px';
+    infoDiv.style.background = '#f9fafb';
+    infoDiv.style.borderRadius = '8px';
+    infoDiv.style.fontSize = '12px';
+    infoDiv.innerHTML = '<p style="margin: 5px 0;"><strong>评估时间:</strong> ' + formatDate(batch.created_at) + '</p>' +
+        '<p style="margin: 5px 0;"><strong>蛋白数量:</strong> ' + batch.uniprot_ids.length + '</p>' +
+        '<p style="margin: 5px 0;"><strong>UniProt IDs:</strong> ' + batch.uniprot_ids.join(', ') + '</p>';
+    tempDiv.appendChild(infoDiv);
+
+    // 添加批量分析报告
+    if (batch.batch_report) {
+        var reportTitle = document.createElement('h3');
+        reportTitle.textContent = '综合关系分析报告';
+        reportTitle.style.marginTop = '20px';
+        reportTitle.style.marginBottom = '10px';
+        reportTitle.style.fontSize = '14px';
+        tempDiv.appendChild(reportTitle);
+
+        var reportDiv = document.createElement('div');
+        reportDiv.style.fontSize = '11px';
+        reportDiv.style.lineHeight = '1.6';
+        reportDiv.innerHTML = marked.parse(batch.batch_report);
+        tempDiv.appendChild(reportDiv);
+    }
+
+    // 页面样式
+    var style = document.createElement('style');
+    style.textContent = `
+        .pdf-page-break { page-break-inside: avoid !important; }
+        table, tr, td, th { page-break-inside: avoid !important; }
+        h1, h2, h3, h4, h5, h6 { page-break-after: avoid !important; }
+        p { orphans: 4; widows: 4; margin-bottom: 0.5em; }
+        ul, ol { page-break-inside: avoid !important; }
+        li { page-break-inside: avoid !important; }
+        * { page-break-inside: avoid !important; }
+    `;
+    tempDiv.insertBefore(style, tempDiv.firstChild);
+
+    document.body.appendChild(tempDiv);
+
+    var opt = {
+        margin: [5, 5, 5, 5],
+        filename: 'batch_protein_evaluation_' + new Date().toISOString().slice(0,10) + '.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, windowWidth: 800 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
