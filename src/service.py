@@ -2430,14 +2430,6 @@ class ProteinEvaluationService:
                                     'type': item.get('interaction_type', 'unknown')
                                 }
                                 all_interactions.append(interaction)
-                            'protein_b_name': item.get('preferredName_B', {}).get('geneName', ''),
-                            'score': item.get('score', 0),
-                            'type': item.get('interaction_type', 'unknown')
-                        }
-
-                        # Check if both proteins are in our list
-                        if interaction['protein_b'] in uniprot_ids:
-                            all_interactions.append(interaction)
 
                 except Exception as e:
                     logger.warning(f"获取蛋白 {uniprot_id} 的互作数据失败: {e}")
