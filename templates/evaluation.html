@@ -1237,7 +1237,8 @@ function loadBatchTemplates() {
 function renderBatchTemplateList(defaultId) {
     const list = document.getElementById('batch-template-list');
     if (batchTemplatesData.length === 0) {
-        list.innerHTML = '<div style="color: #999; text-align: center;">暂无模板</div>';
+        // 显示提示信息和创建按钮
+        list.innerHTML = '<div style="color: #999; text-align: center; margin-bottom: 10px;">暂无模板</div>';
         return;
     }
 
