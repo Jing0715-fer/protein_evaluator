@@ -4,11 +4,13 @@
 
 ## 功能特性
 
-- **UniProt 元数据获取** - 获取蛋白名称、基因、物种、序列、PDB ID 列表等信息
-- **PDB 结构数据分析** - 获取结构实验方法、分辨率、文献引用等详细信息
-- **BLAST 同源蛋白搜索** - 搜索相似蛋白，分析同源性
+- **UniProt 元数据获取** - 获取蛋白名称、基因、物种、序列、功能描述、PDB ID 列表等信息
+- **PDB 结构数据分析** - 获取结构实验方法、分辨率、文献引用、实体信息、UniProt 映射范围等详细信息
+- **BLAST 同源蛋白搜索** - 搜索相似蛋白，分析同源性，支持跳过已覆盖结构
 - **AI 智能分析报告** - 基于收集的所有数据，调用 AI 生成综合分析报告
 - **PDF/Markdown 导出** - 支持多种格式导出评估报告
+- **评估历史管理** - 支持搜索和多选批量删除评估记录
+- **智能优化** - PDB 覆盖率 >= 50% 且结构数 >= 5 时自动跳过 BLAST
 
 ## 运行环境
 
@@ -121,7 +123,8 @@ python app.py
 | `/api/evaluation/start` | POST | 开始新评估 |
 | `/api/evaluation/<id>` | GET | 获取评估详情 |
 | `/api/evaluation/<id>/status` | GET | 获取评估状态 |
-| `/api/evaluation/<id>` | DELETE | 删除评估 |
+| `/api/evaluation/<id>` | DELETE | 删除单个评估 |
+| `/api/evaluation/batch-delete` | POST | 批量删除评估 |
 
 ### API 使用示例
 
@@ -137,6 +140,14 @@ curl -X POST http://localhost:5002/api/evaluation/start \
 
 ```bash
 curl http://localhost:5002/api/evaluation/<id>/status
+```
+
+#### 批量删除评估
+
+```bash
+curl -X POST http://localhost:5002/api/evaluation/batch-delete \
+  -H "Content-Type: application/json" \
+  -d '{"ids": [1, 2, 3]}'
 ```
 
 ## 项目结构
