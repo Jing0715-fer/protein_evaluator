@@ -2430,10 +2430,9 @@ class ProteinEvaluationService:
                                     'type': item.get('interaction_type', 'unknown')
                                 }
                                 all_interactions.append(interaction)
-
-                except Exception as e:
-                    logger.warning(f"获取蛋白 {uniprot_id} 的互作数据失败: {e}")
-                    continue
+                    except Exception as e:
+                        logger.warning(f"获取蛋白 {uniprot_id} 的互作数据失败: {e}")
+                        continue
 
             return {
                 'interactions': all_interactions,
