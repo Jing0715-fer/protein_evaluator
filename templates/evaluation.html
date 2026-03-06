@@ -347,12 +347,13 @@
         background: #2563eb;
     }
 
-    /* Batch evaluation styles */
+    /* Batch evaluation styles - Match single evaluation style */
     .batch-input-section {
-        background: #f9fafb;
+        background: #fff;
         border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
     .batch-input-header {
         display: flex;
@@ -361,8 +362,9 @@
         margin-bottom: 16px;
     }
     .batch-input-header h3 {
-        margin: 0;
+        margin: 0 0 8px 0;
         font-size: 16px;
+        font-weight: 600;
         color: #1f2937;
     }
     .batch-input-hint {
@@ -371,38 +373,46 @@
     }
     .batch-textarea {
         width: 100%;
-        min-height: 120px;
-        padding: 12px;
+        min-height: 100px;
+        padding: 10px 14px;
         border: 1px solid #d1d5db;
         border-radius: 8px;
         font-size: 14px;
         font-family: monospace;
         resize: vertical;
         box-sizing: border-box;
+        transition: border-color 0.2s;
     }
     .batch-textarea:focus {
         outline: none;
-        border-color: #2563eb;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
     .batch-name-input {
-        margin-top: 12px;
+        margin-top: 16px;
         display: flex;
         align-items: center;
         gap: 12px;
     }
     .batch-name-input label {
         font-size: 14px;
+        font-weight: 500;
         color: #374151;
         white-space: nowrap;
     }
     .batch-name-input input {
         flex: 1;
         max-width: 300px;
-        padding: 8px 12px;
+        padding: 10px 14px;
         border: 1px solid #d1d5db;
-        border-radius: 6px;
+        border-radius: 8px;
         font-size: 14px;
+        transition: border-color 0.2s;
+    }
+    .batch-name-input input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
     .batch-actions {
         margin-top: 16px;
@@ -411,17 +421,23 @@
         justify-content: flex-end;
     }
 
-    /* Batch list styles */
+    /* Batch list styles - Match history panel style */
     .batch-list-section {
         margin-top: 20px;
     }
     .batch-card {
-        background: white;
+        background: #fff;
         border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
         cursor: pointer;
+        transition: all 0.2s;
+    }
+    .batch-card:hover {
+        border-color: #3b82f6;
+        background: #f9fafb;
+    }
         transition: all 0.2s;
     }
     .batch-card:hover {
@@ -476,47 +492,90 @@
         margin-right: 16px;
     }
     .batch-progress-bar {
-        height: 4px;
+        height: 8px;
         background: #e5e7eb;
-        border-radius: 2px;
+        border-radius: 4px;
         margin-top: 12px;
         overflow: hidden;
     }
     .batch-progress-fill {
         height: 100%;
-        background: #2563eb;
-        border-radius: 2px;
-        transition: width 0.3s;
+        background: linear-gradient(90deg, #3b82f6, #60a5fa);
+        border-radius: 4px;
+        transition: width 0.3s ease;
     }
 
-    /* Batch result styles */
+    /* Batch result styles - Match result section style */
     .batch-result-section {
-        margin-top: 20px;
+        margin-bottom: 24px;
+    }
+    .batch-result-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    .batch-result-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .batch-result-header h3 {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #1f2937;
+    }
+    .batch-delete-btn-result {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        background: #fff;
+        color: #ef4444;
+        border: 1px solid #fecaca;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .batch-delete-btn-result:hover {
+        background: #fef2f2;
+        border-color: #fca5a5;
     }
     .batch-protein-list {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        margin-bottom: 16px;
+        margin-bottom: 20px;
     }
     .batch-protein-tag {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 6px 12px;
+        padding: 6px 14px;
         background: #eff6ff;
         border: 1px solid #bfdbfe;
         border-radius: 20px;
         font-size: 13px;
+        font-weight: 500;
         color: #1e40af;
     }
     .batch-protein-tag.error {
-        background: #fee2e2;
+        background: #fef2f2;
         border-color: #fecaca;
         color: #991b1b;
     }
     .interaction-section {
-        margin-top: 20px;
+        margin-top: 24px;
+    }
+    .interaction-section h4 {
+        margin: 0 0 16px 0;
+        font-size: 15px;
+        font-weight: 600;
+        color: #1f2937;
     }
     .interaction-table {
         width: 100%;
@@ -534,13 +593,28 @@
         font-weight: 600;
         color: #374151;
     }
+    .interaction-table tr:hover {
+        background: #f9fafb;
+    }
     .interaction-score {
         display: inline-block;
         padding: 2px 8px;
         background: #dbeafe;
         border-radius: 12px;
         font-size: 12px;
+        font-weight: 500;
         color: #1e40af;
+    }
+    .batch-report-section {
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid #e5e7eb;
+    }
+    .batch-report-section h4 {
+        margin: 0 0 16px 0;
+        font-size: 15px;
+        font-weight: 600;
+        color: #1f2937;
     }
 </style>
 {% endblock %}
@@ -1489,7 +1563,14 @@ function showBatchResults(data) {
     const resultSection = document.getElementById('batch-result-section');
     resultSection.style.display = 'block';
 
-    let html = '<h3>批量评估结果</h3>';
+    let html = '<div class="batch-result-card">';
+    html += '<div class="batch-result-header">';
+    html += '<h3>批量评估结果</h3>';
+    html += '<button class="batch-delete-btn-result" onclick="deleteBatchResult(' + batch.id + ')">';
+    html += '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
+    html += '<polyline points="3 6 5 6 21 6"></polyline>';
+    html += '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>';
+    html += '</svg>删除</button></div>';
 
     // Protein list
     html += '<div class="batch-protein-list">';
@@ -1498,6 +1579,13 @@ function showBatchResults(data) {
         const statusClass = evalItem && evalItem.evaluation_status === 'completed' ? '' : 'error';
         html += '<span class="batch-protein-tag ' + statusClass + '">' + id + '</span>';
     });
+    html += '</div>';
+
+    // Status info
+    html += '<div class="info-grid" style="margin-bottom: 20px;">';
+    html += '<div class="info-item"><label>评估时间</label><span>' + formatDate(batch.created_at) + '</span></div>';
+    html += '<div class="info-item"><label>蛋白数量</label><span>' + batch.uniprot_ids.length + '</span></div>';
+    html += '<div class="info-item"><label>互作关系</label><span>' + interactions.length + ' 条</span></div>';
     html += '</div>';
 
     // Interactions
@@ -1523,14 +1611,38 @@ function showBatchResults(data) {
 
     // Batch report
     if (batch.batch_report) {
-        html += '<div style="margin-top: 24px;">';
+        html += '<div class="batch-report-section">';
         html += '<h4>综合分析报告</h4>';
-        html += '<div class="ai-analysis" style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; max-height: 500px; overflow-y: auto;">';
+        html += '<div class="ai-analysis" style="padding: 16px; max-height: 500px; overflow-y: auto;">';
         html += batch.batch_report.replace(/\n/g, '<br>');
         html += '</div>';
         html += '</div>';
     }
 
+    html += '</div>';
+    resultSection.innerHTML = html;
+}
+
+function deleteBatchResult(batchId) {
+    if (!confirm('确定要删除这条批量评估记录吗？')) return;
+
+    fetch('/api/evaluation/batch/' + batchId, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('batch-result-section').style.display = 'none';
+            loadBatchHistory();
+        } else {
+            alert('删除失败: ' + (data.error || '未知错误'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('删除失败: ' + error.message);
+    });
+}
     resultSection.innerHTML = html;
 }
 
