@@ -1623,13 +1623,13 @@ function showBatchResults(data) {
         html += '</tbody></table>';
         html += '</div>';
     } else {
-        html += '<p style="color: #6b7280; margin-top: 16px;">未检测到蛋白相互作用（可能这些蛋白之间没有已知的互作关系）</p>';
+        html += '<p style="color: #6b7280; margin-top: 16px;">未检测到蛋白相互作用</p>';
     }
 
-    // Batch report
+    // Batch report (main analysis)
     if (batch.batch_report) {
         html += '<div class="batch-report-section">';
-        html += '<h4>综合分析报告</h4>';
+        html += '<h4>综合关系分析报告</h4>';
         html += '<div class="ai-analysis" style="padding: 16px; max-height: 500px; overflow-y: auto;">';
         html += batch.batch_report.replace(/\n/g, '<br>');
         html += '</div>';
@@ -1637,7 +1637,51 @@ function showBatchResults(data) {
     }
 
     html += '</div>';
+
+    // Add individual evaluation results as sub-items
+    const completedEvals = evaluations.filter(e => e.evaluation_status === 'completed' && (e.report || e.full_report));
+    if (completedEvals.length > 0) {
+        html += '<div class="individual-results-section" style="margin-top: 20px;">';
+        html += '<h4 style="font-size: 16px; font-weight: 600; color: #1f2937; margin: 24px 0 16px 0; padding-top: 20px; border-top: 1px solid #e5e7eb;">单独评估结果</h4>';
+
+        completedEvals.forEach((evalItem, index) => {
+            const reportContent = evalItem.full_report || evalItem.report || '';
+            html += '<div class="individual-result-card" style="background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 16px; overflow: hidden;">';
+            html += '<div class="individual-result-header" onclick="toggleIndividualReport(' + index + ')" style="padding: 12px 16px; background: #f9fafb; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">';
+            html += '<div style="display: flex; align-items: center; gap: 12px;">';
+            html += '<span style="font-weight: 600; color: #1f2937;">' + evalItem.uniprot_id + '</span>';
+            html += '<span style="font-size: 13px; color: #6b7280;">' + (evalItem.gene_name || '') + '</span>';
+            html += '<span style="font-size: 13px; color: #6b7280;">' + (evalItem.protein_name || '').substring(0, 30) + '</span>';
+            html += '</div>';
+            html += '<svg id="toggle-icon-' + index + '" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.2s;">';
+            html += '<polyline points="6 9 12 15 18 9"></polyline>';
+            html += '</svg>';
+            html += '</div>';
+            html += '<div id="individual-report-' + index + '" class="individual-report-content" style="display: none; padding: 16px; max-height: 400px; overflow-y: auto;">';
+            html += '<div class="ai-analysis" style="font-size: 13px; line-height: 1.6;">';
+            html += reportContent.replace(/\n/g, '<br>');
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+        });
+
+        html += '</div>';
+    }
+
     resultSection.innerHTML = html;
+}
+
+function toggleIndividualReport(index) {
+    const content = document.getElementById('individual-report-' + index);
+    const icon = document.getElementById('toggle-icon-' + index);
+
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+    } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }
 }
 
 function deleteBatchResult(batchId) {

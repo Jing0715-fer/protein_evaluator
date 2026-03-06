@@ -2472,8 +2472,11 @@ class ProteinEvaluationService:
             else:
                 client = OpenAIClient(api_key=ai_api_key, base_url=ai_base_url, model=ai_model)
 
-            # Build the prompt for batch analysis
-            prompt = self._build_batch_prompt(uniprot_ids, interaction_data, individual_results)
+            # Get individual evaluation reports
+            individual_reports = self._get_individual_reports(uniprot_ids)
+
+            # Build the prompt for batch analysis with individual reports
+            prompt = self._build_batch_prompt(uniprot_ids, interaction_data, individual_reports)
 
             # Create messages in the format expected by AI clients
             messages = [
@@ -2497,9 +2500,26 @@ class ProteinEvaluationService:
             logger.error(f"批量AI分析失败: {e}")
             return {'success': False, 'error': str(e)}
 
+    def _get_individual_reports(self, uniprot_ids: List[str]) -> Dict[str, str]:
+        """获取各单独评估的报告"""
+        reports = {}
+        for uniprot_id in uniprot_ids:
+            try:
+                evaluation = get_protein_evaluation_by_uniprot(uniprot_id)
+                if evaluation and evaluation.report:
+                    reports[uniprot_id] = evaluation.report
+                else:
+                    reports[uniprot_id] = None
+            except Exception as e:
+                logger.warning(f"获取蛋白 {uniprot_id} 的单独评估报告失败: {e}")
+                reports[uniprot_id] = None
+        return reports
+
     def _build_batch_prompt(self, uniprot_ids: List[str], interaction_data: Dict,
-                            individual_results: List[Dict]) -> str:
-        """构建批量分析提示词"""
+                            individual_reports: Dict[str, str]) -> str:
+        """构建批量分析提示词 - 使用单独评估报告"""
+        import config as cfg
+
         # Get basic protein info for each ID
         protein_info = []
         for uniprot_id in uniprot_ids:
@@ -2522,126 +2542,47 @@ class ProteinEvaluationService:
                     'pdb_count': 0
                 })
 
+        # Get the batch interaction template
+        batch_template = getattr(cfg, 'BATCH_INTERACTION_PROMPT_TEMPLATE', '')
+
         # Build the prompt
-        prompt = f"""# 批量蛋白质分析报告
+        prompt = batch_template + "\n\n"
 
-你是一个专业的蛋白质结构生物学家和生物信息学专家。请根据以下提供的多个蛋白质的综合数据，生成一份**全面深入的批量分析报告**。
-
-## 分析要求
-1. **字数要求**：报告总字数应在3000字以上
-2. **分析深度**：每个分析维度都要有深度解读
-3. **结构清晰**：使用多级标题组织内容
-4. **比较分析**：突出各蛋白之间的异同和关联
-
-## 输入数据
-
-### 蛋白质基本信息
-"""
-
+        # Add protein basic info
+        prompt += "## 输入数据\n\n### 蛋白质基本信息\n\n"
         for info in protein_info:
-            prompt += f"""
-- **UniProt ID**: {info['uniprot_id']}
-  - 蛋白名称: {info['name']}
-  - 基因名称: {info['gene']}
-  - 物种: {info['organism']}
-  - PDB结构数量: {info['pdb_count']}
-"""
+            prompt += f"- **UniProt ID**: {info['uniprot_id']}\n"
+            prompt += f"  - 蛋白名称: {info['name']}\n"
+            prompt += f"  - 基因名称: {info['gene']}\n"
+            prompt += f"  - 物种: {info['organism']}\n"
+            prompt += f"  - PDB结构数量: {info['pdb_count']}\n\n"
 
         # Add interaction data
         interactions = interaction_data.get('interactions', [])
         if interactions:
-            prompt += f"""
-### 蛋白相互作用网络
-
-检测到 {len(interactions)} 条蛋白互作关系（来自String Database）：
-
-| 蛋白A | 蛋白B | 置信度分数 | 互作类型 |
-|-------|-------|------------|----------|
-"""
-            for interaction in interactions[:20]:  # Limit to 20
+            prompt += "### 蛋白相互作用网络（来自String Database）\n\n"
+            prompt += f"检测到 {len(interactions)} 条互作关系：\n\n"
+            prompt += "| 蛋白A | 蛋白B | 置信度分数 | 互作类型 |\n"
+            prompt += "|-------|-------|------------|----------|\n"
+            for interaction in interactions[:20]:
                 prompt += f"| {interaction.get('protein_a', '')} | {interaction.get('protein_b_name', interaction.get('protein_b', ''))} | {interaction.get('score', 0):.2f} | {interaction.get('type', 'unknown')} |\n"
+            prompt += "\n"
 
-        prompt += """
-### 蛋白互作网络分析
+        # Add individual reports
+        prompt += "### 单独评估报告要点\n\n"
+        for uniprot_id in uniprot_ids:
+            report = individual_reports.get(uniprot_id)
+            info = next((p for p in protein_info if p['uniprot_id'] == uniprot_id), None)
+            protein_name = info['name'] if info else uniprot_id
 
-请分析以上互作网络：
-- 哪些蛋白之间存在直接相互作用？
-- 互作网络的紧密程度如何？
-- 是否有核心蛋白（hub protein）？
-- 互作关系的功能意义是什么？
+            prompt += f"#### {protein_name} ({uniprot_id})\n\n"
+            if report:
+                # Extract key parts from the report (first 1500 chars as summary)
+                report_summary = report[:1500] + "..." if len(report) > 1500 else report
+                prompt += f"评估报告摘要：\n{report_summary}\n\n"
+            else:
+                prompt += "（暂无单独评估报告）\n\n"
 
----
-
-## 请按以下框架生成报告
-
-# 批量蛋白质综合分析报告
-
-**摘要**
-（概述本次批量分析的目的、涉及的蛋白及其主要发现）
-
----
-
-## 第一部分：批量蛋白概览
-
-### 1.1 蛋白列表与基本信息
-
-| UniProt ID | 蛋白名称 | 基因名 | PDB数量 |
-|------------|----------|--------|---------|
-| ... | ... | ... | ... |
-
-### 1.2 整体数据质量评估
-
-- 蛋白覆盖度分析
-- 结构数据可用性统计
-
----
-
-## 第二部分：蛋白相互作用网络分析
-
-### 2.1 互作网络概述
-
-描述检测到的互作关系网络结构。
-
-### 2.2 关键互作对分析
-
-分析高置信度的互作对及其功能意义。
-
-### 2.3 网络拓扑特征
-
-- 网络密度
-- 核心蛋白识别
-- 功能模块分析
-
----
-
-## 第三部分：功能富集与通路分析
-
-基于互作网络和蛋白功能，推测可能的通路和生物学过程。
-
----
-
-## 第四部分：结构比较分析
-
-### 4.1 PDB结构可用性对比
-
-比较各蛋白的结构数据覆盖情况。
-
-### 4.2 结构相似性分析
-
-（如有结构数据）分析结构层面的相似性。
-
----
-
-## 第五部分：综合讨论与结论
-
-### 5.1 主要发现总结
-
-### 5.2 蛋白间关系解读
-
-### 5.3 研究建议
-
-基于分析结果提出后续研究建议。
-"""
         return prompt
 
     def _generate_batch_report(self, uniprot_ids: List[str], interaction_data: Dict,
@@ -2714,14 +2655,30 @@ class ProteinEvaluationService:
                 'progress': 50
             })
 
-            # Update as completed (simplified - no AI analysis in batch mode)
+            # Run AI analysis for individual evaluation report
+            self._add_log(evaluation_id, "开始生成单独评估报告...")
+            ai_result = self._run_ai_analysis(uniprot_data, pdb_data, {}, evaluation_id)
+
+            # Save the report
+            if ai_result.get('analysis'):
+                report = ai_result.get('analysis')
+            else:
+                # Generate a simple report if AI failed
+                report = f"# {uniprot_id} 蛋白质评估报告\n\n"
+                report += f"蛋白名称: {uniprot_data.get('protein_name', 'Unknown')}\n"
+                report += f"基因名称: {', '.join(uniprot_data.get('gene_names', []))}\n"
+                report += f"PDB结构数量: {len(pdb_data.get('structures', []))}\n"
+                report += "\n（注：AI分析未能成功完成，仅保存基础数据）"
+
             update_protein_evaluation(evaluation_id, {
+                'report': report,
+                'ai_analysis': ai_result,
                 'evaluation_status': 'completed',
                 'progress': 100,
                 'current_step': 'completed'
             })
 
-            return {'status': 'completed', 'evaluation_id': evaluation_id}
+            return {'status': 'completed', 'evaluation_id': evaluation_id, 'report': report}
 
         except Exception as e:
             logger.error(f"同步评估失败: {e}")
@@ -2757,9 +2714,16 @@ class ProteinEvaluationService:
         if not batch:
             return {'success': False, 'error': '批量评估记录不存在'}
 
-        # Get individual evaluations for this batch
+        # Get individual evaluations for this batch - include full report
         evaluations = get_all_protein_evaluations(limit=100)
-        batch_evaluations = [e.to_dict() for e in evaluations if e.batch_id == batch_id]
+        batch_evaluations = []
+        for e in evaluations:
+            if e.batch_id == batch_id:
+                eval_dict = e.to_dict()
+                # Include full report if available
+                if e.report:
+                    eval_dict['full_report'] = e.report
+                batch_evaluations.append(eval_dict)
 
         return {
             'success': True,
