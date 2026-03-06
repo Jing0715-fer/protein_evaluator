@@ -2511,6 +2511,15 @@ class ProteinEvaluationService:
         """构建批量分析提示词 - 使用单独评估报告"""
         import config as cfg
 
+        # Try to get batch template from database first
+        from src.database import get_default_batch_template
+        batch_template_obj = get_default_batch_template()
+
+        if batch_template_obj and batch_template_obj.content:
+            batch_template = batch_template_obj.content
+        else:
+            batch_template = getattr(cfg, 'BATCH_INTERACTION_PROMPT_TEMPLATE', '')
+
         # Get basic protein info for each ID
         protein_info = []
         for uniprot_id in uniprot_ids:

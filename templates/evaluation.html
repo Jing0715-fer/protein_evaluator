@@ -247,6 +247,28 @@
         padding: 0;
         line-height: 1;
     }
+    .modal-tabs {
+        display: flex;
+        gap: 0;
+    }
+    .modal-tab {
+        padding: 10px 16px;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        font-size: 14px;
+        font-weight: 500;
+        color: #6b7280;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .modal-tab:hover {
+        color: #374151;
+    }
+    .modal-tab.active {
+        color: #2563eb;
+        border-bottom-color: #2563eb;
+    }
     .config-section {
         margin-bottom: 24px;
     }
@@ -625,6 +647,16 @@
     <div class="page-header">
         <h1>蛋白质评估</h1>
         <div class="header-actions">
+            <button class="btn-settings" onclick="openTemplateManager()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                模板管理
+            </button>
             <button class="btn-settings" onclick="openSettings()">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="3"></circle>
@@ -863,39 +895,87 @@
             <button class="modal-close" onclick="closeTemplateManager()">&times;</button>
         </div>
 
-        <div style="display: flex; gap: 20px; height: 450px; overflow: hidden;">
-            <!-- 模板列表 -->
-            <div style="width: 200px; border-right: 1px solid #eee; padding-right: 15px; overflow-y: auto; flex-shrink: 0;">
-                <button class="btn-primary" onclick="showCreateTemplateForm()" style="width: 100%; margin-bottom: 10px;">+ 新建模板</button>
-                <div id="template-list"></div>
-            </div>
+        <!-- Tab切换 -->
+        <div class="modal-tabs" style="display: flex; gap: 0; border-bottom: 1px solid #e5e7eb; margin-bottom: 16px;">
+            <button class="modal-tab active" id="tab-single-template" onclick="switchTemplateTab('single')">单个蛋白评估模板</button>
+            <button class="modal-tab" id="tab-batch-template" onclick="switchTemplateTab('batch')">批量关系分析模板</button>
+        </div>
 
-            <!-- 模板编辑区 -->
-            <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
-                <div id="template-editor" style="display: none; flex-direction: column; height: 100%;">
-                    <div style="flex: 0 0 auto;">
-                        <div class="form-group">
-                            <label for="template-name">模板名称</label>
-                            <input type="text" id="template-name" placeholder="例如: 详细报告模板">
+        <!-- 单个蛋白评估模板 -->
+        <div id="single-template-section">
+            <div style="display: flex; gap: 20px; height: 400px; overflow: hidden;">
+                <!-- 模板列表 -->
+                <div style="width: 200px; border-right: 1px solid #eee; padding-right: 15px; overflow-y: auto; flex-shrink: 0;">
+                    <button class="btn-primary" onclick="showCreateTemplateForm()" style="width: 100%; margin-bottom: 10px;">+ 新建模板</button>
+                    <div id="template-list"></div>
+                </div>
+
+                <!-- 模板编辑区 -->
+                <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+                    <div id="template-editor" style="display: none; flex-direction: column; height: 100%;">
+                        <div style="flex: 0 0 auto;">
+                            <div class="form-group">
+                                <label for="template-name">模板名称</label>
+                                <input type="text" id="template-name" placeholder="例如: 详细报告模板">
+                            </div>
+                            <div class="form-group">
+                                <label for="template-description">描述</label>
+                                <input type="text" id="template-description" placeholder="模板描述（可选）">
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="template-description">描述</label>
-                            <input type="text" id="template-description" placeholder="模板描述（可选）">
+                        <div class="form-group" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+                            <label for="template-content">模板内容</label>
+                            <textarea id="template-content" style="flex: 1; min-height: 150px;" placeholder="输入提示词模板..."></textarea>
+                            <div class="form-hint">使用 {outline} 作为数据插入位置的占位符</div>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex: 0 0 auto; padding-top: 10px;">
+                            <button class="btn-primary" onclick="saveTemplate()">保存模板</button>
+                            <button class="btn-secondary" onclick="setAsDefault()">设为默认</button>
+                            <button class="btn-danger" onclick="deleteCurrentTemplate()">删除</button>
                         </div>
                     </div>
-                    <div class="form-group" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                        <label for="template-content">模板内容</label>
-                        <textarea id="template-content" style="flex: 1; min-height: 150px;" placeholder="输入提示词模板..."></textarea>
-                        <div class="form-hint">使用 {outline} 作为数据插入位置的占位符</div>
-                    </div>
-                    <div style="display: flex; gap: 10px; flex: 0 0 auto; padding-top: 10px;">
-                        <button class="btn-primary" onclick="saveTemplate()">保存模板</button>
-                        <button class="btn-secondary" onclick="setAsDefault()">设为默认</button>
-                        <button class="btn-danger" onclick="deleteCurrentTemplate()">删除</button>
+                    <div id="template-empty" style="text-align: center; color: #999; padding-top: 100px;">
+                        选择一个模板或创建新模板
                     </div>
                 </div>
-                <div id="template-empty" style="text-align: center; color: #999; padding-top: 100px;">
-                    选择一个模板或创建新模板
+            </div>
+        </div>
+
+        <!-- 批量关系分析模板 -->
+        <div id="batch-template-section" style="display: none;">
+            <div style="display: flex; gap: 20px; height: 400px; overflow: hidden;">
+                <!-- 批量模板列表 -->
+                <div style="width: 200px; border-right: 1px solid #eee; padding-right: 15px; overflow-y: auto; flex-shrink: 0;">
+                    <button class="btn-primary" onclick="showCreateBatchTemplateForm()" style="width: 100%; margin-bottom: 10px;">+ 新建模板</button>
+                    <div id="batch-template-list"></div>
+                </div>
+
+                <!-- 批量模板编辑区 -->
+                <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+                    <div id="batch-template-editor" style="display: none; flex-direction: column; height: 100%;">
+                        <div style="flex: 0 0 auto;">
+                            <div class="form-group">
+                                <label for="batch-template-name">模板名称</label>
+                                <input type="text" id="batch-template-name" placeholder="例如: 关系分析模板">
+                            </div>
+                            <div class="form-group">
+                                <label for="batch-template-description">描述</label>
+                                <input type="text" id="batch-template-description" placeholder="模板描述（可选）">
+                            </div>
+                        </div>
+                        <div class="form-group" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+                            <label for="batch-template-content">模板内容</label>
+                            <textarea id="batch-template-content" style="flex: 1; min-height: 150px;" placeholder="输入提示词模板..."></textarea>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex: 0 0 auto; padding-top: 10px;">
+                            <button class="btn-primary" onclick="saveBatchTemplate()">保存模板</button>
+                            <button class="btn-secondary" onclick="setBatchTemplateAsDefault()">设为默认</button>
+                            <button class="btn-danger" onclick="deleteBatchTemplate()">删除</button>
+                        </div>
+                    </div>
+                    <div id="batch-template-empty" style="text-align: center; color: #999; padding-top: 100px;">
+                        选择一个批量分析模板或创建新模板
+                    </div>
                 </div>
             </div>
         </div>
@@ -1118,6 +1198,182 @@ function openTemplateManager() {
 function closeTemplateManager() {
     document.getElementById('template-modal').classList.remove('active');
     currentTemplateId = null;
+}
+
+// ========== 模板Tab切换 ==========
+function switchTemplateTab(tab) {
+    document.getElementById('tab-single-template').classList.remove('active');
+    document.getElementById('tab-batch-template').classList.remove('active');
+    document.getElementById('tab-' + tab + '-template').classList.add('active');
+
+    if (tab === 'single') {
+        document.getElementById('single-template-section').style.display = 'block';
+        document.getElementById('batch-template-section').style.display = 'none';
+    } else {
+        document.getElementById('single-template-section').style.display = 'none';
+        document.getElementById('batch-template-section').style.display = 'block';
+        loadBatchTemplates();
+    }
+}
+
+// ========== 批量模板管理 ==========
+let batchTemplatesData = [];
+let currentBatchTemplateId = null;
+
+function loadBatchTemplates() {
+    fetch('/api/evaluation/batch-templates')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                batchTemplatesData = data.templates || [];
+                renderBatchTemplateList(data.default_id);
+            }
+        })
+        .catch(error => console.error('加载批量模板失败:', error));
+}
+
+function renderBatchTemplateList(defaultId) {
+    const list = document.getElementById('batch-template-list');
+    if (batchTemplatesData.length === 0) {
+        list.innerHTML = '<div style="color: #999; text-align: center;">暂无模板</div>';
+        return;
+    }
+
+    let html = '';
+    batchTemplatesData.forEach(template => {
+        const isDefault = template.id === defaultId;
+        html += '<div class="template-item ' + (template.id === currentBatchTemplateId ? 'active' : '') + '" ';
+        html += 'onclick="selectBatchTemplate(' + template.id + ')" ';
+        html += 'style="padding: 10px; margin-bottom: 8px; border-radius: 6px; cursor: pointer; ' + (template.id === currentBatchTemplateId ? 'background: #eff6ff; border: 1px solid #bfdbfe;' : 'background: #f9fafb; border: 1px solid #e5e7eb;') + '">';
+        html += '<div style="font-size: 13px; font-weight: 500; color: #1f2937;">' + template.name + '</div>';
+        if (isDefault) {
+            html += '<div style="font-size: 11px; color: #2563eb; margin-top: 2px;">默认</div>';
+        }
+        html += '</div>';
+    });
+    list.innerHTML = html;
+}
+
+function showCreateBatchTemplateForm() {
+    currentBatchTemplateId = null;
+    document.getElementById('batch-template-name').value = '';
+    document.getElementById('batch-template-description').value = '';
+    document.getElementById('batch-template-content').value = '';
+    document.getElementById('batch-template-editor').style.display = 'flex';
+    document.getElementById('batch-template-empty').style.display = 'none';
+    document.getElementById('batch-template-list').querySelectorAll('.template-item').forEach(item => {
+        item.classList.remove('active');
+    });
+}
+
+function selectBatchTemplate(templateId) {
+    currentBatchTemplateId = templateId;
+    const template = batchTemplatesData.find(t => t.id === templateId);
+    if (template) {
+        document.getElementById('batch-template-name').value = template.name || '';
+        document.getElementById('batch-template-description').value = template.description || '';
+        document.getElementById('batch-template-content').value = template.content || '';
+        document.getElementById('batch-template-editor').style.display = 'flex';
+        document.getElementById('batch-template-empty').style.display = 'none';
+    }
+    renderBatchTemplateList();
+}
+
+function saveBatchTemplate() {
+    const name = document.getElementById('batch-template-name').value.trim();
+    const description = document.getElementById('batch-template-description').value.trim();
+    const content = document.getElementById('batch-template-content').value;
+
+    if (!name || !content) {
+        alert('请填写模板名称和内容');
+        return;
+    }
+
+    const data = {
+        name: name,
+        description: description,
+        content: content,
+        is_default: false,
+        template_type: 'batch'
+    };
+
+    const url = currentBatchTemplateId
+        ? '/api/evaluation/batch-templates/' + currentBatchTemplateId
+        : '/api/evaluation/batch-templates';
+
+    const method = currentBatchTemplateId ? 'PUT' : 'POST';
+
+    fetch(url, {
+        method: method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('保存成功');
+            loadBatchTemplates();
+        } else {
+            alert('保存失败: ' + (result.message || '未知错误'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('保存失败: ' + error.message);
+    });
+}
+
+function setBatchTemplateAsDefault() {
+    if (!currentBatchTemplateId) {
+        alert('请先选择一个模板');
+        return;
+    }
+
+    fetch('/api/evaluation/batch-templates/' + currentBatchTemplateId + '/set-default', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('设为默认成功');
+            loadBatchTemplates();
+        } else {
+            alert('设置失败: ' + (result.message || '未知错误'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('设置失败: ' + error.message);
+    });
+}
+
+function deleteBatchTemplate() {
+    if (!currentBatchTemplateId) {
+        alert('请先选择一个模板');
+        return;
+    }
+
+    if (!confirm('确定要删除这个模板吗？')) return;
+
+    fetch('/api/evaluation/batch-templates/' + currentBatchTemplateId, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('删除成功');
+            currentBatchTemplateId = null;
+            document.getElementById('batch-template-editor').style.display = 'none';
+            document.getElementById('batch-template-empty').style.display = 'block';
+            loadBatchTemplates();
+        } else {
+            alert('删除失败: ' + (result.message || '未知错误'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('删除失败: ' + error.message);
+    });
 }
 
 function loadTemplatesFromServer() {

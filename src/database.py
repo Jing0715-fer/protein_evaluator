@@ -306,6 +306,147 @@ def set_default_prompt_template(template_id: int) -> bool:
         session.close()
 
 
+# ========== Batch Template CRUD ==========
+
+def create_batch_template(name: str, content: str, description: str = '', is_default: bool = False, template_type: str = 'batch') -> Optional[PromptTemplate]:
+    """创建批量分析模板"""
+    session = get_session()
+    try:
+        # 如果设为默认模板，先取消其他默认
+        if is_default:
+            session.query(PromptTemplate).filter_by(is_default=True, template_type='batch').update({'is_default': False})
+
+        template = PromptTemplate(
+            name=name,
+            content=content,
+            description=description,
+            is_default=is_default,
+            template_type=template_type
+        )
+        session.add(template)
+        session.commit()
+        session.refresh(template)
+        logger.info(f"创建批量模板成功: ID={template.id}, name={name}")
+        return template
+    except Exception as e:
+        logger.error(f"创建批量模板失败: {e}")
+        session.rollback()
+        return None
+    finally:
+        session.close()
+
+
+def get_batch_template(template_id: int) -> Optional[PromptTemplate]:
+    """获取批量分析模板"""
+    session = get_session()
+    try:
+        template = session.query(PromptTemplate).filter_by(id=template_id, template_type='batch').first()
+        return template
+    except Exception as e:
+        logger.error(f"获取批量模板失败: {e}")
+        return None
+    finally:
+        session.close()
+
+
+def get_all_batch_templates() -> List[PromptTemplate]:
+    """获取所有批量分析模板"""
+    session = get_session()
+    try:
+        templates = session.query(PromptTemplate).filter_by(template_type='batch').order_by(PromptTemplate.is_default.desc(), PromptTemplate.name).all()
+        return templates
+    except Exception as e:
+        logger.error(f"获取批量模板列表失败: {e}")
+        return []
+    finally:
+        session.close()
+
+
+def get_default_batch_template() -> Optional[PromptTemplate]:
+    """获取默认批量分析模板"""
+    session = get_session()
+    try:
+        template = session.query(PromptTemplate).filter_by(is_default=True, template_type='batch').first()
+        # 如果没有默认模板，返回第一个
+        if not template:
+            template = session.query(PromptTemplate).filter_by(template_type='batch').first()
+        return template
+    except Exception as e:
+        logger.error(f"获取默认批量模板失败: {e}")
+        return None
+    finally:
+        session.close()
+
+
+def update_batch_template(template_id: int, updates: dict) -> bool:
+    """更新批量分析模板"""
+    session = get_session()
+    try:
+        template = session.query(PromptTemplate).filter_by(id=template_id, template_type='batch').first()
+        if not template:
+            return False
+
+        # 如果设为默认模板，先取消其他默认
+        if updates.get('is_default'):
+            session.query(PromptTemplate).filter_by(is_default=True, template_type='batch').update({'is_default': False})
+
+        for key, value in updates.items():
+            if hasattr(template, key):
+                setattr(template, key, value)
+
+        template.updated_at = datetime.now()
+        session.commit()
+        logger.info(f"更新批量模板成功: ID={template_id}")
+        return True
+    except Exception as e:
+        logger.error(f"更新批量模板失败: {e}")
+        session.rollback()
+        return False
+    finally:
+        session.close()
+
+
+def delete_batch_template(template_id: int) -> bool:
+    """删除批量分析模板"""
+    session = get_session()
+    try:
+        template = session.query(PromptTemplate).filter_by(id=template_id, template_type='batch').first()
+        if not template:
+            return False
+        session.delete(template)
+        session.commit()
+        logger.info(f"删除批量模板成功: ID={template_id}")
+        return True
+    except Exception as e:
+        logger.error(f"删除批量模板失败: {e}")
+        session.rollback()
+        return False
+    finally:
+        session.close()
+
+
+def set_default_batch_template(template_id: int) -> bool:
+    """设置默认批量模板"""
+    session = get_session()
+    try:
+        # 先取消所有默认
+        session.query(PromptTemplate).filter_by(is_default=True, template_type='batch').update({'is_default': False})
+        # 设置新的默认
+        template = session.query(PromptTemplate).filter_by(id=template_id, template_type='batch').first()
+        if not template:
+            return False
+        template.is_default = True
+        session.commit()
+        logger.info(f"设置默认批量模板成功: ID={template_id}")
+        return True
+    except Exception as e:
+        logger.error(f"设置默认批量模板失败: {e}")
+        session.rollback()
+        return False
+    finally:
+        session.close()
+
+
 # ========== Batch Evaluation CRUD ==========
 
 def create_batch_evaluation(name: str, uniprot_ids: List[str], config: Dict = None) -> Optional[BatchEvaluation]:

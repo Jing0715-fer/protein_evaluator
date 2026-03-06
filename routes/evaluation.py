@@ -313,6 +313,111 @@ def use_template(template_id):
     return jsonify({'success': False, 'message': '模板不存在'}), 404
 
 
+# ========== Batch Template Management ==========
+
+@bp.route('/batch-templates', methods=['GET'])
+def get_batch_templates():
+    """获取批量分析模板"""
+    from src.database import get_all_batch_templates, get_default_batch_template
+
+    templates = get_all_batch_templates()
+    default_template = get_default_batch_template()
+
+    # If no templates in database, return default from config
+    if not templates:
+        import config
+        default_content = getattr(config, 'BATCH_INTERACTION_PROMPT_TEMPLATE', '')
+        return jsonify({
+            'success': True,
+            'templates': [],
+            'default_content': default_content,
+            'default_id': None
+        })
+
+    return jsonify({
+        'success': True,
+        'templates': [t.to_dict() for t in templates],
+        'default_id': default_template.id if default_template else None,
+        'default_content': default_template.content if default_template else ''
+    })
+
+
+@bp.route('/batch-templates', methods=['POST'])
+def create_batch_template():
+    """创建批量分析模板"""
+    from src.database import create_batch_template
+
+    data = request.get_json()
+    name = data.get('name')
+    content = data.get('content')
+    description = data.get('description', '')
+    is_default = data.get('is_default', False)
+
+    if not name or not content:
+        return jsonify({'success': False, 'message': '模板名称和内容不能为空'}), 400
+
+    template = create_batch_template(name, content, description, is_default, 'batch')
+    if template:
+        return jsonify({'success': True, 'template': template.to_dict()})
+    return jsonify({'success': False, 'message': '创建模板失败'}), 500
+
+
+@bp.route('/batch-templates/<int:template_id>', methods=['GET'])
+def get_batch_template(template_id):
+    """获取单个批量分析模板"""
+    from src.database import get_batch_template
+
+    template = get_batch_template(template_id)
+    if template:
+        return jsonify({'success': True, 'template': template.to_dict()})
+    return jsonify({'success': False, 'message': '模板不存在'}), 404
+
+
+@bp.route('/batch-templates/<int:template_id>', methods=['PUT'])
+def update_batch_template(template_id):
+    """更新批量分析模板"""
+    from src.database import update_batch_template as db_update_batch_template
+
+    data = request.get_json()
+    updates = {}
+
+    if 'name' in data:
+        updates['name'] = data['name']
+    if 'content' in data:
+        updates['content'] = data['content']
+    if 'description' in data:
+        updates['description'] = data['description']
+    if 'is_default' in data:
+        updates['is_default'] = data['is_default']
+
+    if not updates:
+        return jsonify({'success': False, 'message': '没有要更新的内容'}), 400
+
+    if db_update_batch_template(template_id, updates):
+        return jsonify({'success': True, 'message': '模板已更新'})
+    return jsonify({'success': False, 'message': '更新失败'}), 500
+
+
+@bp.route('/batch-templates/<int:template_id>', methods=['DELETE'])
+def delete_batch_template(template_id):
+    """删除批量分析模板"""
+    from src.database import delete_batch_template
+
+    if delete_batch_template(template_id):
+        return jsonify({'success': True, 'message': '模板已删除'})
+    return jsonify({'success': False, 'message': '删除失败'}), 500
+
+
+@bp.route('/batch-templates/<int:template_id>/set-default', methods=['POST'])
+def set_default_batch_template(template_id):
+    """设置默认批量分析模板"""
+    from src.database import set_default_batch_template
+
+    if set_default_batch_template(template_id):
+        return jsonify({'success': True, 'message': '已设为默认模板'})
+    return jsonify({'success': False, 'message': '设置失败'}), 500
+
+
 # ========== Batch Evaluation API Endpoints ==========
 
 @bp.route('/batch-start', methods=['POST'])
