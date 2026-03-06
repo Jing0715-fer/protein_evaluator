@@ -65,6 +65,7 @@ def start_evaluation():
 
         # Get config options
         config = data.get('config', {})
+        logger.info(f"收到评估请求: uniprot_id={uniprot_id}, config={config}")
 
         service = get_evaluation_service()
         result = service.start_evaluation(
