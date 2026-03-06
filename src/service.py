@@ -2298,16 +2298,8 @@ class ProteinEvaluationService:
                 'progress': 10
             })
 
-            # Step 1: Fetch protein interaction data from String Database
-            self._add_batch_log(batch_id, "开始获取蛋白互作数据...")
-            interaction_data = self._fetch_protein_interactions(uniprot_ids)
-
-            update_batch_evaluation(batch_id, {
-                'interaction_data': interaction_data,
-                'progress': 30
-            })
-
-            self._add_batch_log(batch_id, f"获取到 {len(interaction_data.get('interactions', []))} 条互作关系")
+            # Skip String Database interaction lookup - will rely on AI analysis
+            interaction_data = {'interactions': [], 'source': 'ai_analysis'}
 
             # Step 2: Run individual evaluations for each protein
             total_proteins = len(uniprot_ids)
@@ -2316,9 +2308,11 @@ class ProteinEvaluationService:
             for idx, uniprot_id in enumerate(uniprot_ids):
                 self._add_batch_log(batch_id, f"[{idx+1}/{total_proteins}] 开始评估蛋白 {uniprot_id}...")
 
-                # Create individual evaluation
+                # Create individual evaluation with batch_id reference
                 evaluation = create_protein_evaluation(uniprot_id=uniprot_id)
                 if evaluation:
+                    # Update the evaluation to link it to this batch
+                    update_protein_evaluation(evaluation.id, {'batch_id': batch_id})
                     # Run the individual evaluation in a synchronous way
                     try:
                         # Create a new instance for synchronous execution
@@ -2338,8 +2332,8 @@ class ProteinEvaluationService:
                             'error': str(e)
                         })
 
-                # Update batch progress
-                progress = 30 + int((idx + 1) / total_proteins * 40)
+                # Update batch progress (start from 10%, go to 60% for individual evaluations)
+                progress = 10 + int((idx + 1) / total_proteins * 50)
                 update_batch_evaluation(batch_id, {'progress': progress})
 
             self._add_batch_log(batch_id, "所有蛋白评估完成")

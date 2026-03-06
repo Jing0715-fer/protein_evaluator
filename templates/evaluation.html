@@ -1842,7 +1842,6 @@ function checkBatchStatus() {
 
 function showBatchResults(data) {
     const batch = data.batch;
-    const interactions = data.interactions || [];
     const evaluations = data.evaluations || [];
 
     document.getElementById('batch-progress-section').style.display = 'none';
@@ -1871,30 +1870,7 @@ function showBatchResults(data) {
     html += '<div class="info-grid" style="margin-bottom: 20px;">';
     html += '<div class="info-item"><label>评估时间</label><span>' + formatDate(batch.created_at) + '</span></div>';
     html += '<div class="info-item"><label>蛋白数量</label><span>' + batch.uniprot_ids.length + '</span></div>';
-    html += '<div class="info-item"><label>互作关系</label><span>' + interactions.length + ' 条</span></div>';
     html += '</div>';
-
-    // Interactions
-    if (interactions.length > 0) {
-        html += '<div class="interaction-section">';
-        html += '<h4>蛋白相互作用网络</h4>';
-        html += '<table class="interaction-table">';
-        html += '<thead><tr><th>蛋白A</th><th>蛋白B</th><th>置信度</th><th>类型</th></tr></thead>';
-        html += '<tbody>';
-        interactions.forEach(interaction => {
-            html += '<tr>';
-            html += '<td>' + interaction.protein_a + '</td>';
-            html += '<td>' + interaction.protein_b + '</td>';
-            html += '<td><span class="interaction-score">' + (interaction.score || 0).toFixed(2) + '</span></td>';
-            html += '<td>' + (interaction.interaction_type || '-') + '</td>';
-            html += '</tr>';
-        });
-        html += '</tbody></table>';
-        html += '</div>';
-    } else {
-        html += '<p style="color: #6b7280; margin-top: 16px;">未检测到蛋白相互作用</p>';
-    }
-
     // Batch report (main analysis)
     if (batch.batch_report) {
         html += '<div class="batch-report-section">';
