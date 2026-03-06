@@ -697,8 +697,13 @@ class ProteinEvaluationService:
                         pdbe_response = http_session.get(pdbe_url, timeout=10)
                         if pdbe_response.status_code == 200:
                             raw_entities = pdbe_response.json()
+                            # 确保 raw_entities 是列表类型
+                            if not isinstance(raw_entities, list):
+                                raw_entities = []
                             # 提取关键实体信息
                             for ent in raw_entities:
+                                if not isinstance(ent, dict):
+                                    continue
                                 entity_info = {
                                     'entity_id': ent.get('entity_id', ''),
                                     'description': ent.get('pdbx_description', ''),
@@ -709,9 +714,10 @@ class ProteinEvaluationService:
                                 }
                                 # 获取生物种类
                                 organisms = ent.get('rcsb_entity_source_organism', [])
-                                if organisms:
-                                    entity_info['organism'] = organisms[0].get('scientific_name', '')
-                                    entity_info['taxonomy_id'] = organisms[0].get('taxonomy_id', '')
+                                if organisms and isinstance(organisms, list):
+                                    first_org = organisms[0] if isinstance(organisms[0], dict) else {}
+                                    entity_info['organism'] = first_org.get('scientific_name', '')
+                                    entity_info['taxonomy_id'] = first_org.get('taxonomy_id', '')
                                 entities.append(entity_info)
                     except Exception as e:
                         logger.warning(f"PDBe API 调用失败 (继续): {e}")
