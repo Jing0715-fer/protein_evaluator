@@ -205,19 +205,24 @@ def get_settings():
 @bp.route('/templates', methods=['GET'])
 def get_templates():
     """获取所有模板"""
-    from src.database import get_all_prompt_templates, get_default_prompt_template
+    from src.database import get_all_prompt_templates, get_default_prompt_template, create_prompt_template
 
     templates = get_all_prompt_templates()
     default_template = get_default_prompt_template()
 
-    # 如果没有模板，返回配置文件中的默认模板
+    # 如果没有模板，自动创建默认模板
     if not templates:
-        template = getattr(config, 'AI_PROMPT_TEMPLATE', '')
-        return jsonify({
-            'success': True,
-            'templates': [],
-            'default_content': template
-        })
+        default_content = getattr(config, 'AI_PROMPT_TEMPLATE', '')
+        template = create_prompt_template(
+            name='默认分析模板',
+            content=default_content,
+            description='系统默认分析模板',
+            is_default=True
+        )
+        if template:
+            templates = [template]
+            default_template = template
+            default_content = template.content
 
     return jsonify({
         'success': True,
@@ -319,21 +324,27 @@ def use_template(template_id):
 @bp.route('/batch-templates', methods=['GET'])
 def get_batch_templates():
     """获取批量分析模板"""
-    from src.database import get_all_batch_templates, get_default_batch_template
+    from src.database import get_all_batch_templates, get_default_batch_template, create_batch_template
+    import config
 
     templates = get_all_batch_templates()
     default_template = get_default_batch_template()
 
-    # If no templates in database, return default from config
+    # If no templates in database, create default from config
     if not templates:
-        import config
         default_content = getattr(config, 'BATCH_INTERACTION_PROMPT_TEMPLATE', '')
-        return jsonify({
-            'success': True,
-            'templates': [],
-            'default_content': default_content,
-            'default_id': None
-        })
+        # Create default template in database
+        template = create_batch_template(
+            name='默认批量分析模板',
+            content=default_content,
+            description='系统默认批量关系分析模板',
+            is_default=True,
+            template_type='batch'
+        )
+        if template:
+            templates = [template]
+            default_template = template
+            default_content = template.content
 
     return jsonify({
         'success': True,
