@@ -939,6 +939,11 @@ class ProteinEvaluationService:
 
         return mapping
 
+    @retry_on_failure(max_retries=3, delay=2.0)
+    def _fetch_pubmed_abstract_with_retry(self, pubmed_client, pubmed_id: str) -> Dict:
+        """带重试的PubMed摘要获取"""
+        return pubmed_client.get_article_info_simple(str(pubmed_id))
+
     def _fetch_pubmed_abstracts(self, pdb_data: Dict) -> Dict:
         """获取PDB相关文献的PubMed摘要"""
         if not HAS_PUBMED:
@@ -954,7 +959,7 @@ class ProteinEvaluationService:
                     pubmed_id = cit.get('pubmed_id')
                     if pubmed_id:
                         try:
-                            article_info = pubmed_client.get_article_info_simple(str(pubmed_id))
+                            article_info = self._fetch_pubmed_abstract_with_retry(pubmed_client, str(pubmed_id))
                             if article_info:
                                 cit['abstract'] = article_info.get('abstract', '')
                                 logger.info(f"成功获取PMID {pubmed_id} 摘要")
