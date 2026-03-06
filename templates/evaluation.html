@@ -1464,6 +1464,23 @@ function switchTab(tab) {
     document.getElementById('tab-batch').classList.remove('active');
     document.getElementById('tab-' + tab).classList.add('active');
 
+    // Hide all result sections when switching tabs
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('batch-result-section').style.display = 'none';
+    document.getElementById('progress-section').style.display = 'none';
+    document.getElementById('batch-progress-section').style.display = 'none';
+    document.getElementById('error-section').style.display = 'none';
+
+    // Stop any polling intervals
+    if (statusPollingInterval) {
+        clearInterval(statusPollingInterval);
+        statusPollingInterval = null;
+    }
+    if (batchStatusInterval) {
+        clearInterval(batchStatusInterval);
+        batchStatusInterval = null;
+    }
+
     if (tab === 'single') {
         document.getElementById('single-input-section').style.display = 'block';
         document.getElementById('batch-input-section').style.display = 'none';

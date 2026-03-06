@@ -2355,10 +2355,7 @@ class ProteinEvaluationService:
         try:
             # String Database API
             # API: https://string-db.org/api/json/interaction_partners
-            # Parameters: species=9606 (human), protein list
-
-            # Convert UniProt IDs to gene names if needed
-            # For simplicity, we'll use the API directly with protein identifiers
+            # Parameters: species=9606 (human), protein list (comma separated)
 
             url = "https://string-db.org/api/json/interaction_partners"
             params = {
@@ -2368,19 +2365,66 @@ class ProteinEvaluationService:
 
             all_interactions = []
 
-            # Query each protein
-            for uniprot_id in uniprot_ids:
-                try:
-                    params['proteins'] = uniprot_id
-                    response = http_session.get(url, params=params, timeout=30)
-                    response.raise_for_status()
+            # Query all proteins at once - String API accepts comma-separated list
+            try:
+                params['proteins'] = ','.join(uniprot_ids)
+                response = http_session.get(url, params=params, timeout=30)
+
+                if response.status_code == 400:
+                    # If 400, try querying each protein individually with gene names
+                    logger.warning("Bulk query failed, trying individual queries")
+                    response = None
+
+                if response and response.status_code == 200:
                     data = response.json()
 
                     # Parse interactions
                     for item in data:
-                        interaction = {
-                            'protein_a': uniprot_id,
-                            'protein_b': item.get('preferredName_B', {}).get('externalId', item.get('stringdb_A', '')),
+                        protein_b_id = item.get('stringdb_B', '')
+                        if protein_b_id in uniprot_ids:
+                            interaction = {
+                                'protein_a': item.get('stringdb_A', ''),
+                                'protein_b': protein_b_id,
+                                'protein_b_name': item.get('preferredName_B', {}).get('geneName', ''),
+                                'score': item.get('score', 0),
+                                'type': item.get('interaction_type', 'unknown')
+                            }
+                            all_interactions.append(interaction)
+            except Exception as e:
+                logger.warning(f"Bulk query failed: {e}, trying individual queries")
+
+            # If bulk query failed, try individual queries with gene names
+            if not all_interactions:
+                for uniprot_id in uniprot_ids:
+                    try:
+                        # First get gene name from UniProt
+                        uniprot_data = self._fetch_uniprot_metadata(uniprot_id)
+                        gene_names = uniprot_data.get('gene_names', []) if uniprot_data else []
+                        if not gene_names:
+                            continue
+
+                        gene_name = gene_names[0]
+                        params['proteins'] = gene_name
+
+                        response = http_session.get(url, params=params, timeout=30)
+                        if response.status_code != 200:
+                            continue
+
+                        data = response.json()
+
+                        # Parse interactions
+                        for item in data:
+                            protein_b_id = item.get('stringdb_B', '')
+                            # Check if the interacting protein is in our list
+                            if protein_b_id in uniprot_ids:
+                                interaction = {
+                                    'protein_a': uniprot_id,
+                                    'protein_b': protein_b_id,
+                                    'protein_b_name': item.get('preferredName_B', {}).get('geneName', ''),
+                                    'score': item.get('score', 0),
+                                    'type': item.get('interaction_type', 'unknown')
+                                }
+                                all_interactions.append(interaction)
                             'protein_b_name': item.get('preferredName_B', {}).get('geneName', ''),
                             'score': item.get('score', 0),
                             'type': item.get('interaction_type', 'unknown')
