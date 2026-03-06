@@ -9,7 +9,7 @@ from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from .models import Base, ProteinEvaluation
+from .models import Base, ProteinEvaluation, PromptTemplate
 import config
 
 logger = logging.getLogger(__name__)
@@ -162,5 +162,145 @@ def search_protein_evaluations(query: str) -> List[ProteinEvaluation]:
     except Exception as e:
         logger.error(f"搜索蛋白质评估失败: {e}")
         return []
+    finally:
+        session.close()
+
+
+# ========== Prompt Template CRUD ==========
+
+def create_prompt_template(name: str, content: str, description: str = '', is_default: bool = False) -> Optional[PromptTemplate]:
+    """创建提示模板"""
+    session = get_session()
+    try:
+        # 如果设为默认模板，先取消其他默认
+        if is_default:
+            session.query(PromptTemplate).filter_by(is_default=True).update({'is_default': False})
+
+        template = PromptTemplate(
+            name=name,
+            content=content,
+            description=description,
+            is_default=is_default
+        )
+        session.add(template)
+        session.commit()
+        session.refresh(template)
+        logger.info(f"创建提示模板成功: ID={template.id}, name={name}")
+        return template
+    except Exception as e:
+        logger.error(f"创建提示模板失败: {e}")
+        session.rollback()
+        return None
+    finally:
+        session.close()
+
+
+def get_prompt_template(template_id: int) -> Optional[PromptTemplate]:
+    """获取提示模板"""
+    session = get_session()
+    try:
+        template = session.query(PromptTemplate).filter_by(id=template_id).first()
+        return template
+    except Exception as e:
+        logger.error(f"获取提示模板失败: {e}")
+        return None
+    finally:
+        session.close()
+
+
+def get_all_prompt_templates() -> List[PromptTemplate]:
+    """获取所有提示模板"""
+    session = get_session()
+    try:
+        templates = session.query(PromptTemplate).order_by(PromptTemplate.is_default.desc(), PromptTemplate.name).all()
+        return templates
+    except Exception as e:
+        logger.error(f"获取提示模板列表失败: {e}")
+        return []
+    finally:
+        session.close()
+
+
+def get_default_prompt_template() -> Optional[PromptTemplate]:
+    """获取默认提示模板"""
+    session = get_session()
+    try:
+        template = session.query(PromptTemplate).filter_by(is_default=True).first()
+        # 如果没有默认模板，返回第一个
+        if not template:
+            template = session.query(PromptTemplate).first()
+        return template
+    except Exception as e:
+        logger.error(f"获取默认提示模板失败: {e}")
+        return None
+    finally:
+        session.close()
+
+
+def update_prompt_template(template_id: int, updates: dict) -> bool:
+    """更新提示模板"""
+    session = get_session()
+    try:
+        template = session.query(PromptTemplate).filter_by(id=template_id).first()
+        if not template:
+            return False
+
+        # 如果设为默认模板，先取消其他默认
+        if updates.get('is_default'):
+            session.query(PromptTemplate).filter_by(is_default=True).update({'is_default': False})
+
+        for key, value in updates.items():
+            if hasattr(template, key):
+                setattr(template, key, value)
+
+        template.updated_at = datetime.now()
+        session.commit()
+        logger.info(f"更新提示模板成功: ID={template_id}")
+        return True
+    except Exception as e:
+        logger.error(f"更新提示模板失败: {e}")
+        session.rollback()
+        return False
+    finally:
+        session.close()
+
+
+def delete_prompt_template(template_id: int) -> bool:
+    """删除提示模板"""
+    session = get_session()
+    try:
+        template = session.query(PromptTemplate).filter_by(id=template_id).first()
+        if not template:
+            return False
+        session.delete(template)
+        session.commit()
+        logger.info(f"删除提示模板成功: ID={template_id}")
+        return True
+    except Exception as e:
+        logger.error(f"删除提示模板失败: {e}")
+        session.rollback()
+        return False
+    finally:
+        session.close()
+
+
+def set_default_prompt_template(template_id: int) -> bool:
+    """设置默认模板"""
+    session = get_session()
+    try:
+        # 先取消所有默认
+        session.query(PromptTemplate).filter_by(is_default=True).update({'is_default': False})
+        # 设置新的默认
+        template = session.query(PromptTemplate).filter_by(id=template_id).first()
+        if not template:
+            return False
+        template.is_default = True
+        session.commit()
+        logger.info(f"设置默认提示模板成功: ID={template_id}")
+        return True
+    except Exception as e:
+        logger.error(f"设置默认提示模板失败: {e}")
+        session.rollback()
+        return False
     finally:
         session.close()

@@ -1735,8 +1735,8 @@ class ProteinEvaluationService:
         """构建AI分析提示"""
         parts = []
 
-        # 使用配置中的 prompt 模板
-        template = getattr(config, 'AI_PROMPT_TEMPLATE', None)
+        # 优先使用 config 中的模板，其次使用配置文件中的模板
+        template = self.config.get('ai_prompt_template') or getattr(config, 'AI_PROMPT_TEMPLATE', None)
         if template and '{outline}' in template:
             # 模板中有 {outline} 占位符，拆分为头部和尾部
             template_parts = template.split('{outline}')

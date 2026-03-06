@@ -474,10 +474,56 @@
                 <label for="ai-prompt">AI 分析提示词模板</label>
                 <textarea id="ai-prompt" rows="8" placeholder="输入自定义提示词..."></textarea>
                 <div class="form-hint">AI 分析时的系统提示词模板</div>
+                <button type="button" class="btn-secondary" onclick="openTemplateManager()" style="margin-top: 8px;">管理模板</button>
             </div>
         </div>
 
         <button class="btn-save" onclick="saveSettings()">保存配置</button>
+    </div>
+</div>
+
+<!-- 模板管理模态框 -->
+<div class="modal-overlay" id="template-modal">
+    <div class="modal" style="max-width: 900px; max-height: 90vh;">
+        <div class="modal-header">
+            <h2>模板管理</h2>
+            <button class="modal-close" onclick="closeTemplateManager()">&times;</button>
+        </div>
+
+        <div style="display: flex; gap: 20px; height: 500px;">
+            <!-- 模板列表 -->
+            <div style="width: 250px; border-right: 1px solid #eee; padding-right: 15px; overflow-y: auto;">
+                <button class="btn-primary" onclick="showCreateTemplateForm()" style="width: 100%; margin-bottom: 15px;">+ 新建模板</button>
+                <div id="template-list"></div>
+            </div>
+
+            <!-- 模板编辑区 -->
+            <div style="flex: 1; overflow-y: auto;">
+                <div id="template-editor" style="display: none;">
+                    <div class="form-group">
+                        <label for="template-name">模板名称</label>
+                        <input type="text" id="template-name" placeholder="例如: 详细报告模板">
+                    </div>
+                    <div class="form-group">
+                        <label for="template-description">描述</label>
+                        <input type="text" id="template-description" placeholder="模板描述（可选）">
+                    </div>
+                    <div class="form-group">
+                        <label for="template-content">模板内容</label>
+                        <textarea id="template-content" rows="15" placeholder="输入提示词模板..."></textarea>
+                        <div class="form-hint">使用 {outline} 作为数据插入位置的占位符</div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-primary" onclick="saveTemplate()">保存模板</button>
+                        <button class="btn-secondary" onclick="setAsDefault()">设为默认</button>
+                        <button class="btn-danger" onclick="deleteCurrentTemplate()">删除</button>
+                    </div>
+                </div>
+                <div id="template-empty" style="text-align: center; color: #999; padding-top: 100px;">
+                    选择一个模板或创建新模板
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -641,6 +687,176 @@ function openSettings() {
 
 function closeSettings() {
     document.getElementById('settings-modal').classList.remove('active');
+}
+
+// ========== 模板管理功能 ==========
+let currentTemplateId = null;
+let templatesData = [];
+
+function openTemplateManager() {
+    loadTemplatesFromServer();
+    document.getElementById('template-modal').classList.add('active');
+}
+
+function closeTemplateManager() {
+    document.getElementById('template-modal').classList.remove('active');
+    currentTemplateId = null;
+}
+
+function loadTemplatesFromServer() {
+    fetch('/api/evaluation/templates')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                templatesData = data.templates || [];
+                renderTemplateList(data.default_id);
+            }
+        })
+        .catch(error => console.error('加载模板失败:', error));
+}
+
+function renderTemplateList(defaultId) {
+    const list = document.getElementById('template-list');
+    if (templatesData.length === 0) {
+        list.innerHTML = '<div style="color: #999; text-align: center;">暂无模板</div>';
+        return;
+    }
+
+    list.innerHTML = templatesData.map(t => `
+        <div class="template-item ${t.id === currentTemplateId ? 'active' : ''}"
+             onclick="selectTemplate(${t.id})"
+             style="padding: 10px; cursor: pointer; border-radius: 4px; margin-bottom: 5px; ${t.id === defaultId ? 'background: #e3f2fd;' : ''}">
+            <div style="font-weight: ${t.is_default ? 'bold' : 'normal'}">
+                ${t.name} ${t.is_default ? '(默认)' : ''}
+            </div>
+            <div style="font-size: 12px; color: #666;">${t.description || ''}</div>
+        </div>
+    `).join('');
+}
+
+function showCreateTemplateForm() {
+    currentTemplateId = null;
+    document.getElementById('template-name').value = '';
+    document.getElementById('template-description').value = '';
+    document.getElementById('template-content').value = document.getElementById('ai-prompt').value || '';
+    document.getElementById('template-editor').style.display = 'block';
+    document.getElementById('template-empty').style.display = 'none';
+
+    // 更新列表选中状态
+    document.querySelectorAll('.template-item').forEach(el => el.classList.remove('active'));
+}
+
+function selectTemplate(id) {
+    const template = templatesData.find(t => t.id === id);
+    if (!template) return;
+
+    currentTemplateId = id;
+    document.getElementById('template-name').value = template.name;
+    document.getElementById('template-description').value = template.description || '';
+    document.getElementById('template-content').value = template.content;
+    document.getElementById('template-editor').style.display = 'block';
+    document.getElementById('template-empty').style.display = 'none';
+
+    renderTemplateList();
+}
+
+function saveTemplate() {
+    const name = document.getElementById('template-name').value.trim();
+    const content = document.getElementById('template-content').value;
+    const description = document.getElementById('template-description').value.trim();
+
+    if (!name || !content) {
+        alert('请填写模板名称和内容');
+        return;
+    }
+
+    const data = {
+        name: name,
+        content: content,
+        description: description
+    };
+
+    let url = '/api/evaluation/templates';
+    let method = 'POST';
+
+    if (currentTemplateId) {
+        url = `/api/evaluation/templates/${currentTemplateId}`;
+        method = 'PUT';
+    }
+
+    fetch(url, {
+        method: method,
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('模板保存成功');
+            loadTemplatesFromServer();
+        } else {
+            alert('保存失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('保存模板失败:', error);
+        alert('保存失败');
+    });
+}
+
+function setAsDefault() {
+    if (!currentTemplateId) {
+        alert('请先选择一个模板');
+        return;
+    }
+
+    fetch(`/api/evaluation/templates/${currentTemplateId}/set-default`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('已设为默认模板');
+            loadTemplatesFromServer();
+        } else {
+            alert('设置失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('设置默认失败:', error);
+        alert('设置失败');
+    });
+}
+
+function deleteCurrentTemplate() {
+    if (!currentTemplateId) {
+        alert('请先选择一个模板');
+        return;
+    }
+
+    if (!confirm('确定要删除这个模板吗？')) {
+        return;
+    }
+
+    fetch(`/api/evaluation/templates/${currentTemplateId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('模板已删除');
+            currentTemplateId = null;
+            document.getElementById('template-editor').style.display = 'none';
+            document.getElementById('template-empty').style.display = 'block';
+            loadTemplatesFromServer();
+        } else {
+            alert('删除失败: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('删除模板失败:', error);
+        alert('删除失败');
+    });
 }
 
 function saveSettings() {

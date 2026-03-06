@@ -1,11 +1,35 @@
 """
 Database models for Protein Evaluation
 """
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, Boolean
 from sqlalchemy.orm import declarative_base
 from datetime import datetime
 
 Base = declarative_base()
+
+
+class PromptTemplate(Base):
+    """AI 提示模板表"""
+    __tablename__ = "prompt_templates"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)  # 模板名称
+    content = Column(Text, nullable=False)  # 模板内容
+    is_default = Column(Boolean, default=False)  # 是否为默认模板
+    description = Column(Text)  # 模板描述
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'content': self.content,
+            'is_default': self.is_default,
+            'description': self.description,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
 
 
 class ProteinEvaluation(Base):

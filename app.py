@@ -49,8 +49,29 @@ def create_app():
         """健康检查"""
         return {'status': 'ok', 'service': 'protein-evaluator'}
 
+    # 初始化默认模板
+    _init_default_templates()
+
     logger.info("Flask应用创建成功")
     return app
+
+
+def _init_default_templates():
+    """初始化默认模板"""
+    from src.database import get_all_prompt_templates, create_prompt_template
+
+    templates = get_all_prompt_templates()
+    if not templates:
+        # 没有模板，创建默认模板
+        default_content = getattr(config, 'AI_PROMPT_TEMPLATE', '')
+        if default_content:
+            create_prompt_template(
+                name="默认模板",
+                content=default_content,
+                description="系统默认的蛋白质分析报告模板",
+                is_default=True
+            )
+            logger.info("已创建默认模板")
 
 
 # Create app instance

@@ -197,3 +197,117 @@ def get_settings():
     # GET: 返回当前模板
     template = getattr(config, 'AI_PROMPT_TEMPLATE', '')
     return jsonify({'success': True, 'prompt_template': template})
+
+
+# ========== Prompt Template Management ==========
+
+@bp.route('/templates', methods=['GET'])
+def get_templates():
+    """获取所有模板"""
+    from src.database import get_all_prompt_templates, get_default_prompt_template
+
+    templates = get_all_prompt_templates()
+    default_template = get_default_prompt_template()
+
+    # 如果没有模板，返回配置文件中的默认模板
+    if not templates:
+        template = getattr(config, 'AI_PROMPT_TEMPLATE', '')
+        return jsonify({
+            'success': True,
+            'templates': [],
+            'default_content': template
+        })
+
+    return jsonify({
+        'success': True,
+        'templates': [t.to_dict() for t in templates],
+        'default_id': default_template.id if default_template else None,
+        'default_content': default_template.content if default_template else getattr(config, 'AI_PROMPT_TEMPLATE', '')
+    })
+
+
+@bp.route('/templates', methods=['POST'])
+def create_template():
+    """创建新模板"""
+    from src.database import create_prompt_template
+
+    data = request.get_json()
+    name = data.get('name')
+    content = data.get('content')
+    description = data.get('description', '')
+    is_default = data.get('is_default', False)
+
+    if not name or not content:
+        return jsonify({'success': False, 'message': '模板名称和内容不能为空'}), 400
+
+    template = create_prompt_template(name, content, description, is_default)
+    if template:
+        return jsonify({'success': True, 'template': template.to_dict()})
+    return jsonify({'success': False, 'message': '创建模板失败'}), 500
+
+
+@bp.route('/templates/<int:template_id>', methods=['GET'])
+def get_template(template_id):
+    """获取单个模板"""
+    from src.database import get_prompt_template
+
+    template = get_prompt_template(template_id)
+    if template:
+        return jsonify({'success': True, 'template': template.to_dict()})
+    return jsonify({'success': False, 'message': '模板不存在'}), 404
+
+
+@bp.route('/templates/<int:template_id>', methods=['PUT'])
+def update_template(template_id):
+    """更新模板"""
+    from src.database import update_prompt_template
+
+    data = request.get_json()
+    updates = {}
+
+    if 'name' in data:
+        updates['name'] = data['name']
+    if 'content' in data:
+        updates['content'] = data['content']
+    if 'description' in data:
+        updates['description'] = data['description']
+    if 'is_default' in data:
+        updates['is_default'] = data['is_default']
+
+    if not updates:
+        return jsonify({'success': False, 'message': '没有要更新的内容'}), 400
+
+    if update_prompt_template(template_id, updates):
+        return jsonify({'success': True, 'message': '模板已更新'})
+    return jsonify({'success': False, 'message': '更新失败'}), 500
+
+
+@bp.route('/templates/<int:template_id>', methods=['DELETE'])
+def delete_template(template_id):
+    """删除模板"""
+    from src.database import delete_prompt_template
+
+    if delete_prompt_template(template_id):
+        return jsonify({'success': True, 'message': '模板已删除'})
+    return jsonify({'success': False, 'message': '删除失败'}), 500
+
+
+@bp.route('/templates/<int:template_id>/set-default', methods=['POST'])
+def set_default_template(template_id):
+    """设置默认模板"""
+    from src.database import set_default_prompt_template
+
+    if set_default_prompt_template(template_id):
+        return jsonify({'success': True, 'message': '已设为默认模板'})
+    return jsonify({'success': False, 'message': '设置失败'}), 500
+
+
+@bp.route('/templates/<int:template_id>/use', methods=['POST'])
+def use_template(template_id):
+    """使用模板进行评估（返回模板内容供评估使用）"""
+    from src.database import get_prompt_template
+
+    template = get_prompt_template(template_id)
+    if template:
+        return jsonify({'success': True, 'content': template.content})
+    return jsonify({'success': False, 'message': '模板不存在'}), 404
