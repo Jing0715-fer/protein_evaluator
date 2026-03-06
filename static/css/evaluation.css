@@ -190,53 +190,59 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 16px;
+    padding: 10px 20px;
     background: #fff;
-    color: #374151;
-    border: 1px solid #d1d5db;
+    color: #6366F1;
+    border: 1px solid #E0E7FF;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: 14px;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .btn-secondary:hover {
-    background: #f9fafb;
-    border-color: #9ca3af;
+    background: #EEF2FF;
+    border-color: #6366F1;
 }
 
 .btn-danger {
-    background: #fee2e2;
-    color: #dc2626;
-    border: 1px solid #fecaca;
-    padding: 8px 16px;
+    background: #FEF2F2;
+    color: #DC2626;
+    border: 1px solid #FECACA;
+    padding: 10px 20px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
 }
 
 .btn-danger:hover {
-    background: #fecaca;
+    background: #FEE2E2;
+    border-color: #DC2626;
 }
 
 .btn-primary {
-    background: #3b82f6;
+    background: #6366F1;
     color: white;
     border: none;
-    padding: 8px 16px;
+    padding: 10px 20px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
 }
 
 .btn-primary:hover {
-    background: #2563eb;
+    background: #4338CA;
 }
 
 /* Template Manager */
 .template-item-active {
-    background: #dbeafe !important;
-    border: 1px solid #3b82f6;
+    background: #EEF2FF !important;
+    border: 1px solid #6366F1 !important;
 }
 
 /* Progress Section */
