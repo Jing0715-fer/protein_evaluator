@@ -76,7 +76,15 @@ from src.database import (
     get_all_protein_evaluations,
     update_protein_evaluation,
     delete_protein_evaluation,
-    search_protein_evaluations
+    search_protein_evaluations,
+    create_batch_evaluation,
+    get_batch_evaluation,
+    get_all_batch_evaluations,
+    update_batch_evaluation,
+    delete_batch_evaluation,
+    create_protein_interaction,
+    get_protein_interactions,
+    delete_protein_interactions
 )
 
 # 导入API客户端
@@ -2187,6 +2195,546 @@ class ProteinEvaluationService:
             'success': True,
             'evaluations': [e.to_dict() for e in evaluations]
         }
+
+    # ========== 批量评估方法 ==========
+
+    def start_batch_evaluation(self, uniprot_ids: List[str], name: str = None, config: Dict = None) -> Dict[str, Any]:
+        """
+        开始批量蛋白质评估
+
+        参数:
+            uniprot_ids: UniProt蛋白质ID列表
+            name: 批量评估名称（可选）
+            config: 配置选项（可选）
+
+        返回:
+            批量评估任务信息
+        """
+        # Parse and validate UniProt IDs
+        parsed_ids = []
+        for uniprot_id in uniprot_ids:
+            # Clean the ID - remove whitespace, convert to upper case
+            clean_id = uniprot_id.strip().upper()
+            if clean_id and clean_id not in parsed_ids:
+                parsed_ids.append(clean_id)
+
+        if not parsed_ids:
+            return {'success': False, 'error': '请提供有效的UniProt ID列表'}
+
+        if len(parsed_ids) < 2:
+            return {'success': False, 'error': '批量评估至少需要2个UniProt ID'}
+
+        try:
+            # Create batch evaluation record
+            batch_name = name or f"批量评估_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            batch = create_batch_evaluation(
+                name=batch_name,
+                uniprot_ids=parsed_ids,
+                config=config or {}
+            )
+
+            if not batch:
+                return {'success': False, 'error': '创建批量评估记录失败'}
+
+            # Start background task for batch evaluation
+            thread = threading.Thread(
+                target=self._run_batch_evaluation_task,
+                args=(batch.id, parsed_ids, config or {})
+            )
+            thread.daemon = True
+            thread.start()
+
+            return {
+                'success': True,
+                'batch_id': batch.id,
+                'uniprot_ids': parsed_ids,
+                'name': batch_name,
+                'message': '批量评估任务已启动'
+            }
+
+        except Exception as e:
+            logger.error(f"启动批量评估失败: {e}")
+            return {'success': False, 'error': str(e)}
+
+    def _run_batch_evaluation_task(self, batch_id: int, uniprot_ids: List[str], config: Dict):
+        """在后台线程中执行批量评估任务"""
+        try:
+            logger.info(f"========== 开始批量评估任务 [ID={batch_id}, UniProt IDs={uniprot_ids}] ==========")
+
+            # Update status to processing
+            update_batch_evaluation(batch_id, {
+                'status': 'processing',
+                'progress': 10
+            })
+
+            # Step 1: Fetch protein interaction data from String Database
+            self._add_batch_log(batch_id, "开始获取蛋白互作数据...")
+            interaction_data = self._fetch_protein_interactions(uniprot_ids)
+
+            update_batch_evaluation(batch_id, {
+                'interaction_data': interaction_data,
+                'progress': 30
+            })
+
+            self._add_batch_log(batch_id, f"获取到 {len(interaction_data.get('interactions', []))} 条互作关系")
+
+            # Step 2: Run individual evaluations for each protein
+            total_proteins = len(uniprot_ids)
+            individual_results = []
+
+            for idx, uniprot_id in enumerate(uniprot_ids):
+                self._add_batch_log(batch_id, f"[{idx+1}/{total_proteins}] 开始评估蛋白 {uniprot_id}...")
+
+                # Create individual evaluation
+                evaluation = create_protein_evaluation(uniprot_id=uniprot_id)
+                if evaluation:
+                    # Run the individual evaluation in a synchronous way
+                    try:
+                        # Create a new instance for synchronous execution
+                        eval_config = config.copy() if config else {}
+                        eval_result = self._run_evaluation_task_sync(evaluation.id, uniprot_id, eval_config)
+                        individual_results.append({
+                            'uniprot_id': uniprot_id,
+                            'evaluation_id': evaluation.id,
+                            'status': eval_result.get('status', 'unknown')
+                        })
+                    except Exception as e:
+                        logger.error(f"评估蛋白 {uniprot_id} 失败: {e}")
+                        individual_results.append({
+                            'uniprot_id': uniprot_id,
+                            'evaluation_id': evaluation.id,
+                            'status': 'failed',
+                            'error': str(e)
+                        })
+
+                # Update batch progress
+                progress = 30 + int((idx + 1) / total_proteins * 40)
+                update_batch_evaluation(batch_id, {'progress': progress})
+
+            self._add_batch_log(batch_id, "所有蛋白评估完成")
+
+            # Step 3: Run batch AI analysis
+            update_batch_evaluation(batch_id, {'progress': 75})
+            self._add_batch_log(batch_id, "开始批量AI分析...")
+
+            batch_ai_result = self._run_batch_ai_analysis(
+                uniprot_ids=uniprot_ids,
+                interaction_data=interaction_data,
+                individual_results=individual_results
+            )
+
+            update_batch_evaluation(batch_id, {
+                'batch_ai_analysis': batch_ai_result,
+                'progress': 90
+            })
+
+            # Step 4: Generate final batch report
+            self._add_batch_log(batch_id, "生成综合报告...")
+            batch_report = self._generate_batch_report(uniprot_ids, interaction_data, individual_results, batch_ai_result)
+
+            # Mark as completed
+            update_batch_evaluation(batch_id, {
+                'status': 'completed',
+                'progress': 100,
+                'batch_report': batch_report
+            })
+
+            self._add_batch_log(batch_id, "批量评估完成!")
+
+            logger.info(f"========== 批量评估任务完成 [ID={batch_id}] ==========")
+
+        except Exception as e:
+            logger.error(f"批量评估任务失败: {e}")
+            update_batch_evaluation(batch_id, {
+                'status': 'failed'
+            })
+            self._add_batch_log(batch_id, f"评估失败: {str(e)}", 'error')
+
+    def _fetch_protein_interactions(self, uniprot_ids: List[str]) -> Dict[str, Any]:
+        """从String Database获取蛋白互作数据"""
+        try:
+            # String Database API
+            # API: https://string-db.org/api/json/interaction_partners
+            # Parameters: species=9606 (human), protein list
+
+            # Convert UniProt IDs to gene names if needed
+            # For simplicity, we'll use the API directly with protein identifiers
+
+            url = "https://string-db.org/api/json/interaction_partners"
+            params = {
+                'species': 9606,  # Human
+                'limit': 10,  # Limit results per protein
+            }
+
+            all_interactions = []
+
+            # Query each protein
+            for uniprot_id in uniprot_ids:
+                try:
+                    params['proteins'] = uniprot_id
+                    response = http_session.get(url, params=params, timeout=30)
+                    response.raise_for_status()
+                    data = response.json()
+
+                    # Parse interactions
+                    for item in data:
+                        interaction = {
+                            'protein_a': uniprot_id,
+                            'protein_b': item.get('preferredName_B', {}).get('externalId', item.get('stringdb_A', '')),
+                            'protein_b_name': item.get('preferredName_B', {}).get('geneName', ''),
+                            'score': item.get('score', 0),
+                            'type': item.get('interaction_type', 'unknown')
+                        }
+
+                        # Check if both proteins are in our list
+                        if interaction['protein_b'] in uniprot_ids:
+                            all_interactions.append(interaction)
+
+                except Exception as e:
+                    logger.warning(f"获取蛋白 {uniprot_id} 的互作数据失败: {e}")
+                    continue
+
+            return {
+                'interactions': all_interactions,
+                'source': 'string_db'
+            }
+
+        except Exception as e:
+            logger.error(f"获取蛋白互作数据失败: {e}")
+            return {'interactions': [], 'source': 'string_db', 'error': str(e)}
+
+    def _run_batch_ai_analysis(self, uniprot_ids: List[str], interaction_data: Dict,
+                               individual_results: List[Dict]) -> Dict[str, Any]:
+        """运行批量AI分析"""
+        try:
+            # Get AI client based on config
+            ai_provider = self.config.get('ai_provider', 'openai')
+            ai_model = self.config.get('ai_model', 'gpt-4o')
+            ai_base_url = self.config.get('ai_base_url', '')
+            ai_api_key = self.config.get('ai_api_key', '')
+            ai_max_tokens = self.config.get('ai_max_tokens', 8000)
+            ai_temperature = self.config.get('ai_temperature', 0.3)
+
+            # Create client based on provider
+            if ai_provider == 'anthropic':
+                client = AnthropicClient(api_key=ai_api_key, model=ai_model, base_url=ai_base_url)
+            elif ai_provider == 'gemini':
+                client = GeminiClient(api_key=ai_api_key, model=ai_model, base_url=ai_base_url)
+            else:
+                client = OpenAIClient(api_key=ai_api_key, base_url=ai_base_url, model=ai_model)
+
+            # Build the prompt for batch analysis
+            prompt = self._build_batch_prompt(uniprot_ids, interaction_data, individual_results)
+
+            # Create messages in the format expected by AI clients
+            messages = [
+                {"role": "system", "content": "你是一个专业的蛋白质结构生物学家和生物信息学专家。请对多个蛋白质进行综合比较分析。"},
+                {"role": "user", "content": prompt}
+            ]
+
+            # Call AI API
+            response = client.chat(messages, max_tokens=ai_max_tokens, temperature=ai_temperature, timeout=300)
+
+            if response.get('success'):
+                return {
+                    'success': True,
+                    'analysis': response.get('content', ''),
+                    'model': response.get('model', ai_model)
+                }
+            else:
+                return {'success': False, 'error': response.get('error', 'AI分析失败')}
+
+        except Exception as e:
+            logger.error(f"批量AI分析失败: {e}")
+            return {'success': False, 'error': str(e)}
+
+    def _build_batch_prompt(self, uniprot_ids: List[str], interaction_data: Dict,
+                            individual_results: List[Dict]) -> str:
+        """构建批量分析提示词"""
+        # Get basic protein info for each ID
+        protein_info = []
+        for uniprot_id in uniprot_ids:
+            try:
+                uniprot_data = self._fetch_uniprot_metadata(uniprot_id)
+                if uniprot_data:
+                    protein_info.append({
+                        'uniprot_id': uniprot_id,
+                        'name': uniprot_data.get('protein_name', 'Unknown'),
+                        'gene': ', '.join(uniprot_data.get('gene_names', [])),
+                        'organism': uniprot_data.get('organism', 'Unknown'),
+                        'pdb_count': len(uniprot_data.get('pdb_ids', []))
+                    })
+            except Exception:
+                protein_info.append({
+                    'uniprot_id': uniprot_id,
+                    'name': 'Unknown',
+                    'gene': 'Unknown',
+                    'organism': 'Unknown',
+                    'pdb_count': 0
+                })
+
+        # Build the prompt
+        prompt = f"""# 批量蛋白质分析报告
+
+你是一个专业的蛋白质结构生物学家和生物信息学专家。请根据以下提供的多个蛋白质的综合数据，生成一份**全面深入的批量分析报告**。
+
+## 分析要求
+1. **字数要求**：报告总字数应在3000字以上
+2. **分析深度**：每个分析维度都要有深度解读
+3. **结构清晰**：使用多级标题组织内容
+4. **比较分析**：突出各蛋白之间的异同和关联
+
+## 输入数据
+
+### 蛋白质基本信息
+"""
+
+        for info in protein_info:
+            prompt += f"""
+- **UniProt ID**: {info['uniprot_id']}
+  - 蛋白名称: {info['name']}
+  - 基因名称: {info['gene']}
+  - 物种: {info['organism']}
+  - PDB结构数量: {info['pdb_count']}
+"""
+
+        # Add interaction data
+        interactions = interaction_data.get('interactions', [])
+        if interactions:
+            prompt += f"""
+### 蛋白相互作用网络
+
+检测到 {len(interactions)} 条蛋白互作关系（来自String Database）：
+
+| 蛋白A | 蛋白B | 置信度分数 | 互作类型 |
+|-------|-------|------------|----------|
+"""
+            for interaction in interactions[:20]:  # Limit to 20
+                prompt += f"| {interaction.get('protein_a', '')} | {interaction.get('protein_b_name', interaction.get('protein_b', ''))} | {interaction.get('score', 0):.2f} | {interaction.get('type', 'unknown')} |\n"
+
+        prompt += """
+### 蛋白互作网络分析
+
+请分析以上互作网络：
+- 哪些蛋白之间存在直接相互作用？
+- 互作网络的紧密程度如何？
+- 是否有核心蛋白（hub protein）？
+- 互作关系的功能意义是什么？
+
+---
+
+## 请按以下框架生成报告
+
+# 批量蛋白质综合分析报告
+
+**摘要**
+（概述本次批量分析的目的、涉及的蛋白及其主要发现）
+
+---
+
+## 第一部分：批量蛋白概览
+
+### 1.1 蛋白列表与基本信息
+
+| UniProt ID | 蛋白名称 | 基因名 | PDB数量 |
+|------------|----------|--------|---------|
+| ... | ... | ... | ... |
+
+### 1.2 整体数据质量评估
+
+- 蛋白覆盖度分析
+- 结构数据可用性统计
+
+---
+
+## 第二部分：蛋白相互作用网络分析
+
+### 2.1 互作网络概述
+
+描述检测到的互作关系网络结构。
+
+### 2.2 关键互作对分析
+
+分析高置信度的互作对及其功能意义。
+
+### 2.3 网络拓扑特征
+
+- 网络密度
+- 核心蛋白识别
+- 功能模块分析
+
+---
+
+## 第三部分：功能富集与通路分析
+
+基于互作网络和蛋白功能，推测可能的通路和生物学过程。
+
+---
+
+## 第四部分：结构比较分析
+
+### 4.1 PDB结构可用性对比
+
+比较各蛋白的结构数据覆盖情况。
+
+### 4.2 结构相似性分析
+
+（如有结构数据）分析结构层面的相似性。
+
+---
+
+## 第五部分：综合讨论与结论
+
+### 5.1 主要发现总结
+
+### 5.2 蛋白间关系解读
+
+### 5.3 研究建议
+
+基于分析结果提出后续研究建议。
+"""
+        return prompt
+
+    def _generate_batch_report(self, uniprot_ids: List[str], interaction_data: Dict,
+                                individual_results: List[Dict], batch_ai_result: Dict) -> str:
+        """生成批量评估综合报告"""
+        sections = []
+
+        # Title
+        sections.append("# 批量蛋白质评估综合报告\n")
+
+        # Overview
+        sections.append(f"## 概述\n")
+        sections.append(f"- 评估蛋白数量: {len(uniprot_ids)}")
+        sections.append(f"- UniProt IDs: {', '.join(uniprot_ids)}")
+        sections.append(f"- 评估时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        # Interaction summary
+        interactions = interaction_data.get('interactions', [])
+        sections.append(f"\n## 蛋白互作网络\n")
+        sections.append(f"- 检测到互作关系: {len(interactions)} 条")
+        sections.append(f"- 数据来源: String Database")
+
+        # Individual results summary
+        sections.append(f"\n## 单蛋白评估结果\n")
+        sections.append(f"| UniProt ID | 状态 |")
+        sections.append(f"|------------|------|")
+        for result in individual_results:
+            status = result.get('status', 'unknown')
+            uniprot_id = result.get('uniprot_id', '')
+            sections.append(f"| {uniprot_id} | {status} |")
+
+        # AI Analysis
+        if batch_ai_result.get('success') and batch_ai_result.get('analysis'):
+            sections.append(f"\n## AI分析报告\n")
+            sections.append(batch_ai_result.get('analysis', ''))
+
+        return "\n".join(sections)
+
+    def _run_evaluation_task_sync(self, evaluation_id: int, uniprot_id: str, config: Dict = None) -> Dict[str, Any]:
+        """同步执行单个蛋白评估任务（供批量评估调用）"""
+        # This is a simplified version that runs synchronously
+        try:
+            # Update status
+            update_protein_evaluation(evaluation_id, {
+                'evaluation_status': 'processing',
+                'current_step': 'fetching_pdb',
+                'progress': 10
+            })
+
+            # Fetch UniProt data
+            uniprot_data = self._fetch_uniprot_metadata(uniprot_id)
+            if uniprot_data:
+                gene_name = uniprot_data.get('gene_names', [None])[0]
+                protein_name = uniprot_data.get('protein_name', None)
+                update_protein_evaluation(evaluation_id, {
+                    'gene_name': gene_name,
+                    'protein_name': protein_name,
+                    'uniprot_data': uniprot_data
+                })
+
+            # Fetch PDB data
+            pdb_ids = uniprot_data.get('pdb_ids', []) if uniprot_data else []
+            max_pdb = config.get('max_pdb', 50) if config else 50
+            if len(pdb_ids) > max_pdb:
+                pdb_ids = pdb_ids[:max_pdb]
+
+            pdb_data = self._fetch_pdb_metadata(pdb_ids, evaluation_id)
+            update_protein_evaluation(evaluation_id, {
+                'pdb_data': pdb_data,
+                'progress': 50
+            })
+
+            # Update as completed (simplified - no AI analysis in batch mode)
+            update_protein_evaluation(evaluation_id, {
+                'evaluation_status': 'completed',
+                'progress': 100,
+                'current_step': 'completed'
+            })
+
+            return {'status': 'completed', 'evaluation_id': evaluation_id}
+
+        except Exception as e:
+            logger.error(f"同步评估失败: {e}")
+            update_protein_evaluation(evaluation_id, {
+                'evaluation_status': 'failed',
+                'error_message': str(e)
+            })
+            return {'status': 'failed', 'error': str(e)}
+
+    def _add_batch_log(self, batch_id: int, message: str, level: str = 'info'):
+        """添加批量评估日志"""
+        try:
+            batch = get_batch_evaluation(batch_id)
+            if batch:
+                # Get existing logs from config or create new
+                logs = batch.config.get('logs', []) if batch.config else []
+                logs.append({
+                    'timestamp': time.strftime('%H:%M:%S'),
+                    'level': level,
+                    'message': message
+                })
+                update_batch_evaluation(batch_id, {
+                    'config': {**batch.config, 'logs': logs} if batch.config else {'logs': logs}
+                })
+        except Exception as e:
+            logger.warning(f"添加批量评估日志失败: {e}")
+
+    # ========== Batch Evaluation API Methods ==========
+
+    def get_batch_evaluation_status(self, batch_id: int) -> Dict[str, Any]:
+        """获取批量评估状态"""
+        batch = get_batch_evaluation(batch_id)
+        if not batch:
+            return {'success': False, 'error': '批量评估记录不存在'}
+
+        # Get individual evaluations for this batch
+        evaluations = get_all_protein_evaluations(limit=100)
+        batch_evaluations = [e.to_dict() for e in evaluations if e.batch_id == batch_id]
+
+        return {
+            'success': True,
+            'batch': batch.to_dict(),
+            'evaluations': batch_evaluations,
+            'interactions': get_protein_interactions(batch_id)
+        }
+
+    def list_batch_evaluations(self, limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+        """列出所有批量评估"""
+        batches = get_all_batch_evaluations(limit, offset)
+        return {
+            'success': True,
+            'batches': [b.to_dict() for b in batches],
+            'total': len(batches)
+        }
+
+    def delete_batch_evaluation(self, batch_id: int) -> Dict[str, Any]:
+        """删除批量评估"""
+        # Delete interactions first
+        delete_protein_interactions(batch_id)
+        # Delete batch
+        success = delete_batch_evaluation(batch_id)
+        return {'success': success}
 
 
 # 全局实例

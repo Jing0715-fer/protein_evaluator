@@ -3,13 +3,13 @@ Database operations for Protein Evaluation
 """
 import logging
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from .models import Base, ProteinEvaluation, PromptTemplate
+from .models import Base, ProteinEvaluation, PromptTemplate, BatchEvaluation, ProteinInteraction
 import config
 
 logger = logging.getLogger(__name__)
@@ -300,6 +300,162 @@ def set_default_prompt_template(template_id: int) -> bool:
         return True
     except Exception as e:
         logger.error(f"设置默认提示模板失败: {e}")
+        session.rollback()
+        return False
+    finally:
+        session.close()
+
+
+# ========== Batch Evaluation CRUD ==========
+
+def create_batch_evaluation(name: str, uniprot_ids: List[str], config: Dict = None) -> Optional[BatchEvaluation]:
+    """创建批量评估记录"""
+    session = get_session()
+    try:
+        batch = BatchEvaluation(
+            name=name,
+            uniprot_ids=uniprot_ids,
+            config=config or {},
+            status='pending',
+            progress=0,
+            created_at=datetime.now()
+        )
+        session.add(batch)
+        session.commit()
+        session.refresh(batch)
+        logger.info(f"创建批量评估成功: ID={batch.id}, UniProt IDs={len(uniprot_ids)}")
+        return batch
+    except Exception as e:
+        logger.error(f"创建批量评估失败: {e}")
+        session.rollback()
+        return None
+    finally:
+        session.close()
+
+
+def get_batch_evaluation(batch_id: int) -> Optional[BatchEvaluation]:
+    """获取批量评估记录"""
+    session = get_session()
+    try:
+        batch = session.query(BatchEvaluation).filter_by(id=batch_id).first()
+        return batch
+    except Exception as e:
+        logger.error(f"获取批量评估失败: {e}")
+        return None
+    finally:
+        session.close()
+
+
+def get_all_batch_evaluations(limit: int = 50, offset: int = 0) -> List[BatchEvaluation]:
+    """获取所有批量评估记录"""
+    session = get_session()
+    try:
+        batches = session.query(BatchEvaluation).order_by(
+            BatchEvaluation.created_at.desc()
+        ).offset(offset).limit(limit).all()
+        return batches
+    except Exception as e:
+        logger.error(f"获取批量评估列表失败: {e}")
+        return []
+    finally:
+        session.close()
+
+
+def update_batch_evaluation(batch_id: int, updates: dict) -> bool:
+    """更新批量评估记录"""
+    session = get_session()
+    try:
+        batch = session.query(BatchEvaluation).filter_by(id=batch_id).first()
+        if not batch:
+            return False
+
+        for key, value in updates.items():
+            if hasattr(batch, key):
+                setattr(batch, key, value)
+
+        # 自动更新完成时间
+        if updates.get('status') == 'completed':
+            batch.completed_at = datetime.now()
+
+        session.commit()
+        logger.info(f"更新批量评估成功: ID={batch_id}")
+        return True
+    except Exception as e:
+        logger.error(f"更新批量评估失败: {e}")
+        session.rollback()
+        return False
+    finally:
+        session.close()
+
+
+def delete_batch_evaluation(batch_id: int) -> bool:
+    """删除批量评估记录"""
+    session = get_session()
+    try:
+        batch = session.query(BatchEvaluation).filter_by(id=batch_id).first()
+        if not batch:
+            return False
+        session.delete(batch)
+        session.commit()
+        logger.info(f"删除批量评估成功: ID={batch_id}")
+        return True
+    except Exception as e:
+        logger.error(f"删除批量评估失败: {e}")
+        session.rollback()
+        return False
+    finally:
+        session.close()
+
+
+def create_protein_interaction(batch_id: int, protein_a: str, protein_b: str,
+                                interaction_type: str = None, score: float = None,
+                                source: str = None, data_json: Dict = None) -> Optional[ProteinInteraction]:
+    """创建蛋白相互作用记录"""
+    session = get_session()
+    try:
+        interaction = ProteinInteraction(
+            batch_id=batch_id,
+            protein_a=protein_a.upper(),
+            protein_b=protein_b.upper(),
+            interaction_type=interaction_type,
+            score=score,
+            source=source,
+            data_json=data_json
+        )
+        session.add(interaction)
+        session.commit()
+        session.refresh(interaction)
+        return interaction
+    except Exception as e:
+        logger.error(f"创建蛋白相互作用失败: {e}")
+        session.rollback()
+        return None
+    finally:
+        session.close()
+
+
+def get_protein_interactions(batch_id: int) -> List[ProteinInteraction]:
+    """获取批量评估的蛋白相互作用列表"""
+    session = get_session()
+    try:
+        interactions = session.query(ProteinInteraction).filter_by(batch_id=batch_id).all()
+        return interactions
+    except Exception as e:
+        logger.error(f"获取蛋白相互作用失败: {e}")
+        return []
+    finally:
+        session.close()
+
+
+def delete_protein_interactions(batch_id: int) -> bool:
+    """删除批量评估的所有蛋白相互作用记录"""
+    session = get_session()
+    try:
+        session.query(ProteinInteraction).filter_by(batch_id=batch_id).delete()
+        session.commit()
+        return True
+    except Exception as e:
+        logger.error(f"删除蛋白相互作用失败: {e}")
         session.rollback()
         return False
     finally:

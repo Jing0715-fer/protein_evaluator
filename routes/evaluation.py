@@ -311,3 +311,97 @@ def use_template(template_id):
     if template:
         return jsonify({'success': True, 'content': template.content})
     return jsonify({'success': False, 'message': '模板不存在'}), 404
+
+
+# ========== Batch Evaluation API Endpoints ==========
+
+@bp.route('/batch-start', methods=['POST'])
+def start_batch_evaluation():
+    """开始批量蛋白质评估"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': '请求体不能为空'}), 400
+
+        uniprot_ids = data.get('uniprot_ids', [])
+        if not uniprot_ids:
+            # Try to parse from string input
+            uniprot_input = data.get('uniprot_ids_text', '')
+            if uniprot_input:
+                # Split by comma, newline, or space
+                import re
+                uniprot_ids = re.split(r'[,;\s\n]+', uniprot_input)
+                uniprot_ids = [uid.strip().upper() for uid in uniprot_ids if uid.strip()]
+
+        if not uniprot_ids or len(uniprot_ids) < 2:
+            return jsonify({'success': False, 'error': '请提供至少2个UniProt ID'}), 400
+
+        name = data.get('name')
+        config = data.get('config', {})
+
+        service = get_evaluation_service()
+        result = service.start_batch_evaluation(
+            uniprot_ids=uniprot_ids,
+            name=name,
+            config=config
+        )
+
+        if result.get('success'):
+            return jsonify(result), 202
+        else:
+            return jsonify(result), 400
+
+    except Exception as e:
+        logger.error(f"启动批量评估失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/batch', methods=['GET'])
+def list_batch_evaluations():
+    """获取批量评估列表"""
+    try:
+        limit = int(request.args.get('limit', 50))
+        offset = int(request.args.get('offset', 0))
+
+        service = get_evaluation_service()
+        result = service.list_batch_evaluations(limit=limit, offset=offset)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"获取批量评估列表失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/batch/<int:batch_id>', methods=['GET'])
+def get_batch_evaluation(batch_id):
+    """获取批量评估详情"""
+    try:
+        service = get_evaluation_service()
+        result = service.get_batch_evaluation_status(batch_id)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"获取批量评估详情失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/batch/<int:batch_id>/status', methods=['GET'])
+def get_batch_evaluation_status(batch_id):
+    """获取批量评估进度"""
+    try:
+        service = get_evaluation_service()
+        result = service.get_batch_evaluation_status(batch_id)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"获取批量评估状态失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@bp.route('/batch/<int:batch_id>', methods=['DELETE'])
+def delete_batch_evaluation(batch_id):
+    """删除批量评估"""
+    try:
+        service = get_evaluation_service()
+        result = service.delete_batch_evaluation(batch_id)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"删除批量评估失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500

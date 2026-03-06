@@ -11,6 +11,7 @@
 - **PDF/Markdown 导出** - 支持多种格式导出评估报告
 - **评估历史管理** - 支持搜索和多选批量删除评估记录
 - **智能优化** - PDB 覆盖率 >= 50% 且结构数 >= 5 时自动跳过 BLAST
+- **批量多 UniProt ID 评估** - 支持同时评估多个蛋白，分析蛋白相互作用网络
 
 ## 运行环境
 
@@ -98,6 +99,21 @@ python app.py
     ↓ 保存到数据库，支持 PDF/Markdown 导出
 ```
 
+### 批量评估流程
+
+```
+输入多个 UniProt ID
+    ↓
+[步骤1] 获取蛋白互作数据 (progress: 30%)
+    ↓ 从 String Database 获取蛋白相互作用网络
+[步骤2] 逐个评估蛋白质 (progress: 70%)
+    ↓ 获取每个蛋白的 UniProt/PDB 数据
+[步骤3] AI 综合分析 (progress: 90%)
+    ↓ 分析蛋白相互作用网络，生成综合报告
+[步骤4] 生成批量评估报告 (progress: 100%)
+    ↓ 保存到数据库，展示结果
+```
+
 ### 核心模块说明
 
 | 模块 | 职责 |
@@ -125,6 +141,11 @@ python app.py
 | `/api/evaluation/<id>/status` | GET | 获取评估状态 |
 | `/api/evaluation/<id>` | DELETE | 删除单个评估 |
 | `/api/evaluation/batch-delete` | POST | 批量删除评估 |
+| `/api/evaluation/batch-start` | POST | 批量评估（多个 UniProt ID） |
+| `/api/evaluation/batch` | GET | 获取批量评估列表 |
+| `/api/evaluation/batch/<id>` | GET | 获取批量评估详情 |
+| `/api/evaluation/batch/<id>/status` | GET | 获取批量评估进度 |
+| `/api/evaluation/batch/<id>` | DELETE | 删除批量评估 |
 
 ### API 使用示例
 
@@ -148,6 +169,26 @@ curl http://localhost:5002/api/evaluation/<id>/status
 curl -X POST http://localhost:5002/api/evaluation/batch-delete \
   -H "Content-Type: application/json" \
   -d '{"ids": [1, 2, 3]}'
+```
+
+#### 开始批量评估（多个 UniProt ID）
+
+```bash
+curl -X POST http://localhost:5002/api/evaluation/batch-start \
+  -H "Content-Type: application/json" \
+  -d '{"uniprot_ids": ["P04637", "P00533", "P00720"], "name": "测试批量评估"}'
+```
+
+#### 获取批量评估列表
+
+```bash
+curl http://localhost:5002/api/evaluation/batch
+```
+
+#### 获取批量评估状态
+
+```bash
+curl http://localhost:5002/api/evaluation/batch/<id>/status
 ```
 
 ## 项目结构

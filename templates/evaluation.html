@@ -311,6 +311,237 @@
     .btn-save:hover {
         background: #2563eb;
     }
+
+    /* Tab styles */
+    .eval-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 0;
+    }
+    .eval-tab {
+        padding: 12px 20px;
+        background: none;
+        border: none;
+        font-size: 15px;
+        font-weight: 500;
+        color: #6b7280;
+        cursor: pointer;
+        position: relative;
+        transition: color 0.2s;
+    }
+    .eval-tab:hover {
+        color: #374151;
+    }
+    .eval-tab.active {
+        color: #2563eb;
+    }
+    .eval-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: #2563eb;
+    }
+
+    /* Batch evaluation styles */
+    .batch-input-section {
+        background: #f9fafb;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .batch-input-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    .batch-input-header h3 {
+        margin: 0;
+        font-size: 16px;
+        color: #1f2937;
+    }
+    .batch-input-hint {
+        font-size: 13px;
+        color: #6b7280;
+    }
+    .batch-textarea {
+        width: 100%;
+        min-height: 120px;
+        padding: 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: monospace;
+        resize: vertical;
+        box-sizing: border-box;
+    }
+    .batch-textarea:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .batch-name-input {
+        margin-top: 12px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .batch-name-input label {
+        font-size: 14px;
+        color: #374151;
+        white-space: nowrap;
+    }
+    .batch-name-input input {
+        flex: 1;
+        max-width: 300px;
+        padding: 8px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+    .batch-actions {
+        margin-top: 16px;
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    /* Batch list styles */
+    .batch-list-section {
+        margin-top: 20px;
+    }
+    .batch-card {
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .batch-card:hover {
+        border-color: #2563eb;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+    }
+    .batch-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+    .batch-card-title {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    .batch-card-id {
+        font-size: 12px;
+        color: #9ca3af;
+    }
+    .batch-card-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    .batch-card-status.pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .batch-card-status.processing {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    .batch-card-status.completed {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .batch-card-status.failed {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .batch-card-info {
+        font-size: 13px;
+        color: #6b7280;
+        margin-top: 8px;
+    }
+    .batch-card-info span {
+        margin-right: 16px;
+    }
+    .batch-progress-bar {
+        height: 4px;
+        background: #e5e7eb;
+        border-radius: 2px;
+        margin-top: 12px;
+        overflow: hidden;
+    }
+    .batch-progress-fill {
+        height: 100%;
+        background: #2563eb;
+        border-radius: 2px;
+        transition: width 0.3s;
+    }
+
+    /* Batch result styles */
+    .batch-result-section {
+        margin-top: 20px;
+    }
+    .batch-protein-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+    .batch-protein-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 20px;
+        font-size: 13px;
+        color: #1e40af;
+    }
+    .batch-protein-tag.error {
+        background: #fee2e2;
+        border-color: #fecaca;
+        color: #991b1b;
+    }
+    .interaction-section {
+        margin-top: 20px;
+    }
+    .interaction-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .interaction-table th,
+    .interaction-table td {
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .interaction-table th {
+        background: #f9fafb;
+        font-weight: 600;
+        color: #374151;
+    }
+    .interaction-score {
+        display: inline-block;
+        padding: 2px 8px;
+        background: #dbeafe;
+        border-radius: 12px;
+        font-size: 12px;
+        color: #1e40af;
+    }
 </style>
 {% endblock %}
 
@@ -333,17 +564,63 @@
     <div class="content-grid">
         <!-- Main Content -->
         <div>
-            <!-- Input Section -->
-            <div class="eval-input-section">
-                <div class="input-group">
-                    <label for="uniprot-id">UniProt ID</label>
-                    <input type="text" id="uniprot-id" placeholder="例如: P04637, P00533, P00720" style="flex: 1;" />
-                    <button class="btn-start" onclick="startEvaluation()">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                        </svg>
-                        开始评估
-                    </button>
+            <!-- Tabs -->
+            <div class="eval-tabs">
+                <button class="eval-tab active" id="tab-single" onclick="switchTab('single')">单个评估</button>
+                <button class="eval-tab" id="tab-batch" onclick="switchTab('batch')">批量评估</button>
+            </div>
+
+            <!-- Single Input Section -->
+            <div id="single-input-section">
+                <div class="eval-input-section">
+                    <div class="input-group">
+                        <label for="uniprot-id">UniProt ID</label>
+                        <input type="text" id="uniprot-id" placeholder="例如: P04637, P00533, P00720" style="flex: 1;" />
+                        <button class="btn-start" onclick="startEvaluation()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            开始评估
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Batch Input Section -->
+            <div id="batch-input-section" style="display: none;">
+                <div class="batch-input-section">
+                    <div class="batch-input-header">
+                        <h3>批量评估</h3>
+                        <span class="batch-input-hint">支持多个 UniProt ID（每行一个或用逗号分隔）</span>
+                    </div>
+                    <textarea id="batch-uniprot-ids" class="batch-textarea" placeholder="P04637&#10;P00533&#10;P00720"></textarea>
+                    <div class="batch-name-input">
+                        <label for="batch-name">任务名称（可选）:</label>
+                        <input type="text" id="batch-name" placeholder="例如: 细胞周期相关蛋白评估" />
+                    </div>
+                    <div class="batch-actions">
+                        <button class="btn-start" onclick="startBatchEvaluation()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                            开始批量评估
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Batch Progress Section -->
+                <div class="eval-progress-section" id="batch-progress-section" style="display: none;">
+                    <div class="progress-card">
+                        <h3>批量评估进度</h3>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="batch-progress-bar"></div>
+                        </div>
+                        <div class="progress-text" id="batch-progress-text">等待开始...</div>
+                    </div>
+                </div>
+
+                <!-- Batch Results Section -->
+                <div class="batch-result-section" id="batch-result-section" style="display: none;">
                 </div>
             </div>
 
@@ -386,8 +663,10 @@
         </div>
 
         <!-- History Panel -->
-        <div class="history-panel">
-            <h3>评估历史</h3>
+        <div class="history-panel" id="history-panel">
+            <!-- Single Evaluation History -->
+            <div id="single-history">
+                <h3>评估历史</h3>
             <div class="history-actions">
                 <label class="history-select-all">
                     <input type="checkbox" id="select-all" onchange="toggleSelectAll()">
@@ -405,6 +684,21 @@
                         <polyline points="12 6 12 12 16 14"></polyline>
                     </svg>
                     <p>暂无评估记录</p>
+                </div>
+            </div>
+            </div>
+            <!-- Batch History -->
+            <div id="batch-history" style="display: none;">
+                <h3>批量评估历史</h3>
+                <div class="batch-list-section" id="batch-history-list">
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="3" y1="9" x2="21" y2="9"></line>
+                            <line x1="9" y1="21" x2="9" y2="9"></line>
+                        </svg>
+                        <p>暂无批量评估记录</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1084,6 +1378,232 @@ function startEvaluation() {
         console.error('Error:', error);
         showError('请求失败: ' + error.message);
     });
+}
+
+// ========== Batch Evaluation Functions ==========
+
+let currentBatchId = null;
+let batchStatusInterval = null;
+
+function switchTab(tab) {
+    document.getElementById('tab-single').classList.remove('active');
+    document.getElementById('tab-batch').classList.remove('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+
+    if (tab === 'single') {
+        document.getElementById('single-input-section').style.display = 'block';
+        document.getElementById('batch-input-section').style.display = 'none';
+        document.getElementById('single-history').style.display = 'block';
+        document.getElementById('batch-history').style.display = 'none';
+    } else {
+        document.getElementById('single-input-section').style.display = 'none';
+        document.getElementById('batch-input-section').style.display = 'block';
+        document.getElementById('single-history').style.display = 'none';
+        document.getElementById('batch-history').style.display = 'block';
+        loadBatchHistory();
+    }
+}
+
+function startBatchEvaluation() {
+    const uniprotText = document.getElementById('batch-uniprot-ids').value.trim();
+    const batchName = document.getElementById('batch-name').value.trim();
+
+    if (!uniprotText) {
+        alert('请输入UniProt ID列表');
+        return;
+    }
+
+    // Parse UniProt IDs
+    const uniprotIds = uniprotText.split(/[,;\s\n]+/).filter(id => id.trim());
+    if (uniprotIds.length < 2) {
+        alert('批量评估至少需要2个UniProt ID');
+        return;
+    }
+
+    // Show progress section
+    document.getElementById('batch-progress-section').style.display = 'block';
+    document.getElementById('batch-result-section').style.display = 'none';
+
+    updateBatchProgress(0, '正在启动批量评估...', 'pending');
+
+    fetch('/api/evaluation/batch-start', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            uniprot_ids: uniprotIds,
+            name: batchName || undefined,
+            config: getEvalConfig()
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentBatchId = data.batch_id;
+            batchStatusInterval = setInterval(checkBatchStatus, 3000);
+        } else {
+            alert(data.error || '启动批量评估失败');
+            document.getElementById('batch-progress-section').style.display = 'none';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('请求失败: ' + error.message);
+    });
+}
+
+function updateBatchProgress(progress, message, status) {
+    document.getElementById('batch-progress-bar').style.width = progress + '%';
+    document.getElementById('batch-progress-text').textContent = message;
+}
+
+function checkBatchStatus() {
+    if (!currentBatchId) return;
+
+    fetch('/api/evaluation/batch/' + currentBatchId + '/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.batch) {
+                const batch = data.batch;
+                updateBatchProgress(batch.progress, '进度: ' + batch.progress + '%', batch.status);
+
+                if (batch.status === 'completed') {
+                    clearInterval(batchStatusInterval);
+                    showBatchResults(data);
+                } else if (batch.status === 'failed') {
+                    clearInterval(batchStatusInterval);
+                    alert('批量评估失败');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error checking batch status:', error);
+        });
+}
+
+function showBatchResults(data) {
+    const batch = data.batch;
+    const interactions = data.interactions || [];
+    const evaluations = data.evaluations || [];
+
+    document.getElementById('batch-progress-section').style.display = 'none';
+    const resultSection = document.getElementById('batch-result-section');
+    resultSection.style.display = 'block';
+
+    let html = '<h3>批量评估结果</h3>';
+
+    // Protein list
+    html += '<div class="batch-protein-list">';
+    batch.uniprot_ids.forEach(id => {
+        const evalItem = evaluations.find(e => e.uniprot_id === id);
+        const statusClass = evalItem && evalItem.evaluation_status === 'completed' ? '' : 'error';
+        html += '<span class="batch-protein-tag ' + statusClass + '">' + id + '</span>';
+    });
+    html += '</div>';
+
+    // Interactions
+    if (interactions.length > 0) {
+        html += '<div class="interaction-section">';
+        html += '<h4>蛋白相互作用网络</h4>';
+        html += '<table class="interaction-table">';
+        html += '<thead><tr><th>蛋白A</th><th>蛋白B</th><th>置信度</th><th>类型</th></tr></thead>';
+        html += '<tbody>';
+        interactions.forEach(interaction => {
+            html += '<tr>';
+            html += '<td>' + interaction.protein_a + '</td>';
+            html += '<td>' + interaction.protein_b + '</td>';
+            html += '<td><span class="interaction-score">' + (interaction.score || 0).toFixed(2) + '</span></td>';
+            html += '<td>' + (interaction.interaction_type || '-') + '</td>';
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        html += '</div>';
+    } else {
+        html += '<p style="color: #6b7280; margin-top: 16px;">未检测到蛋白相互作用（可能这些蛋白之间没有已知的互作关系）</p>';
+    }
+
+    // Batch report
+    if (batch.batch_report) {
+        html += '<div style="margin-top: 24px;">';
+        html += '<h4>综合分析报告</h4>';
+        html += '<div class="ai-analysis" style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; max-height: 500px; overflow-y: auto;">';
+        html += batch.batch_report.replace(/\n/g, '<br>');
+        html += '</div>';
+        html += '</div>';
+    }
+
+    resultSection.innerHTML = html;
+}
+
+function loadBatchHistory() {
+    fetch('/api/evaluation/batch')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                renderBatchHistory(data.batches || []);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading batch history:', error);
+        });
+}
+
+function renderBatchHistory(batches) {
+    const container = document.getElementById('batch-history-list');
+    if (!container) return;
+
+    if (batches.length === 0) {
+        container.innerHTML = '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg><p>暂无批量评估记录</p></div>';
+        return;
+    }
+
+    let html = '';
+    batches.forEach(batch => {
+        html += '<div class="batch-card" onclick="viewBatchDetail(' + batch.id + ')">';
+        html += '<div class="batch-card-header">';
+        html += '<div>';
+        html += '<div class="batch-card-title">' + (batch.name || '批量评估') + '</div>';
+        html += '<div class="batch-card-id">ID: ' + batch.id + '</div>';
+        html += '</div>';
+        html += '<span class="batch-card-status ' + batch.status + '">' + getBatchStatusText(batch.status) + '</span>';
+        html += '</div>';
+        html += '<div class="batch-card-info">';
+        html += '<span>蛋白数量: ' + (batch.uniprot_ids ? batch.uniprot_ids.length : 0) + '</span>';
+        html += '<span>创建时间: ' + formatDate(batch.created_at) + '</span>';
+        html += '</div>';
+        html += '<div class="batch-progress-bar">';
+        html += '<div class="batch-progress-fill" style="width: ' + batch.progress + '%"></div>';
+        html += '</div>';
+        html += '</div>';
+    });
+
+    container.innerHTML = html;
+}
+
+function getBatchStatusText(status) {
+    const statusMap = {
+        'pending': '等待中',
+        'processing': '处理中',
+        'completed': '已完成',
+        'failed': '失败'
+    };
+    return statusMap[status] || status;
+}
+
+function viewBatchDetail(batchId) {
+    fetch('/api/evaluation/batch/' + batchId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Switch to batch tab if not already
+                switchTab('batch');
+                // Show results
+                currentBatchId = batchId;
+                showBatchResults(data);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading batch detail:', error);
+        });
 }
 
 function checkStatus() {

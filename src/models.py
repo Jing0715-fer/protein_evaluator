@@ -1,7 +1,7 @@
 """
 Database models for Protein Evaluation
 """
-from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, Boolean, Float, ForeignKey
 from sqlalchemy.orm import declarative_base
 from datetime import datetime
 
@@ -66,6 +66,9 @@ class ProteinEvaluation(Base):
     # 飞书文档
     feishu_doc_url = Column(String(500))
 
+    # 批量评估关联
+    batch_id = Column(Integer, ForeignKey('batch_evaluations.id'), nullable=True)
+
     # 时间戳
     started_at = Column(DateTime, default=datetime.now)
     completed_at = Column(DateTime)
@@ -90,7 +93,72 @@ class ProteinEvaluation(Base):
             'report': self.report,
             'embedding': self.embedding,
             'feishu_doc_url': self.feishu_doc_url,
+            'batch_id': self.batch_id,
             'started_at': self.started_at.isoformat() if self.started_at else None,
             'completed_at': self.completed_at.isoformat() if self.completed_at else None,
             'created_at': self.started_at.isoformat() if self.started_at else None
+        }
+
+
+class BatchEvaluation(Base):
+    """批量评估任务"""
+    __tablename__ = "batch_evaluations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(200))  # 批量评估名称
+    uniprot_ids = Column(JSON)  # UniProt ID 列表
+    status = Column(String(20), default='pending')  # pending, processing, completed, failed
+    progress = Column(Integer, default=0)  # 0-100
+
+    # 评估结果
+    interaction_data = Column(JSON)  # 蛋白互作数据
+    batch_ai_analysis = Column(JSON)  # 批量AI分析结果
+    batch_report = Column(Text)  # 综合分析报告
+
+    # 配置
+    config = Column(JSON)
+
+    # 时间戳
+    created_at = Column(DateTime, default=datetime.now)
+    completed_at = Column(DateTime)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'uniprot_ids': self.uniprot_ids,
+            'status': self.status,
+            'progress': self.progress,
+            'interaction_data': self.interaction_data,
+            'batch_ai_analysis': self.batch_ai_analysis,
+            'batch_report': self.batch_report,
+            'config': self.config,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None
+        }
+
+
+class ProteinInteraction(Base):
+    """蛋白相互作用数据"""
+    __tablename__ = "protein_interactions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    batch_id = Column(Integer, ForeignKey('batch_evaluations.id'), nullable=False)
+    protein_a = Column(String(20), nullable=False)  # UniProt ID A
+    protein_b = Column(String(20), nullable=False)  # UniProt ID B
+    interaction_type = Column(String(50))  # 相互作用类型
+    score = Column(Float)  # 相互作用置信度分数
+    source = Column(String(50))  # 数据来源 (String, BioGRID, etc.)
+    data_json = Column(JSON)  # 原始数据
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'batch_id': self.batch_id,
+            'protein_a': self.protein_a,
+            'protein_b': self.protein_b,
+            'interaction_type': self.interaction_type,
+            'score': self.score,
+            'source': self.source,
+            'data_json': self.data_json
         }
