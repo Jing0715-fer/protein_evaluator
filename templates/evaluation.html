@@ -474,7 +474,12 @@
                 <label for="ai-prompt">AI 分析提示词模板</label>
                 <textarea id="ai-prompt" rows="8" placeholder="输入自定义提示词..."></textarea>
                 <div class="form-hint">AI 分析时的系统提示词模板</div>
-                <button type="button" class="btn-secondary" onclick="openTemplateManager()" style="margin-top: 8px;">管理模板</button>
+                <div style="display: flex; gap: 10px; align-items: center; margin-top: 8px; flex-wrap: wrap;">
+                    <select id="template-select" onchange="useSelectedTemplate()" style="padding: 6px 10px; border-radius: 4px; border: 1px solid #ddd; max-width: 200px;">
+                        <option value="">-- 快速切换模板 --</option>
+                    </select>
+                    <button type="button" class="btn-secondary" onclick="openTemplateManager()">管理模板</button>
+                </div>
             </div>
         </div>
 
@@ -490,30 +495,32 @@
             <button class="modal-close" onclick="closeTemplateManager()">&times;</button>
         </div>
 
-        <div style="display: flex; gap: 20px; height: 500px;">
+        <div style="display: flex; gap: 20px; height: 450px; overflow: hidden;">
             <!-- 模板列表 -->
-            <div style="width: 250px; border-right: 1px solid #eee; padding-right: 15px; overflow-y: auto;">
-                <button class="btn-primary" onclick="showCreateTemplateForm()" style="width: 100%; margin-bottom: 15px;">+ 新建模板</button>
+            <div style="width: 200px; border-right: 1px solid #eee; padding-right: 15px; overflow-y: auto; flex-shrink: 0;">
+                <button class="btn-primary" onclick="showCreateTemplateForm()" style="width: 100%; margin-bottom: 10px;">+ 新建模板</button>
                 <div id="template-list"></div>
             </div>
 
             <!-- 模板编辑区 -->
-            <div style="flex: 1; overflow-y: auto;">
-                <div id="template-editor" style="display: none;">
-                    <div class="form-group">
-                        <label for="template-name">模板名称</label>
-                        <input type="text" id="template-name" placeholder="例如: 详细报告模板">
+            <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+                <div id="template-editor" style="display: none; flex-direction: column; height: 100%;">
+                    <div style="flex: 0 0 auto;">
+                        <div class="form-group">
+                            <label for="template-name">模板名称</label>
+                            <input type="text" id="template-name" placeholder="例如: 详细报告模板">
+                        </div>
+                        <div class="form-group">
+                            <label for="template-description">描述</label>
+                            <input type="text" id="template-description" placeholder="模板描述（可选）">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="template-description">描述</label>
-                        <input type="text" id="template-description" placeholder="模板描述（可选）">
-                    </div>
-                    <div class="form-group">
+                    <div class="form-group" style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
                         <label for="template-content">模板内容</label>
-                        <textarea id="template-content" rows="15" placeholder="输入提示词模板..."></textarea>
+                        <textarea id="template-content" style="flex: 1; min-height: 150px;" placeholder="输入提示词模板..."></textarea>
                         <div class="form-hint">使用 {outline} 作为数据插入位置的占位符</div>
                     </div>
-                    <div style="display: flex; gap: 10px;">
+                    <div style="display: flex; gap: 10px; flex: 0 0 auto; padding-top: 10px;">
                         <button class="btn-primary" onclick="saveTemplate()">保存模板</button>
                         <button class="btn-secondary" onclick="setAsDefault()">设为默认</button>
                         <button class="btn-danger" onclick="deleteCurrentTemplate()">删除</button>
@@ -536,6 +543,13 @@ let currentEvaluationId = null;
 let allEvaluations = [];
 let statusPollingInterval = null;
 let selectedIds = [];
+
+// 点击模态框外部关闭
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal-overlay')) {
+        e.target.classList.remove('active');
+    }
+});
 
 // 多选功能
 function toggleSelect(event, id) {
@@ -651,19 +665,54 @@ function loadSettings() {
     return settings;
 }
 
-// 从后端加载 prompt 模板
+// 从后端加载 prompt 模板和模板列表
 function loadPromptTemplateFromBackend(callback) {
-    fetch('/api/evaluation/settings')
+    Promise.all([
+        fetch('/api/evaluation/settings').then(r => r.json()),
+        fetch('/api/evaluation/templates').then(r => r.json())
+    ])
+    .then(([settingsData, templatesData]) => {
+        if (settingsData.success && settingsData.prompt_template) {
+            document.getElementById('ai-prompt').value = settingsData.prompt_template;
+        }
+        // 加载模板列表到下拉框
+        const select = document.getElementById('template-select');
+        select.innerHTML = '<option value="">-- 快速切换模板 --</option>';
+        if (templatesData.success && templatesData.templates) {
+            templatesData.templates.forEach(t => {
+                const option = document.createElement('option');
+                option.value = t.id;
+                option.textContent = t.name + (t.is_default ? ' (默认)' : '');
+                if (t.is_default) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        }
+        if (callback) callback();
+    })
+    .catch(error => {
+        console.error('加载模板失败:', error);
+        if (callback) callback();
+    });
+}
+
+// 快速切换模板
+function useSelectedTemplate() {
+    const select = document.getElementById('template-select');
+    const templateId = select.value;
+    if (!templateId) return;
+
+    fetch('/api/evaluation/templates/' + templateId)
         .then(response => response.json())
         .then(data => {
-            if (data.success && data.prompt_template) {
-                document.getElementById('ai-prompt').value = data.prompt_template;
+            if (data.success && data.template) {
+                document.getElementById('ai-prompt').value = data.template.content;
+                localStorage.setItem('ai_prompt', data.template.content);
             }
-            if (callback) callback();
         })
         .catch(error => {
             console.error('加载模板失败:', error);
-            if (callback) callback();
         });
 }
 
@@ -723,7 +772,7 @@ function renderTemplateList(defaultId) {
     }
 
     list.innerHTML = templatesData.map(t => `
-        <div class="template-item ${t.id === currentTemplateId ? 'active' : ''}"
+        <div class="template-item ${t.id === currentTemplateId ? 'template-item-active' : ''}"
              onclick="selectTemplate(${t.id})"
              style="padding: 10px; cursor: pointer; border-radius: 4px; margin-bottom: 5px; ${t.id === defaultId ? 'background: #e3f2fd;' : ''}">
             <div style="font-weight: ${t.is_default ? 'bold' : 'normal'}">
@@ -817,6 +866,12 @@ function setAsDefault() {
     .then(data => {
         if (data.success) {
             alert('已设为默认模板');
+            // 同步到 AI 分析提示词模板
+            const template = templatesData.find(t => t.id === currentTemplateId);
+            if (template) {
+                document.getElementById('ai-prompt').value = template.content;
+                localStorage.setItem('ai_prompt', template.content);
+            }
             loadTemplatesFromServer();
         } else {
             alert('设置失败: ' + data.message);

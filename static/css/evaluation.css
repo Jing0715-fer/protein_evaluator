@@ -233,6 +233,12 @@
     background: #2563eb;
 }
 
+/* Template Manager */
+.template-item-active {
+    background: #dbeafe !important;
+    border: 1px solid #3b82f6;
+}
+
 /* Progress Section */
 .eval-progress-section {
     margin-bottom: 24px;
