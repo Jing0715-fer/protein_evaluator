@@ -2512,7 +2512,7 @@ function exportPDF() {
 
     document.body.appendChild(container);
 
-    // 简单配置
+    // 配置
     var opt = {
         margin: 10,
         filename: 'protein_evaluation_' + eval.uniprot_id + '.pdf',
@@ -2521,9 +2521,8 @@ function exportPDF() {
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    // 使用html2pdf
-    var pdf = html2pdf(opt);
-    pdf.from(container).save().then(function() {
+    // 使用html2pdf - 使用 set 和 from
+    html2pdf().set(opt).from(container).save().then(function() {
         document.body.removeChild(container);
     }).catch(function(err) {
         console.error('PDF错误:', err);
@@ -2685,8 +2684,7 @@ function exportBatchResultWithData(batch) {
     };
 
     // 使用html2pdf
-    var pdf = html2pdf(opt);
-    pdf.from(container).save().then(function() {
+    html2pdf().set(opt).from(container).save().then(function() {
         document.body.removeChild(container);
     }).catch(function(err) {
         console.error('PDF错误:', err);
