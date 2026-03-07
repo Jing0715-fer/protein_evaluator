@@ -1866,6 +1866,18 @@ function showBatchResults(data) {
     const batch = data.batch;
     const evaluations = data.evaluations || [];
 
+    // 保存batch数据到全局变量
+    if (typeof allBatchEvaluations === 'undefined') {
+        window.allBatchEvaluations = [];
+    }
+    // 更新或添加batch数据
+    var existingIndex = window.allBatchEvaluations.findIndex(b => b.id === batch.id);
+    if (existingIndex >= 0) {
+        window.allBatchEvaluations[existingIndex] = batch;
+    } else {
+        window.allBatchEvaluations.push(batch);
+    }
+
     document.getElementById('batch-progress-section').style.display = 'none';
     const resultSection = document.getElementById('batch-result-section');
     resultSection.style.display = 'block';
@@ -2458,7 +2470,9 @@ function displayResults(eval) {
 
 // Export to PDF
 function exportPDF() {
+    console.log('exportPDF called');
     var eval = window.currentEvaluationData;
+    console.log('currentEvaluationData:', eval);
     if (!eval) {
         alert('没有可导出的数据');
         return;
@@ -2466,8 +2480,20 @@ function exportPDF() {
 
     // 只导出 AI 分析报告部分
     var aiReportSection = document.getElementById('ai-report-section');
+    console.log('aiReportSection:', aiReportSection);
     if (!aiReportSection) {
         alert('没有 AI 分析报告可导出');
+        return;
+    }
+
+    console.log('html2pdf:', typeof html2pdf);
+
+    // Debug: check what's in the AI report section
+    console.log('aiReportSection innerHTML length:', aiReportSection.innerHTML.length);
+    console.log('aiReportSection innerHTML preview:', aiReportSection.innerHTML.substring(0, 200));
+
+    if (typeof html2pdf !== 'function') {
+        alert('PDF导出库未正确加载，请刷新页面后重试');
         return;
     }
 
@@ -2532,17 +2558,40 @@ function exportPDF() {
 
     html2pdf().set(opt).from(tempDiv).save().then(function() {
         document.body.removeChild(tempDiv);
+    }).catch(function(err) {
+        console.error('PDF export error:', err);
+        if (document.body.contains(tempDiv)) {
+            document.body.removeChild(tempDiv);
+        }
+        alert('PDF导出失败: ' + err.message);
     });
 }
 
 // Show batch prompt template
 function showBatchPrompt(batchId) {
-    var batch = allBatchEvaluations.find(b => b.id === batchId);
+    var batch = window.allBatchEvaluations ? window.allBatchEvaluations.find(b => b.id === batchId) : null;
+
+    // If not in local variable, fetch from server
     if (!batch) {
-        alert('没有数据');
+        fetch('/api/evaluation/batch/' + batchId)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.batch) {
+                    showBatchPromptWithData(data.batch);
+                } else {
+                    alert('没有数据');
+                }
+            })
+            .catch(err => {
+                alert('获取数据失败: ' + err.message);
+            });
         return;
     }
 
+    showBatchPromptWithData(batch);
+}
+
+function showBatchPromptWithData(batch) {
     fetch('/api/evaluation/batch-templates')
         .then(r => r.json())
         .then(data => {
@@ -2560,12 +2609,29 @@ function showBatchPrompt(batchId) {
 
 // Export batch result to MD
 function exportBatchResultMD(batchId) {
-    var batch = allBatchEvaluations.find(b => b.id === batchId);
+    var batch = window.allBatchEvaluations ? window.allBatchEvaluations.find(b => b.id === batchId) : null;
+
+    // If not in local variable, fetch from server
     if (!batch) {
-        alert('没有可导出的数据');
+        fetch('/api/evaluation/batch/' + batchId)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.batch) {
+                    exportBatchResultMDWithData(data.batch);
+                } else {
+                    alert('没有可导出的数据');
+                }
+            })
+            .catch(err => {
+                alert('获取数据失败: ' + err.message);
+            });
         return;
     }
 
+    exportBatchResultMDWithData(batch);
+}
+
+function exportBatchResultMDWithData(batch) {
     var mdContent = '# 批量蛋白质评估报告\n\n';
     mdContent += '## 基本信息\n\n';
     mdContent += '- 评估时间: ' + formatDate(batch.created_at) + '\n';
@@ -2591,12 +2657,29 @@ function exportBatchResultMD(batchId) {
 
 // Export batch result to PDF
 function exportBatchResult(batchId) {
-    var batch = allBatchEvaluations.find(b => b.id === batchId);
+    var batch = window.allBatchEvaluations ? window.allBatchEvaluations.find(b => b.id === batchId) : null;
+
+    // If not in local variable, fetch from server
     if (!batch) {
-        alert('没有可导出的数据');
+        fetch('/api/evaluation/batch/' + batchId)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.batch) {
+                    exportBatchResultWithData(data.batch);
+                } else {
+                    alert('没有可导出的数据');
+                }
+            })
+            .catch(err => {
+                alert('获取数据失败: ' + err.message);
+            });
         return;
     }
 
+    exportBatchResultWithData(batch);
+}
+
+function exportBatchResultWithData(batch) {
     // 创建临时容器
     var tempDiv = document.createElement('div');
     tempDiv.style.width = '190mm';
