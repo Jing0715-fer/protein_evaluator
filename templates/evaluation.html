@@ -2482,55 +2482,55 @@ function exportPDF() {
         return;
     }
 
-    // 确保html2pdf已加载
-    if (typeof html2pdf === 'undefined') {
-        alert('PDF导出库未加载，请刷新页面后重试');
-        return;
-    }
-
-    // 创建临时容器 - 简单方式
+    // 创建临时容器 - 使用fixed定位并显示在视口中
     var container = document.createElement('div');
-    container.style.width = '180mm';
-    container.style.minHeight = '260mm';
-    container.style.padding = '15mm';
+    container.style.width = '210mm';
+    container.style.padding = '20mm';
     container.style.background = '#fff';
     container.style.fontFamily = 'Arial, sans-serif';
     container.style.fontSize = '12px';
-    container.style.lineHeight = '1.5';
-    container.style.color = '#000';
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
+    container.style.lineHeight = '1.6';
+    container.style.color = '#333';
+    container.style.position = 'fixed';
+    container.style.left = '0';
     container.style.top = '0';
+    container.style.zIndex = '-1';
 
-    // 标题
-    container.innerHTML = '<h1 style="text-align:center;font-size:18px;margin-bottom:15px;">蛋白质评估报告</h1>';
-    container.innerHTML += '<div style="margin-bottom:15px;padding:10px;background:#f5f5f5;"><strong>UniProt ID:</strong> ' + (eval.uniprot_id || '-') + '<br>';
-    container.innerHTML += '<strong>基因名:</strong> ' + (eval.gene_name || '-') + '<br>';
-    container.innerHTML += '<strong>蛋白质名称:</strong> ' + (eval.protein_name || '-') + '</div>';
-    container.innerHTML += '<h2 style="font-size:14px;margin-top:15px;">AI 分析报告</h2>';
+    container.innerHTML = '<h1 style="text-align:center;font-size:20px;margin-bottom:15px;">蛋白质评估报告</h1>';
+    container.innerHTML += '<div style="margin-bottom:15px;padding:10px;background:#f5f5f5;border-radius:4px;">';
+    container.innerHTML += '<p style="margin:3px 0;"><strong>UniProt ID:</strong> ' + (eval.uniprot_id || '-') + '</p>';
+    container.innerHTML += '<p style="margin:3px 0;"><strong>基因名:</strong> ' + (eval.gene_name || '-') + '</p>';
+    container.innerHTML += '<p style="margin:3px 0;"><strong>蛋白质名称:</strong> ' + (eval.protein_name || '-') + '</p></div>';
+    container.innerHTML += '<h2 style="font-size:14px;margin-top:15px;border-bottom:1px solid #ddd;padding-bottom:5px;">AI 分析报告</h2>';
     container.innerHTML += '<div style="font-size:11px;line-height:1.6;">' + aiReportSection.innerHTML + '</div>';
 
     document.body.appendChild(container);
 
-    // 配置
-    var opt = {
-        margin: 10,
-        filename: 'protein_evaluation_' + eval.uniprot_id + '.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
+    // 等待一小段时间确保元素渲染
+    setTimeout(function() {
+        var opt = {
+            margin: [15, 15, 15, 15],
+            filename: 'protein_evaluation_' + eval.uniprot_id + '.pdf',
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                windowWidth: 794 // A4 width in pixels at 96 DPI
+            },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
 
-    // 使用html2pdf - 使用 set 和 from
-    html2pdf().set(opt).from(container).save().then(function() {
-        document.body.removeChild(container);
-    }).catch(function(err) {
-        console.error('PDF错误:', err);
-        if (document.body.contains(container)) {
+        html2pdf().set(opt).from(container).save().then(function() {
             document.body.removeChild(container);
-        }
-        alert('PDF导出失败: ' + err);
-    });
+        }).catch(function(err) {
+            console.error('PDF错误:', err);
+            if (document.body.contains(container)) {
+                document.body.removeChild(container);
+            }
+            alert('PDF导出失败: ' + err);
+        });
+    }, 100);
 }
 
 // Show batch prompt template
@@ -2646,53 +2646,60 @@ function exportBatchResult(batchId) {
 }
 
 function exportBatchResultWithData(batch) {
-    // 创建临时容器 - 简单方式
+    // 创建临时容器 - 使用fixed定位
     var container = document.createElement('div');
-    container.style.width = '180mm';
-    container.style.minHeight = '260mm';
-    container.style.padding = '15mm';
+    container.style.width = '210mm';
+    container.style.padding = '20mm';
     container.style.background = '#fff';
     container.style.fontFamily = 'Arial, sans-serif';
     container.style.fontSize = '12px';
-    container.style.lineHeight = '1.5';
-    container.style.color = '#000';
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
+    container.style.lineHeight = '1.6';
+    container.style.color = '#333';
+    container.style.position = 'fixed';
+    container.style.left = '0';
     container.style.top = '0';
+    container.style.zIndex = '-1';
 
     // 标题和基本信息
-    container.innerHTML = '<h1 style="text-align:center;font-size:18px;margin-bottom:15px;">批量蛋白质评估报告</h1>';
-    container.innerHTML += '<div style="margin-bottom:15px;padding:10px;background:#f5f5f5;"><strong>评估时间:</strong> ' + formatDate(batch.created_at) + '<br>';
-    container.innerHTML += '<strong>蛋白数量:</strong> ' + batch.uniprot_ids.length + '<br>';
-    container.innerHTML += '<strong>UniProt IDs:</strong> ' + batch.uniprot_ids.join(', ') + '</div>';
+    container.innerHTML = '<h1 style="text-align:center;font-size:20px;margin-bottom:15px;">批量蛋白质评估报告</h1>';
+    container.innerHTML += '<div style="margin-bottom:15px;padding:10px;background:#f5f5f5;border-radius:4px;">';
+    container.innerHTML += '<p style="margin:3px 0;"><strong>评估时间:</strong> ' + formatDate(batch.created_at) + '</p>';
+    container.innerHTML += '<p style="margin:3px 0;"><strong>蛋白数量:</strong> ' + batch.uniprot_ids.length + '</p>';
+    container.innerHTML += '<p style="margin:3px 0;"><strong>UniProt IDs:</strong> ' + batch.uniprot_ids.join(', ') + '</p></div>';
 
     // 添加批量分析报告
     if (batch.batch_report) {
-        container.innerHTML += '<h2 style="font-size:14px;margin-top:15px;">综合关系分析报告</h2>';
+        container.innerHTML += '<h2 style="font-size:14px;margin-top:15px;border-bottom:1px solid #ddd;padding-bottom:5px;">综合关系分析报告</h2>';
         container.innerHTML += '<div style="font-size:11px;line-height:1.6;">' + marked.parse(batch.batch_report) + '</div>';
     }
 
     document.body.appendChild(container);
 
-    // 简单配置
-    var opt = {
-        margin: 10,
-        filename: 'batch_protein_evaluation.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
+    // 等待一小段时间确保元素渲染
+    setTimeout(function() {
+        var opt = {
+            margin: [15, 15, 15, 15],
+            filename: 'batch_protein_evaluation.pdf',
+            image: { type: 'jpeg', quality: 0.95 },
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                windowWidth: 794
+            },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
 
-    // 使用html2pdf
-    html2pdf().set(opt).from(container).save().then(function() {
-        document.body.removeChild(container);
-    }).catch(function(err) {
-        console.error('PDF错误:', err);
-        if (document.body.contains(container)) {
+        html2pdf().set(opt).from(container).save().then(function() {
             document.body.removeChild(container);
-        }
-        alert('PDF导出失败: ' + err);
-    });
+        }).catch(function(err) {
+            console.error('PDF错误:', err);
+            if (document.body.contains(container)) {
+                document.body.removeChild(container);
+            }
+            alert('PDF导出失败: ' + err);
+        });
+    }, 100);
 }
 
 // Export to Markdown
