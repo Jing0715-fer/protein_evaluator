@@ -1892,16 +1892,16 @@ function showBatchResults(data) {
     html += '<line x1="12" y1="16" x2="12" y2="12"></line>';
     html += '<line x1="12" y1="8" x2="12.01" y2="8"></line>';
     html += '</svg> 查看Prompt</button>';
-    html += '<button class="btn-secondary" onclick="exportBatchResultMD(' + batch.id + ')">';
-    html += '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
-    html += '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>';
-    html += '<polyline points="14 2 14 8 20 8"></polyline>';
-    html += '</svg> 导出MD</button>';
     html += '<button class="btn-secondary" onclick="exportBatchResult(' + batch.id + ')">';
     html += '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
     html += '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>';
     html += '<polyline points="14 2 14 8 20 8"></polyline>';
     html += '</svg> 导出PDF</button>';
+    html += '<button class="btn-secondary" onclick="exportBatchResultMD(' + batch.id + ')">';
+    html += '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
+    html += '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>';
+    html += '<polyline points="14 2 14 8 20 8"></polyline>';
+    html += '</svg> 导出MD</button>';
     html += '<button class="btn-secondary" onclick="deleteBatchResult(' + batch.id + ')">删除</button>';
     html += '</div></div>';
 
@@ -2529,34 +2529,36 @@ function exportPDF() {
     var reportContent = aiReportSection.cloneNode(true);
     reportContent.style.width = '100%';
     reportContent.style.fontSize = '11px';
-
-    // 添加页面样式防止文字被截断
-    var style = document.createElement('style');
-    style.textContent = `
-        .pdf-page-break { page-break-inside: avoid !important; }
-        table, tr, td, th { page-break-inside: avoid !important; }
-        h1, h2, h3, h4, h5, h6 { page-break-after: avoid !important; }
-        p { orphans: 4; widows: 4; margin-bottom: 0.5em; }
-        ul, ol { page-break-inside: avoid !important; }
-        li { page-break-inside: avoid !important; }
-        * { page-break-inside: avoid !important; }
-    `;
-    reportContent.insertBefore(style, reportContent.firstChild);
+    reportContent.style.color = '#000';
+    reportContent.style.background = '#fff';
+    reportContent.style.padding = '10px';
+    reportContent.style.boxSizing = 'border-box';
 
     tempDiv.appendChild(reportContent);
 
+    // Use a fixed container for proper rendering
+    tempDiv.style.position = 'fixed';
+    tempDiv.style.left = '0';
+    tempDiv.style.top = '0';
+    tempDiv.style.zIndex = '-100';
     document.body.appendChild(tempDiv);
 
     var opt = {
-        margin: [5, 5, 5, 5],
+        margin: [10, 10, 10, 10],
         filename: 'protein_evaluation_' + eval.uniprot_id + '_' + new Date().toISOString().slice(0,10) + '.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, windowWidth: 800 },
+        image: { type: 'png', quality: 0.98 },
+        html2canvas: {
+            scale: 2,
+            useCORS: true,
+            logging: false
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak: { mode: ['avoid-all', 'legacy', 'css'] }
     };
 
+    console.log('Starting PDF export...');
     html2pdf().set(opt).from(tempDiv).save().then(function() {
+        console.log('PDF export success');
         document.body.removeChild(tempDiv);
     }).catch(function(err) {
         console.error('PDF export error:', err);
@@ -2597,7 +2599,7 @@ function showBatchPromptWithData(batch) {
         .then(data => {
             if (data.success && data.templates && data.templates.length > 0) {
                 var template = data.templates[0];
-                alert('Prompt模板:\n\n' + template.content);
+                showPromptModal(template.content);
             } else {
                 alert('未找到Prompt模板');
             }
@@ -2720,30 +2722,27 @@ function exportBatchResultWithData(batch) {
         var reportDiv = document.createElement('div');
         reportDiv.style.fontSize = '11px';
         reportDiv.style.lineHeight = '1.6';
+        reportDiv.style.color = '#000';
         reportDiv.innerHTML = marked.parse(batch.batch_report);
         tempDiv.appendChild(reportDiv);
     }
 
-    // 页面样式
-    var style = document.createElement('style');
-    style.textContent = `
-        .pdf-page-break { page-break-inside: avoid !important; }
-        table, tr, td, th { page-break-inside: avoid !important; }
-        h1, h2, h3, h4, h5, h6 { page-break-after: avoid !important; }
-        p { orphans: 4; widows: 4; margin-bottom: 0.5em; }
-        ul, ol { page-break-inside: avoid !important; }
-        li { page-break-inside: avoid !important; }
-        * { page-break-inside: avoid !important; }
-    `;
-    tempDiv.insertBefore(style, tempDiv.firstChild);
-
+    // Use a fixed container for proper rendering
+    tempDiv.style.position = 'fixed';
+    tempDiv.style.left = '0';
+    tempDiv.style.top = '0';
+    tempDiv.style.zIndex = '-100';
     document.body.appendChild(tempDiv);
 
     var opt = {
-        margin: [5, 5, 5, 5],
+        margin: [10, 10, 10, 10],
         filename: 'batch_protein_evaluation_' + new Date().toISOString().slice(0,10) + '.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, windowWidth: 800 },
+        image: { type: 'png', quality: 0.98 },
+        html2canvas: {
+            scale: 2,
+            useCORS: true,
+            logging: false
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak: { mode: ['avoid-all', 'legacy', 'css'] }
     };
