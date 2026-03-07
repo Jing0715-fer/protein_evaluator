@@ -360,7 +360,7 @@
     .eval-tab {
         padding: 8px 16px;
         background: transparent;
-        border: 1px solid rgba(255,255,255,0.3);
+        border: none;
         font-size: 14px;
         font-weight: 500;
         color: rgba(255,255,255,0.8);
@@ -371,12 +371,10 @@
     .eval-tab:hover {
         color: #fff;
         background: rgba(255,255,255,0.15);
-        border-color: rgba(255,255,255,0.5);
     }
     .eval-tab.active {
         color: #fff;
         background: rgba(255,255,255,0.25);
-        border-color: rgba(255,255,255,0.4);
     }
     .eval-tab.active:hover {
         background: rgba(255,255,255,0.3);
@@ -684,7 +682,7 @@
                     </div>
                 </div>
                 <!-- Tabs -->
-                <div class="eval-tabs" style="margin-bottom: 0; border-bottom: none; background: rgba(255,255,255,0.15); padding: 4px; border-radius: 10px; gap: 4px;">
+                <div class="eval-tabs" style="margin-bottom: 0; border-bottom: none; gap: 8px;">
                     <button class="eval-tab active" id="tab-single" onclick="switchTab('single')">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><circle cx="12" cy="12" r="6"></circle></svg>单个评估
                     </button>
