@@ -38,20 +38,6 @@
         max-width: 1400px;
         margin: 0 auto;
     }
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        padding-bottom: 16px;
-        border-bottom: 1px solid #E0E7FF;
-    }
-    .page-header h1 {
-        margin: 0;
-        font-size: 24px;
-        font-weight: 700;
-        color: #1E1B4B;
-    }
     .header-actions {
         display: flex;
         gap: 12px;
@@ -372,27 +358,28 @@
         align-items: center;
     }
     .eval-tab {
-        padding: 8px 20px;
-        background: #F5F3FF;
-        border: 1px solid transparent;
+        padding: 8px 16px;
+        background: transparent;
+        border: 1px solid rgba(255,255,255,0.3);
         font-size: 14px;
         font-weight: 500;
-        color: #6366F1;
+        color: rgba(255,255,255,0.8);
         cursor: pointer;
         transition: all 0.2s;
-        border-radius: 20px;
+        border-radius: 8px;
     }
     .eval-tab:hover {
-        color: #4338CA;
-        background: #E0E7FF;
+        color: #fff;
+        background: rgba(255,255,255,0.15);
+        border-color: rgba(255,255,255,0.5);
     }
     .eval-tab.active {
         color: #fff;
-        background: #6366F1;
-        box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
+        background: rgba(255,255,255,0.25);
+        border-color: rgba(255,255,255,0.4);
     }
     .eval-tab.active:hover {
-        background: #4338CA;
+        background: rgba(255,255,255,0.3);
     }
 
     /* Batch evaluation styles - Match single evaluation style */
@@ -680,33 +667,50 @@
 {% block content %}
 <div class="eval-main">
     <!-- Header -->
-    <div class="page-header">
-        <div style="display: flex; align-items: center; gap: 24px; flex: 1;">
-            <h1>蛋白质评估</h1>
-            <!-- Tabs -->
-            <div class="eval-tabs" style="margin-bottom: 0; border-bottom: none;">
-                <button class="eval-tab active" id="tab-single" onclick="switchTab('single')">单个评估</button>
-                <button class="eval-tab" id="tab-batch" onclick="switchTab('batch')">批量评估</button>
+    <div class="page-header" style="background: linear-gradient(135deg, #6366F1 0%, #818CF8 100%); padding: 20px 24px; border-radius: 12px; margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="background: rgba(255,255,255,0.25); padding: 10px; border-radius: 10px;">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.1); letter-spacing: 1px;">蛋白质评估</h1>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; color: rgba(255,255,255,0.7);">Protein Structure & Function Analysis</p>
+                    </div>
+                </div>
+                <!-- Tabs -->
+                <div class="eval-tabs" style="margin-bottom: 0; border-bottom: none; background: rgba(255,255,255,0.15); padding: 4px; border-radius: 10px; gap: 4px;">
+                    <button class="eval-tab active" id="tab-single" onclick="switchTab('single')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><circle cx="12" cy="12" r="6"></circle></svg>单个评估
+                    </button>
+                    <button class="eval-tab" id="tab-batch" onclick="switchTab('batch')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px;"><circle cx="6" cy="6" r="4"></circle><circle cx="18" cy="6" r="4"></circle><circle cx="12" cy="18" r="4"></circle></svg>批量评估
+                    </button>
+                </div>
             </div>
-        </div>
-        <div class="header-actions">
-            <button class="btn-settings" onclick="openTemplateManager()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                </svg>
-                模板管理
-            </button>
-            <button class="btn-settings" onclick="openSettings()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
-                </svg>
-                AI 模型设置
-            </button>
+            <div class="header-actions" style="gap: 8px;">
+                <button class="btn-settings" onclick="openTemplateManager()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: #fff;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: block;">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                    模板管理
+                </button>
+                <button class="btn-settings" onclick="openSettings()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: #fff;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+                    </svg>
+                    AI 配置
+                </button>
+            </div>
         </div>
     </div>
 
@@ -718,7 +722,7 @@
                 <div class="eval-input-section">
                     <label for="uniprot-id" style="display: block; font-size: 14px; font-weight: 500; color: #1E1B4B; margin-bottom: 8px;">UniProt ID</label>
                     <div style="display: flex; gap: 12px;">
-                        <input type="text" id="uniprot-id" placeholder="例如: P04637, P00533, P00720" style="flex: 1; padding: 12px 16px; border: 1px solid #E0E7FF; border-radius: 8px; font-size: 14px; background: #F9FAFB; transition: all 0.2s;" />
+                        <input type="text" id="uniprot-id" placeholder="输入 UniProt ID" style="flex: 1; padding: 12px 16px; border: 1px solid #E0E7FF; border-radius: 8px; font-size: 14px; background: #F9FAFB; transition: all 0.2s;" />
                         <button class="btn-start" onclick="startEvaluation()">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
@@ -734,20 +738,20 @@
 
             <!-- Batch Input Section -->
             <div id="batch-input-section" style="display: none;">
-                <div class="batch-input-section">
-                    <div class="batch-input-header">
-                        <h3 style="margin: 0 0 4px 0; font-size: 14px; font-weight: 500; color: #1E1B4B;">批量评估</h3>
-                        <span class="batch-input-hint">支持多个 UniProt ID（每行一个或用逗号分隔）</span>
+                <div class="eval-input-section">
+                    <label style="display: block; font-size: 14px; font-weight: 500; color: #1E1B4B; margin-bottom: 8px;">任务名称（可选，默认用ID组合）</label>
+                    <div style="margin-bottom: 12px;">
+                        <input type="text" id="batch-name" placeholder="例如: 细胞周期相关蛋白" style="width: 100%; padding: 12px 16px; border: 1px solid #E0E7FF; border-radius: 8px; font-size: 14px; background: #F9FAFB; box-sizing: border-box;" />
                     </div>
-                    <div style="position: relative;">
-                        <textarea id="batch-uniprot-ids" class="batch-textP04637&#area" placeholder="10;P00533&#10;P00720" style="padding-right: 100px;"></textarea>
-                        <button class="btn-start" onclick="startBatchEvaluation()" style="position: absolute; right: 8px; top: 8px; padding: 8px 16px; font-size: 13px;">
+                    <label style="display: block; font-size: 14px; font-weight: 500; color: #1E1B4B; margin-bottom: 8px;">UniProt ID（多个用空格或逗号分隔）</label>
+                    <div style="display: flex; gap: 12px;">
+                        <input type="text" id="batch-uniprot-ids" placeholder="P04637 P00533 P00720" style="flex: 1; padding: 12px 16px; border: 1px solid #E0E7FF; border-radius: 8px; font-size: 14px; background: #F9FAFB; transition: all 0.2s;" />
+                        <button class="btn-start" onclick="startBatchEvaluation()" style="align-self: flex-end;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
                             开始
                         </button>
-                    </div>
-                    <div class="batch-name-input" style="margin-top: 12px;">
-                        <label for="batch-name" style="display: block; font-size: 14px; font-weight: 500; color: #1E1B4B; margin-bottom: 6px;">任务名称（可选，默认用ID组合）</label>
-                        <input type="text" id="batch-name" placeholder="例如: 细胞周期相关蛋白评估" style="width: 100%; padding: 10px 14px; border: 1px solid #E0E7FF; border-radius: 8px; font-size: 14px; background: #F9FAFB; box-sizing: border-box;" />
                     </div>
                     <div id="batch-config-display" style="font-size: 12px; color: #6366F1; margin-top: 10px; padding: 6px 12px; background: #EEF2FF; border-radius: 6px; display: inline-block;">
                         当前模型: <span id="batch-display-ai-model">-</span>
@@ -1781,7 +1785,7 @@ function switchTab(tab) {
 
 function startBatchEvaluation() {
     const uniprotText = document.getElementById('batch-uniprot-ids').value.trim();
-    const batchName = document.getElementById('batch-name').value.trim();
+    let batchName = document.getElementById('batch-name').value.trim();
 
     if (!uniprotText) {
         alert('请输入UniProt ID列表');
@@ -1793,6 +1797,11 @@ function startBatchEvaluation() {
     if (uniprotIds.length < 2) {
         alert('批量评估至少需要2个UniProt ID');
         return;
+    }
+
+    // Use IDs as default name if not provided
+    if (!batchName) {
+        batchName = uniprotIds.join(' + ');
     }
 
     // Show progress section
@@ -1867,17 +1876,23 @@ function showBatchResults(data) {
     html += '<div class="batch-result-header">';
     html += '<h3>批量评估结果</h3>';
     html += '<div style="display: flex; gap: 8px;">';
-    html += '<button class="btn-secondary" style="padding: 6px 12px; font-size: 13px;" onclick="exportBatchResult(' + batch.id + ')">';
-    html += '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
-    html += '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>';
-    html += '<polyline points="7 10 12 15 17 10"></polyline>';
-    html += '<line x1="12" y1="15" x2="12" y2="3"></line>';
-    html += '</svg>导出PDF</button>';
-    html += '<button class="batch-delete-btn-result" onclick="deleteBatchResult(' + batch.id + ')">';
+    html += '<button class="btn-secondary" onclick="showBatchPrompt(' + batch.id + ')">';
     html += '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
-    html += '<polyline points="3 6 5 6 21 6"></polyline>';
-    html += '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>';
-    html += '</svg>删除</button>';
+    html += '<circle cx="12" cy="12" r="10"></circle>';
+    html += '<line x1="12" y1="16" x2="12" y2="12"></line>';
+    html += '<line x1="12" y1="8" x2="12.01" y2="8"></line>';
+    html += '</svg> 查看Prompt</button>';
+    html += '<button class="btn-secondary" onclick="exportBatchResultMD(' + batch.id + ')">';
+    html += '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
+    html += '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>';
+    html += '<polyline points="14 2 14 8 20 8"></polyline>';
+    html += '</svg> 导出MD</button>';
+    html += '<button class="btn-secondary" onclick="exportBatchResult(' + batch.id + ')">';
+    html += '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
+    html += '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>';
+    html += '<polyline points="14 2 14 8 20 8"></polyline>';
+    html += '</svg> 导出PDF</button>';
+    html += '<button class="btn-secondary" onclick="deleteBatchResult(' + batch.id + ')">删除</button>';
     html += '</div></div>';
 
     // Protein list
@@ -2520,6 +2535,60 @@ function exportPDF() {
     html2pdf().set(opt).from(tempDiv).save().then(function() {
         document.body.removeChild(tempDiv);
     });
+}
+
+// Show batch prompt template
+function showBatchPrompt(batchId) {
+    var batch = allBatchEvaluations.find(b => b.id === batchId);
+    if (!batch) {
+        alert('没有数据');
+        return;
+    }
+
+    fetch('/api/evaluation/batch-templates')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success && data.templates && data.templates.length > 0) {
+                var template = data.templates[0];
+                alert('Prompt模板:\n\n' + template.content);
+            } else {
+                alert('未找到Prompt模板');
+            }
+        })
+        .catch(err => {
+            alert('获取模板失败: ' + err.message);
+        });
+}
+
+// Export batch result to MD
+function exportBatchResultMD(batchId) {
+    var batch = allBatchEvaluations.find(b => b.id === batchId);
+    if (!batch) {
+        alert('没有可导出的数据');
+        return;
+    }
+
+    var mdContent = '# 批量蛋白质评估报告\n\n';
+    mdContent += '## 基本信息\n\n';
+    mdContent += '- 评估时间: ' + formatDate(batch.created_at) + '\n';
+    mdContent += '- 蛋白数量: ' + batch.uniprot_ids.length + '\n';
+    mdContent += '- UniProt IDs: ' + batch.uniprot_ids.join(', ') + '\n\n';
+
+    if (batch.batch_report) {
+        mdContent += '## 综合关系分析报告\n\n';
+        mdContent += batch.batch_report + '\n\n';
+    }
+
+    // Download MD file
+    var blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'batch_evaluation_' + new Date().toISOString().slice(0,10) + '.md';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 // Export batch result to PDF
