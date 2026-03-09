@@ -394,14 +394,15 @@
             <ul>
                 <li><a href="#intro">1. 系统简介</a></li>
                 <li><a href="#start">2. 快速开始</a></li>
-                <li><a href="#interface">3. 界面功能介绍</a></li>
-                <li><a href="#single">4. 单个蛋白评估</a></li>
-                <li><a href="#batch">5. 批量评估</a></li>
-                <li><a href="#config">6. AI 配置</a></li>
-                <li><a href="#template">7. 模板管理</a></li>
-                <li><a href="#history">8. 历史记录</a></li>
-                <li><a href="#export">9. 导出功能</a></li>
-                <li><a href="#faq">10. 常见问题</a></li>
+                <li><a href="#install">3. 安装与运行</a></li>
+                <li><a href="#interface">4. 界面功能介绍</a></li>
+                <li><a href="#single">5. 单个蛋白评估</a></li>
+                <li><a href="#batch">6. 批量评估</a></li>
+                <li><a href="#config">7. AI 配置</a></li>
+                <li><a href="#template">8. 模板管理</a></li>
+                <li><a href="#history">9. 历史记录</a></li>
+                <li><a href="#export">10. 导出功能</a></li>
+                <li><a href="#faq">11. 常见问题</a></li>
             </ul>
         </div>
 
@@ -454,9 +455,98 @@
                 </div>
             </div>
 
+            <!-- 安装部署 -->
+            <div class="section" id="install">
+                <h2>3. 安装与运行</h2>
+                <p>本系统基于 Python Flask 开发，需要 Python 3.8+ 环境。</p>
+
+                <h3>前置要求</h3>
+                <ul>
+                    <li>🐍 <strong>Python 3.8</strong> 或更高版本</li>
+                    <li>🔑 <strong>AI API Key</strong> - OpenAI/DeepSeek/Anthropic Claude/Gemini 等</li>
+                </ul>
+
+                <h3>安装步骤</h3>
+                <div class="steps">
+                    <div class="step">
+                        <h4>第 1 步：克隆项目</h4>
+                        <pre><code>git clone https://github.com/Jing0715-fer/protein_evaluator.git
+cd protein_evaluator</code></pre>
+                    </div>
+                    <div class="step">
+                        <h4>第 2 步：创建虚拟环境</h4>
+                        <pre><code>python -m venv venv
+# Linux/macOS:
+source venv/bin/activate
+# Windows:
+venv\Scripts\activate</code></pre>
+                    </div>
+                    <div class="step">
+                        <h4>第 3 步：安装依赖</h4>
+                        <pre><code>pip install -r requirements.txt</code></pre>
+                    </div>
+                    <div class="step">
+                        <h4>第 4 步：配置 API Key</h4>
+                        <p>有两种配置方式：</p>
+                        <p><strong>方式一：环境变量</strong></p>
+                        <pre><code>export AI_API_KEY="your-api-key"
+export AI_MODEL="gpt-4o"  # 可选
+export PORT=5002  # 可选</code></pre>
+                        <p><strong>方式二：网页配置</strong></p>
+                        <p>启动应用后，在网页界面右上角点击「AI 配置」进行设置（API Key 保存在浏览器本地）</p>
+                    </div>
+                    <div class="step">
+                        <h4>第 5 步：启动应用</h4>
+                        <pre><code>python app.py</code></pre>
+                        <p>启动后访问：<code>http://localhost:5002/evaluation</code></p>
+                    </div>
+                </div>
+
+                <h3>配置说明</h3>
+                <table>
+                    <tr>
+                        <th>环境变量</th>
+                        <th>说明</th>
+                        <th>默认值</th>
+                    </tr>
+                    <tr>
+                        <td>AI_API_KEY</td>
+                        <td>AI API Key（必需）</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td>AI_MODEL</td>
+                        <td>AI 模型</td>
+                        <td>gpt-4o</td>
+                    </tr>
+                    <tr>
+                        <td>AI_TEMPERATURE</td>
+                        <td>温度参数</td>
+                        <td>0.3</td>
+                    </tr>
+                    <tr>
+                        <td>PORT</td>
+                        <td>服务器端口</td>
+                        <td>5002</td>
+                    </tr>
+                    <tr>
+                        <td>DEBUG</td>
+                        <td>调试模式</td>
+                        <td>True</td>
+                    </tr>
+                </table>
+
+                <div class="tip warning">
+                    <div class="tip-title">⚠️ 注意事项</div>
+                    <p>1. 首次运行会在 data/ 目录创建 SQLite 数据库<br>
+                    2. 评估数据会缓存到 pdb_cache/ 和 uniprot_cache/ 目录<br>
+                    3. 如需重新安装，先删除 venv 目录</p>
+                </div>
+            </div>
+
             <!-- 界面功能 -->
             <div class="section" id="interface">
-                <h2>3. 界面功能介绍</h2>
+                <h2>4. 界面功能介绍</h2>
                 
                 <div class="ui-preview">
                     <div class="ui-preview-header">
@@ -505,7 +595,7 @@
 
             <!-- 单个评估 -->
             <div class="section" id="single">
-                <h2>4. 单个蛋白评估</h2>
+                <h2>5. 单个蛋白评估</h2>
                 <p>对单个蛋白质进行全面的结构与功能评估。</p>
 
                 <h3>操作步骤</h3>
@@ -570,7 +660,7 @@
 
             <!-- 批量评估 -->
             <div class="section" id="batch">
-                <h2>5. 批量评估</h2>
+                <h2>6. 批量评估</h2>
                 <p>同时评估多个蛋白质，并分析蛋白之间的相互作用网络。</p>
 
                 <h3>操作步骤</h3>
@@ -602,7 +692,7 @@
 
             <!-- AI 配置 -->
             <div class="section" id="config">
-                <h2>6. AI 配置</h2>
+                <h2>7. AI 配置</h2>
                 <p>点击右上角的「AI 配置」按钮打开配置面板。</p>
 
                 <h3>配置项说明</h3>
@@ -662,7 +752,7 @@
 
             <!-- 模板管理 -->
             <div class="section" id="template">
-                <h2>7. 模板管理</h2>
+                <h2>8. 模板管理</h2>
                 <p>点击「模板管理」按钮可以自定义 AI 提示词模板。</p>
 
                 <h3>模板类型</h3>
@@ -692,7 +782,7 @@
 
             <!-- 历史记录 -->
             <div class="section" id="history">
-                <h2>8. 历史记录</h2>
+                <h2>9. 历史记录</h2>
                 <p>右侧面板显示所有评估历史记录。</p>
 
                 <h3>功能</h3>
@@ -735,7 +825,7 @@
 
             <!-- 导出功能 -->
             <div class="section" id="export">
-                <h2>9. 导出功能</h2>
+                <h2>10. 导出功能</h2>
                 <p>评估完成后，可以导出结果报告。</p>
 
                 <h3>导出格式</h3>
@@ -757,7 +847,7 @@
 
             <!-- 常见问题 -->
             <div class="section" id="faq">
-                <h2>10. 常见问题</h2>
+                <h2>11. 常见问题</h2>
 
                 <h3>Q1: 如何获取 API Key？</h3>
                 <p>请访问对应 AI 服务的官网注册账号并获取 API Key：</p>
