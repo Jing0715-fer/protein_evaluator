@@ -708,6 +708,14 @@
                     </svg>
                     AI 配置
                 </button>
+                <button class="btn-settings" onclick="openManual()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: #fff;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    操作手册
+                </button>
             </div>
         </div>
     </div>
@@ -2794,6 +2802,10 @@ function copyPrompt() {
             alert('已复制到剪贴板');
         });
     }
+}
+
+function openManual() {
+    window.open('/protein_evaluator_manual.html', '_blank');
 }
 
 function showError(message) {
