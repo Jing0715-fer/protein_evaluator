@@ -547,49 +547,34 @@ export PORT=5002  # 可选</code></pre>
             <!-- 界面功能 -->
             <div class="section" id="interface">
                 <h2>4. 界面功能介绍</h2>
-                
-                <div class="ui-preview">
-                    <div class="ui-preview-header">
-                        <span class="dot red"></span>
-                        <span class="dot yellow"></span>
-                        <span class="dot green"></span>
-                        <span class="ui-preview-title">蛋白质评估 - Chrome</span>
-                    </div>
-                    
-                    <div class="ui-element highlight">
-                        <span class="label">① 页面标题</span>
-                        蛋白质评估 | Protein Structure & Function Analysis
-                    </div>
+                <p>主界面分为三个区域：顶部操作区、中间内容区、右侧历史面板。</p>
 
-                    <div class="ui-element">
-                        <span class="label">② Tab 切换</span>
-                        单个评估 / 批量评估
-                    </div>
+                <h3>顶部操作区</h3>
+                <ul>
+                    <li>📑 <strong>Tab 切换</strong> - 切换「单个评估」和「批量评估」两种模式</li>
+                    <li>📄 <strong>模板管理</strong> - 点击打开模板管理面板，可自定义 AI 提示词</li>
+                    <li>⚙️ <strong>AI 配置</strong> - 点击配置 API Key、模型等参数</li>
+                </ul>
 
-                    <div class="ui-element">
-                        <span class="label">③ 功能按钮</span>
-                        模板管理 | AI 配置
-                    </div>
+                <h3>中间内容区</h3>
+                <ul>
+                    <li>📥 <strong>输入框</strong> - 输入 UniProt ID（单个模式）或多个 ID（批量模式）</li>
+                    <li>▶️ <strong>开始按钮</strong> - 点击开始评估</li>
+                    <li>📊 <strong>进度条</strong> - 实时显示评估进度（0-100%）</li>
+                    <li>📝 <strong>详细日志</strong> - 可展开查看每个步骤的详细日志</li>
+                    <li>📄 <strong>结果区域</strong> - 评估完成后展示：基本信息、PDB数据、AI分析报告、参考文献</li>
+                </ul>
 
-                    <div class="ui-element">
-                        <span class="label">④ 输入区域</span>
-                        UniProt ID 输入框 + 开始按钮
-                    </div>
+                <h3>右侧历史面板</h3>
+                <ul>
+                    <li>🔍 <strong>搜索框</strong> - 通过 UniProt ID 或基因名搜索历史记录</li>
+                    <li>📋 <strong>历史列表</strong> - 显示所有评估记录，包含状态标识</li>
+                    <li>☑️ <strong>多选框</strong> - 勾选多条记录进行批量删除</li>
+                </ul>
 
-                    <div class="ui-element">
-                        <span class="label">⑤ 进度显示</span>
-                        评估进度条 + 当前步骤
-                    </div>
-
-                    <div class="ui-element">
-                        <span class="label">⑥ 结果展示</span>
-                        基本信息 + PDB数据 + AI分析报告 + 文献
-                    </div>
-
-                    <div class="ui-element">
-                        <span class="label">⑦ 历史记录</span>
-                        评估历史列表 + 搜索 + 批量删除
-                    </div>
+                <div class="tip info">
+                    <div class="tip-title">💡 状态颜色说明</div>
+                    <p>黄色=等待中，蓝色=处理中，绿色=已完成，红色=失败</p>
                 </div>
             </div>
 
