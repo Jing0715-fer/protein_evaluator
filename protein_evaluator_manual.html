@@ -585,22 +585,16 @@ export PORT=5002  # 可选</code></pre>
 
                 <h3>操作步骤</h3>
                 <ol>
-                    <li>确保在「单个评估」Tab 下（默认）</li>
-                    <li>在输入框中输入 UniProt ID</li>
-                    <li>点击「开始」按钮</li>
-                    <li>观察进度条，等待评估完成</li>
-                    <li>查看评估结果</li>
+                    <li>确保在「单个评估」Tab 下（默认选中状态）</li>
+                    <li>在输入框中输入 UniProt ID（如 P04637）</li>
+                    <li>点击右侧的绿色「开始」按钮</li>
+                    <li>观察进度条和日志，等待评估完成</li>
+                    <li>查看评估结果，可导出 PDF 或 Markdown</li>
                 </ol>
 
-                <div class="ui-preview">
-                    <div class="ui-element">
-                        <span class="label">输入框占位符</span>
-                        输入 UniProt ID
-                    </div>
-                    <div class="ui-element">
-                        <span class="label">当前模型显示</span>
-                        当前模型: deepseek / deepseek-chat
-                    </div>
+                <div class="tip info">
+                    <div class="tip-title">💡 输入格式说明</div>
+                    <p>支持以下格式：P04637、TP53_HUMAN、tr|P04637|P53_HUMAN</p>
                 </div>
 
                 <h3>评估流程</h3>
