@@ -5,7 +5,7 @@ Protein Evaluation System - Standalone Flask Application
 import os
 import sys
 import logging
-from flask import Flask, render_template
+from flask import Flask, render_template, send_from_directory
 
 # Configure logging
 logging.basicConfig(
@@ -48,6 +48,11 @@ def create_app():
     def health():
         """健康检查"""
         return {'status': 'ok', 'service': 'protein-evaluator'}
+
+    @app.route('/protein_evaluator_manual.html')
+    def manual_page():
+        """操作手册页面"""
+        return send_from_directory(os.path.dirname(__file__), 'protein_evaluator_manual.html')
 
     # 初始化默认模板
     _init_default_templates()
