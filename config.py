@@ -17,7 +17,7 @@ DATABASE_PATH = os.path.join(BASE_DIR, 'data', 'protein_eval.db')
 # Application Configuration
 HOST = os.environ.get('HOST', '0.0.0.0')
 PORT = int(os.environ.get('PORT', '5002'))
-DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # AI Prompt Template (可以在这里自定义 prompt 格式要求)
 AI_PROMPT_TEMPLATE = os.environ.get('AI_PROMPT_TEMPLATE', '''# 蛋白质结构功能分析报告生成器
