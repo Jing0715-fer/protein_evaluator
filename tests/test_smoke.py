@@ -31,9 +31,16 @@ class TestAppCreation:
 
     def test_app_debug_config(self):
         """Test app debug configuration"""
-        from app import create_app
-        with patch.dict(os.environ, {'DEBUG': 'true'}):
-            app = create_app()
+        import importlib
+        import config as config_module
+        import app as app_module
+
+        with patch.dict(os.environ, {'DEBUG': 'true'}, clear=False):
+            # Reload config to pick up new environment
+            importlib.reload(config_module)
+            # Reload app to pick up new config
+            importlib.reload(app_module)
+            app = app_module.create_app()
             assert app.config['DEBUG'] is True
 
 
@@ -131,10 +138,10 @@ class TestUtilsModules:
 
     def test_exceptions_import(self):
         """Test exceptions module can be imported"""
-        from utils.exceptions import ProteinEvaluatorError
-        assert ProteinEvaluatorError is not None
+        from utils.exceptions import ProteinEvaluationError
+        assert ProteinEvaluationError is not None
 
     def test_api_utils_import(self):
         """Test API utils can be imported"""
-        from utils.api_utils import APIRateLimiter
-        assert APIRateLimiter is not None
+        from utils.api_utils import retry_with_backoff
+        assert retry_with_backoff is not None
