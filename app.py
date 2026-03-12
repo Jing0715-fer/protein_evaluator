@@ -26,7 +26,16 @@ def create_app():
     app = Flask(__name__)
 
     # Load config
-    app.config['SECRET_KEY'] = 'protein-evaluator-secret-key'
+    # Use SECRET_KEY from environment variable, fallback to a development key
+    # In production, SECRET_KEY must be set (enforced in config.py)
+    secret_key = config.SECRET_KEY or os.environ.get('SECRET_KEY')
+    if not secret_key:
+        # Development fallback - generate a random key
+        import secrets
+        secret_key = secrets.token_hex(32)
+        logger.warning("SECRET_KEY not set, using auto-generated key for development")
+
+    app.config['SECRET_KEY'] = secret_key
     app.config['DEBUG'] = config.DEBUG
 
     # Register blueprints

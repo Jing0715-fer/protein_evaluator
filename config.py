@@ -10,6 +10,16 @@ AI_TEMPERATURE = float(os.environ.get('AI_TEMPERATURE', '0.3'))
 AI_MAX_TOKENS = int(os.environ.get('AI_MAX_TOKENS', '20000'))
 AI_API_KEY = os.environ.get('AI_API_KEY', '')
 
+# Security Configuration
+SECRET_KEY = os.environ.get('SECRET_KEY', '')
+
+# Production check: SECRET_KEY must be set in production
+if os.environ.get('FLASK_ENV') == 'production' and not SECRET_KEY:
+    raise ValueError(
+        "SECRET_KEY environment variable must be set in production environment. "
+        "Please set a secure random string as SECRET_KEY."
+    )
+
 # Database Configuration
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE_PATH = os.path.join(BASE_DIR, 'data', 'protein_eval.db')
