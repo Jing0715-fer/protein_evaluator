@@ -45,7 +45,7 @@ class PDBFetcher:
             emdb_ids = self._fetch_related_emdb_ids(pdb_id)
             result['related_emdb_ids'] = emdb_ids
             
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError) as e:
             logger.error(f"获取PDB完整信息失败 {pdb_id}: {e}")
         
         return result
@@ -74,7 +74,7 @@ class PDBFetcher:
                                 emdb_ids.append(emdb_clean)
             
             return list(set(emdb_ids))
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError) as e:
             logger.warning(f"获取EMDB关联失败 {pdb_id}: {e}")
             return []
     
@@ -86,13 +86,13 @@ class PDBFetcher:
             if response.status_code == 200:
                 try:
                     return response.json()
-                except Exception as json_error:
+                except (json.JSONDecodeError, ValueError) as json_error:
                     logger.warning(f"解析JSON失败 {pdb_id}: {json_error}")
                     return None
             else:
                 logger.warning(f"获取基本信息失败 {pdb_id}: HTTP {response.status_code}")
                 return None
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError) as e:
             logger.warning(f"获取基本信息失败 {pdb_id}: {e}")
         return None
     
@@ -116,7 +116,7 @@ class PDBFetcher:
                     else:
                         logger.warning(f"未找到实体信息: {pdb_id}")
                         break
-            except Exception as e:
+            except (requests.RequestException, requests.Timeout, requests.ConnectionError) as e:
                 logger.warning(f"获取实体失败 {pdb_id}/{entity_id}: {e}")
                 break
         
@@ -158,7 +158,7 @@ class PDBFetcher:
                         if uniprot_detail:
                             result['details'][uniprot_id] = uniprot_detail
             
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError) as e:
             logger.error(f"获取UniProt映射失败 {pdb_id}: {e}")
         
         return result
@@ -172,7 +172,7 @@ class PDBFetcher:
             if response.status_code == 200:
                 uniprot_data = response.json()
                 return self._normalize_uniprot_data(uniprot_data)
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError) as e:
             logger.warning(f"获取UniProt详情失败 {uniprot_id}: {e}")
         return None
     

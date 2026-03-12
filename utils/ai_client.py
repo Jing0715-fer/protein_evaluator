@@ -54,7 +54,7 @@ def load_ai_config() -> Dict[str, Any]:
         try:
             with open(CONFIG_FILE, 'r') as f:
                 return json.load(f)
-        except Exception as e:
+        except (OSError, json.JSONDecodeError, ValueError) as e:
             logger.warning(f"Failed to load config: {e}")
     return {}
 
@@ -155,7 +155,8 @@ class OpenAIClient:
                 'content': response.choices[0].message.content,
                 'model': self.model
             }
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError,
+                ValueError, KeyError, TypeError) as e:
             logger.error(f"OpenAI API error: {e}")
             return {'success': False, 'error': str(e)}
 
@@ -174,7 +175,8 @@ class OpenAIClient:
                 'content': response.choices[0].message.content,
                 'model': self.model
             }
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError,
+                ValueError, KeyError, TypeError) as e:
             logger.error(f"OpenAI API error: {e}")
             return {'success': False, 'error': str(e)}
 
@@ -263,7 +265,8 @@ class AnthropicClient:
                 'content': response_text,
                 'model': self.model
             }
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError,
+                ValueError, KeyError, TypeError, AttributeError) as e:
             logger.error(f"Anthropic API error: {e}")
             return {'success': False, 'error': str(e)}
 
@@ -308,7 +311,8 @@ class AnthropicClient:
                 'content': response_text,
                 'model': self.model
             }
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError,
+                ValueError, KeyError, TypeError, AttributeError) as e:
             logger.error(f"Anthropic API error: {e}")
             return {'success': False, 'error': str(e)}
 
@@ -369,7 +373,8 @@ class GeminiClient:
             else:
                 logger.error(f"Gemini API error: {response.status_code} - {response.text}")
                 return {'success': False, 'error': f"API error: {response.status_code}"}
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError,
+                ValueError, KeyError, TypeError) as e:
             logger.error(f"Gemini API error: {e}")
             return {'success': False, 'error': str(e)}
 

@@ -85,7 +85,7 @@ class UniProtAPIClient:
                 cached_time = data.get('cached_at', 0)
                 if time.time() - cached_time < 86400:
                     return data.get('data')
-            except Exception as e:
+            except (OSError, json.JSONDecodeError) as e:
                 logger.warning(f"读取缓存失败 {query}: {e}")
         
         return None
@@ -104,7 +104,7 @@ class UniProtAPIClient:
             with open(cache_path, 'w', encoding='utf-8') as f:
                 json.dump(cache_data, f, indent=2, ensure_ascii=False)
             return True
-        except Exception as e:
+        except (OSError, ValueError, TypeError) as e:
             logger.error(f"保存缓存失败 {query}: {e}")
             return False
     
@@ -138,7 +138,7 @@ class UniProtAPIClient:
                 # 方法2：尝试使用旧版API
                 return self._get_by_uniprot_id_fallback(uniprot_id)
                 
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError) as e:
             logger.error(f"获取UniProt条目异常: {e}")
             return None
     
@@ -248,7 +248,7 @@ class UniProtAPIClient:
             logger.info(f"UniProt条目获取成功: {uniprot_id}")
             return entry
             
-        except Exception as e:
+        except (KeyError, ValueError, TypeError) as e:
             logger.error(f"解析UniProt响应失败: {e}")
             return None
     
@@ -269,7 +269,7 @@ class UniProtAPIClient:
             
             return None
             
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError) as e:
             logger.error(f"备用UniProt获取失败: {e}")
             return None
     
@@ -324,7 +324,7 @@ class UniProtAPIClient:
             
             return entry
             
-        except Exception as e:
+        except (KeyError, ValueError, TypeError, AttributeError) as e:
             logger.error(f"解析旧版UniProt格式失败: {e}")
             return None
     
@@ -380,7 +380,7 @@ class UniProtAPIClient:
             logger.info(f"通过PDB {pdb_id} 找到 {len(entries)} 个UniProt条目")
             return entries
             
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError) as e:
             logger.error(f"通过PDB ID查找异常: {e}")
             return []
     
@@ -407,7 +407,7 @@ class UniProtAPIClient:
             
             return entries
             
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError) as e:
             logger.error(f"通过PDBe API获取UniProt映射失败: {e}")
             return []
 
@@ -428,7 +428,7 @@ class UniProtAPIClient:
             else:
                 logger.debug(f"PDBe API请求失败 {endpoint}: {response.status_code}")
                 return None
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError) as e:
             logger.debug(f"PDBe API请求异常 {endpoint}: {e}")
             return None
 
@@ -470,7 +470,7 @@ class UniProtAPIClient:
                 logger.debug(f"查询实体 {entity_id} 失败: {entity_response.status_code}")
                 return []
                 
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError) as e:
             logger.debug(f"查询实体 {entity_id} 异常: {e}")
             return []
     
@@ -494,7 +494,7 @@ class UniProtAPIClient:
                         if pdb_id.upper() not in entry.pdb_ids:
                             entry.pdb_ids.append(pdb_id.upper())
                         entries.append(entry)
-                except Exception as e:
+                except (requests.RequestException, ValueError, TypeError) as e:
                     logger.debug(f"获取UniProt条目 {uniprot_id} 失败: {e}")
         
         return entries
@@ -544,7 +544,7 @@ class UniProtAPIClient:
                             if entry and pdb_id.upper() not in entry.pdb_ids:
                                 entry.pdb_ids.append(pdb_id.upper())
                                 entries.append(entry)
-                        except Exception as e:
+                        except (requests.RequestException, ValueError, TypeError) as e:
                             logger.debug(f"获取UniProt条目 {uniprot_id} 失败: {e}")
         
         # 方法C：从标题中提取蛋白质名称
@@ -631,7 +631,7 @@ class UniProtAPIClient:
                 logger.error(f"响应: {response.text[:200]}")
                 return []
                 
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError) as e:
             logger.error(f"UniProt搜索异常: {e}")
             return []
     
@@ -685,7 +685,7 @@ class UniProtAPIClient:
             if response.status_code == 200:
                 return response.json()
             return None
-        except Exception as e:
+        except (requests.RequestException, requests.Timeout, requests.ConnectionError) as e:
             logger.debug(f"获取PDB信息失败 {pdb_id}: {e}")
             return None
 
