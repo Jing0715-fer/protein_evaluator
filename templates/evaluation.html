@@ -773,6 +773,15 @@
                         </div>
                         <div class="progress-text" id="batch-progress-text">等待开始...</div>
                     </div>
+                    <div class="log-card">
+                        <h3>
+                            <span>详细日志</span>
+                            <span class="log-toggle" id="batch-log-toggle" onclick="toggleBatchLogExpand()">展开</span>
+                        </h3>
+                        <div class="log-container" id="batch-log-container">
+                            <div class="log-content" id="batch-log-content"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Batch Results Section -->
@@ -1627,8 +1636,20 @@ function loadHistory() {
                 selectedIds = [];  // 清除选中状态
                 document.getElementById('select-all').checked = false;
                 renderHistory(allEvaluations);
-                // Auto-load the most recent completed evaluation if no result is currently displayed
-                if (allEvaluations.length > 0 && !window.currentEvaluationData) {
+
+                // 查找是否有处理中的评估
+                var processingEval = allEvaluations.find(function(e) {
+                    return e.evaluation_status === 'processing';
+                });
+
+                // 如果有处理中的评估，恢复其进度显示
+                if (processingEval && !statusPollingInterval) {
+                    currentEvaluationId = processingEval.id;
+                    displayProgressSection();
+                    statusPollingInterval = setInterval(checkStatus, 3000);
+                    checkStatus();  // 立即检查一次状态
+                } else if (allEvaluations.length > 0 && !window.currentEvaluationData) {
+                    // 如果没有处理中的评估，加载最近完成的评估
                     var latestCompleted = allEvaluations.find(function(e) {
                         return e.evaluation_status === 'completed' || e.evaluation_status === 'failed';
                     });
@@ -1856,18 +1877,35 @@ function checkBatchStatus() {
                 const batch = data.batch;
                 updateBatchProgress(batch.progress, '进度: ' + batch.progress + '%', batch.status);
 
+
+                // 更新日志显示
+                if (batch.logs) {
+                    updateBatchLogs(batch.logs);
+                }
                 if (batch.status === 'completed') {
                     clearInterval(batchStatusInterval);
                     showBatchResults(data);
+                    loadBatchHistory();  // 刷新批量评估历史列表
                 } else if (batch.status === 'failed') {
                     clearInterval(batchStatusInterval);
-                    alert('批量评估失败');
+                    showError('批量评估失败');
+                    loadBatchHistory();  // 刷新批量评估历史列表
                 }
             }
         })
         .catch(error => {
             console.error('Error checking batch status:', error);
         });
+}
+
+function displayBatchProgressSection() {
+    document.getElementById('batch-progress-section').style.display = 'block';
+    document.getElementById('batch-result-section').style.display = 'none';
+    // 显示日志区域
+    var logContainer = document.getElementById('batch-log-container');
+    if (logContainer) {
+        logContainer.style.display = 'block';
+    }
 }
 
 function showBatchResults(data) {
@@ -2012,6 +2050,19 @@ function loadBatchHistory() {
         .then(data => {
             if (data.success) {
                 renderBatchHistory(data.batches || []);
+
+                // 查找是否有处理中的批量评估
+                var processingBatch = (data.batches || []).find(function(b) {
+                    return b.status === 'processing' || b.status === 'pending';
+                });
+
+                // 如果有处理中的批量评估，恢复其进度显示
+                if (processingBatch && !batchStatusInterval) {
+                    currentBatchId = processingBatch.id;
+                    displayBatchProgressSection();
+                    batchStatusInterval = setInterval(checkBatchStatus, 3000);
+                    checkBatchStatus();  // 立即检查一次状态
+                }
             }
         })
         .catch(error => {
@@ -2068,9 +2119,26 @@ function viewBatchDetail(batchId) {
             if (data.success) {
                 // Switch to batch tab if not already
                 switchTab('batch');
-                // Show results
                 currentBatchId = batchId;
-                showBatchResults(data);
+                var batch = data.batch;
+
+                // 根据批量评估状态决定显示进度还是结果
+                if (batch.status === 'processing' || batch.status === 'pending') {
+                    // 处理中或等待中：显示进度区域并开始轮询
+                    displayBatchProgressSection();
+                    updateBatchProgress(batch.progress, '进度：' + batch.progress + '%', batch.status);
+                    if (batch.logs) {
+                        updateBatchLogs(batch.logs);
+                    }
+                    // 如果未在轮询，启动轮询
+                    if (!batchStatusInterval) {
+                        batchStatusInterval = setInterval(checkBatchStatus, 3000);
+                        checkBatchStatus();  // 立即检查一次状态
+                    }
+                } else {
+                    // 已完成或失败：显示结果
+                    showBatchResults(data);
+                }
             }
         })
         .catch(error => {
@@ -2096,9 +2164,11 @@ function checkStatus() {
                 if (eval.evaluation_status === 'completed') {
                     clearInterval(statusPollingInterval);
                     displayResults(eval);
+                    loadHistory();  // 刷新评估历史列表
                 } else if (eval.evaluation_status === 'failed') {
                     clearInterval(statusPollingInterval);
                     showError(eval.error_message || '评估失败');
+                    loadHistory();  // 刷新评估历史列表
                 }
             }
         })
@@ -2136,6 +2206,29 @@ function updateLogs(logs) {
     logContainer.scrollTop = logContainer.scrollHeight;
 }
 
+function updateBatchLogs(logs) {
+    var logContent = document.getElementById('batch-log-content');
+    if (!logs || logs.length === 0) {
+        logContent.innerHTML = '<div class="log-entry"><span class="log-message">等待日志...</span></div>';
+        return;
+    }
+
+    var html = '';
+    for (var i = 0; i < logs.length; i++) {
+        var log = logs[i];
+        var level = log.level || 'info';
+        html += '<div class="log-entry level-' + level + '">';
+        html += '<span class="log-timestamp">[' + log.timestamp + ']</span>';
+        html += '<span class="log-message">' + escapeHtml(log.message) + '</span>';
+        html += '</div>';
+    }
+    logContent.innerHTML = html;
+
+    // 自动滚动到最新日志
+    var logContainer = document.getElementById('batch-log-container');
+    logContainer.scrollTop = logContainer.scrollHeight;
+}
+
 function escapeHtml(text) {
     var div = document.createElement('div');
     div.textContent = text;
@@ -2156,6 +2249,20 @@ function toggleLogExpand() {
     }
 }
 
+var batchLogExpanded = false;
+function toggleBatchLogExpand() {
+    var container = document.getElementById('batch-log-container');
+    var toggle = document.getElementById('batch-log-toggle');
+    batchLogExpanded = !batchLogExpanded;
+    if (batchLogExpanded) {
+        container.classList.add('expanded');
+        toggle.textContent = '收起';
+    } else {
+        container.classList.remove('expanded');
+        toggle.textContent = '展开';
+    }
+}
+
 function getStepMessage(step) {
     var messages = {
         'pending': '等待开始',
@@ -2168,6 +2275,17 @@ function getStepMessage(step) {
         'failed': '评估失败'
     };
     return messages[step] || step;
+}
+
+function displayProgressSection() {
+    document.getElementById('progress-section').style.display = 'block';
+    document.getElementById('results-section').style.display = 'none';
+    document.getElementById('error-section').style.display = 'none';
+    // 显示日志区域
+    var logContainer = document.getElementById('log-container');
+    if (logContainer) {
+        logContainer.style.display = 'block';
+    }
 }
 
 function displayResults(eval) {
@@ -2715,7 +2833,24 @@ function viewEvaluation(id) {
         .then(response => response.json())
         .then(data => {
             if (data.success && data.evaluation) {
-                displayResults(data.evaluation);
+                var eval = data.evaluation;
+                // 根据评估状态决定显示进度还是结果
+                if (eval.evaluation_status === 'processing' || eval.evaluation_status === 'pending') {
+                    // 处理中或等待中：显示进度区域并开始轮询
+                    displayProgressSection();
+                    updateProgress(eval.progress, getStepMessage(eval.current_step), eval.current_step);
+                    if (eval.logs) {
+                        updateLogs(eval.logs);
+                    }
+                    // 如果未在轮询，启动轮询
+                    if (!statusPollingInterval) {
+                        statusPollingInterval = setInterval(checkStatus, 3000);
+                        checkStatus();  // 立即检查一次状态
+                    }
+                } else {
+                    // 已完成或失败：显示结果
+                    displayResults(eval);
+                }
             }
         });
 }
