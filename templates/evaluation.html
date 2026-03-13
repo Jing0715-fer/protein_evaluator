@@ -5,17 +5,25 @@
 {% block extra_css %}
 <style>
     /* Markdown 表格样式 */
+    .ai-analysis {
+        word-break: break-word;
+        overflow-wrap: break-word;
+    }
     .ai-analysis table {
         width: 100%;
         border-collapse: collapse;
         margin: 16px 0;
         font-size: 13px;
+        table-layout: fixed;
     }
     .ai-analysis table th,
     .ai-analysis table td {
         border: 1px solid #e5e7eb;
         padding: 8px 12px;
         text-align: left;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        word-break: break-all;
     }
     .ai-analysis table th {
         background: #f9fafb;
@@ -28,6 +36,11 @@
     .ai-analysis table tr:hover {
         background: #f3f4f6;
     }
+    .ai-analysis p {
+        word-break: break-word;
+        overflow-wrap: break-word;
+        max-width: 100%;
+    }
 
     .main-content {
         margin-left: 0;
@@ -37,6 +50,7 @@
         padding: 32px;
         max-width: 1400px;
         margin: 0 auto;
+        overflow-x: hidden;
     }
     .header-actions {
         display: flex;
@@ -61,8 +75,9 @@
     }
     .content-grid {
         display: grid;
-        grid-template-columns: 1fr 350px;
+        grid-template-columns: minmax(0, 1fr) 350px;
         gap: 24px;
+        max-width: 100%;
     }
     @media (max-width: 1024px) {
         .content-grid {
