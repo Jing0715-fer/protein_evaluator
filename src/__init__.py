@@ -1,0 +1,3 @@
+"""
+Protein Evaluator - Core modules
+"""

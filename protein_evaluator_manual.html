@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protein Evaluator 使用文档</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #ffffff;
+            color: #333;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 封面 */
+        .header {
+            background: linear-gradient(135deg, #6366F1 0%, #818CF8 100%);
+            padding: 50px 40px;
+            color: white;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .header .version {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-top: 15px;
+        }
+
+        /* 目录 */
+        .toc {
+            padding: 30px 40px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .toc h2 {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: #1e293b;
+        }
+
+        .toc ul {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .toc li a {
+            display: block;
+            padding: 10px 15px;
+            background: white;
+            border-radius: 8px;
+            color: #475569;
+            text-decoration: none;
+            transition: all 0.2s;
+            border: 1px solid #e2e8f0;
+        }
+
+        .toc li a:hover {
+            background: #6366F1;
+            color: white;
+            border-color: #6366F1;
+            transform: translateX(5px);
+        }
+
+        /* 内容区 */
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section h2 {
+            font-size: 1.5rem;
+            color: #1e293b;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #6366F1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section h3 {
+            font-size: 1.15rem;
+            color: #334155;
+            margin: 25px 0 15px 0;
+        }
+
+        .section p {
+            line-height: 1.8;
+            color: #475569;
+            margin-bottom: 15px;
+        }
+
+        .section ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        .section li {
+            line-height: 1.8;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        /* 界面截图区域 */
+        .ui-preview {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .ui-preview-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .ui-preview-header .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot.red { background: #ef4444; }
+        .dot.yellow { background: #f59e0b; }
+        .dot.green { background: #22c55e; }
+
+        .ui-preview-title {
+            color: #94a3b8;
+            font-size: 0.85rem;
+            margin-left: auto;
+        }
+
+        .ui-element {
+            background: #334155;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+        }
+
+        .ui-element .label {
+            color: #6366F1;
+            font-weight: 600;
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .ui-element.highlight {
+            border: 2px solid #6366F1;
+            background: #312e81;
+        }
+
+        /* 按钮样式 */
+        .btn-demo {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #6366F1;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-demo:hover {
+            background: #4338ca;
+            transform: translateY(-2px);
+        }
+
+        .btn-demo.secondary {
+            background: #64748b;
+        }
+
+        .btn-demo.danger {
+            background: #ef4444;
+        }
+
+        /* 步骤 */
+        .steps {
+            counter-reset: step;
+        }
+
+        .step {
+            position: relative;
+            padding-left: 50px;
+            margin-bottom: 25px;
+        }
+
+        .step::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 35px;
+            height: 35px;
+            background: #6366F1;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .step h4 {
+            font-size: 1.05rem;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .step p {
+            margin: 0;
+        }
+
+        /* 提示框 */
+        .tip {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 15px 0;
+        }
+
+        .tip-title {
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .tip p {
+            color: #92400e;
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .warning {
+            background: #fee2e2;
+            border-left-color: #ef4444;
+        }
+
+        .warning .tip-title {
+            color: #991b1b;
+        }
+
+        .warning p {
+            color: #991b1b;
+        }
+
+        .info {
+            background: #dbeafe;
+            border-left-color: #3b82f6;
+        }
+
+        .info .tip-title {
+            color: #1e40af;
+        }
+
+        .info p {
+            color: #1e40af;
+        }
+
+        /* 代码块 */
+        code {
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.9em;
+            color: #e11d48;
+        }
+
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        /* 表格 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+        }
+
+        /* 底部 */
+        .footer {
+            background: #f8fafc;
+            padding: 30px 40px;
+            text-align: center;
+            color: #64748b;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .footer a {
+            color: #6366F1;
+            text-decoration: none;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .toc ul {
+                grid-template-columns: 1fr;
+            }
+            .content {
+                padding: 20px;
+            }
+            .header h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 封面 -->
+        <div class="header">
+            <h1>🧬 Protein Evaluator</h1>
+            <p>蛋白质结构与功能综合评估系统 - 使用文档</p>
+            <span class="version">Version 1.0</span>
+        </div>
+
+        <!-- 目录 -->
+        <div class="toc">
+            <h2>📑 目录</h2>
+            <ul>
+                <li><a href="#intro">1. 系统简介</a></li>
+                <li><a href="#start">2. 快速开始</a></li>
+                <li><a href="#install">3. 安装与运行</a></li>
+                <li><a href="#interface">4. 界面功能介绍</a></li>
+                <li><a href="#single">5. 单个蛋白评估</a></li>
+                <li><a href="#batch">6. 批量评估</a></li>
+                <li><a href="#config">7. AI 配置</a></li>
+                <li><a href="#template">8. 模板管理</a></li>
+                <li><a href="#history">9. 历史记录</a></li>
+                <li><a href="#export">10. 导出功能</a></li>
+                <li><a href="#faq">11. 常见问题</a></li>
+            </ul>
+        </div>
+
+        <!-- 内容 -->
+        <div class="content">
+            <!-- 系统简介 -->
+            <div class="section" id="intro">
+                <h2>1. 系统简介</h2>
+                <p>Protein Evaluator 是一个专业的蛋白质结构与功能综合评估系统，基于 <strong>UniProt</strong>、<strong>PDB</strong>、<strong>RCSB</strong> 等公共数据库，结合 <strong>AI 大模型</strong>生成专业的蛋白质评估报告。</p>
+                
+                <h3>核心功能</h3>
+                <ul>
+                    <li>🔬 <strong>UniProt 元数据获取</strong> - 获取蛋白名称、基因、物种、序列、功能描述等</li>
+                    <li>🗼 <strong>PDB 结构分析</strong> - 获取实验方法、分辨率、文献引用等详细信息</li>
+                    <li>🔍 <strong>BLAST 同源搜索</strong> - 搜索相似蛋白，分析同源性</li>
+                    <li>🧠 <strong>AI 智能分析</strong> - 调用 AI 大模型生成综合分析报告</li>
+                    <li>📄 <strong>多格式导出</strong> - 支持 PDF、Markdown 格式导出</li>
+                    <li>⚡ <strong>批量评估</strong> - 支持多个蛋白批量评估和蛋白互作网络分析</li>
+                </ul>
+
+                <div class="tip info">
+                    <div class="tip-title">💡 支持的 AI 模型</div>
+                    <p>支持 OpenAI (GPT-4o)、Anthropic Claude、Gemini 等主流 AI 模型，可通过配置切换</p>
+                </div>
+            </div>
+
+            <!-- 快速开始 -->
+            <div class="section" id="start">
+                <h2>2. 快速开始</h2>
+                <p>只需 3 步即可完成一次蛋白质评估：</p>
+
+                <div class="steps">
+                    <div class="step">
+                        <h4>第 1 步：配置 AI</h4>
+                        <p>点击右上角「AI 配置」按钮，设置您的 API Key 和模型。配置保存在浏览器本地。</p>
+                    </div>
+                    <div class="step">
+                        <h4>第 2 步：输入 UniProt ID</h4>
+                        <p>在输入框中输入要评估的 UniProt ID（如 P04637、TP53_HUMAN），点击「开始」</p>
+                    </div>
+                    <div class="step">
+                        <h4>第 3 步：查看结果</h4>
+                        <p>等待评估完成后，查看 AI 生成的综合分析报告，可选择导出 PDF 或 Markdown</p>
+                    </div>
+                </div>
+
+                <div class="tip">
+                    <div class="tip-title">📝 有效的 UniProt ID 示例</div>
+                    <p>P04637 (TP53), P00533 (EGFR), P00720 (Lysozyme), P68871 (Hemoglobin subunit beta)</p>
+                </div>
+            </div>
+
+            <!-- 安装部署 -->
+            <div class="section" id="install">
+                <h2>3. 安装与运行</h2>
+                <p>本系统基于 Python Flask 开发，需要 Python 3.8+ 环境。</p>
+
+                <h3>前置要求</h3>
+                <ul>
+                    <li>🐍 <strong>Python 3.8</strong> 或更高版本</li>
+                    <li>🔑 <strong>AI API Key</strong> - OpenAI/DeepSeek/Anthropic Claude/Gemini 等</li>
+                </ul>
+
+                <h3>安装步骤</h3>
+                <div class="steps">
+                    <div class="step">
+                        <h4>第 1 步：克隆项目</h4>
+                        <pre><code>git clone https://github.com/Jing0715-fer/protein_evaluator.git
+cd protein_evaluator</code></pre>
+                    </div>
+                    <div class="step">
+                        <h4>第 2 步：创建虚拟环境</h4>
+                        <pre><code>python -m venv venv
+# Linux/macOS:
+source venv/bin/activate
+# Windows:
+venv\Scripts\activate</code></pre>
+                    </div>
+                    <div class="step">
+                        <h4>第 3 步：安装依赖</h4>
+                        <pre><code>pip install -r requirements.txt</code></pre>
+                    </div>
+                    <div class="step">
+                        <h4>第 4 步：配置 API Key</h4>
+                        <p>有两种配置方式：</p>
+                        <p><strong>方式一：环境变量</strong></p>
+                        <pre><code>export AI_API_KEY="your-api-key"
+export AI_MODEL="gpt-4o"  # 可选
+export PORT=5002  # 可选</code></pre>
+                        <p><strong>方式二：网页配置</strong></p>
+                        <p>启动应用后，在网页界面右上角点击「AI 配置」进行设置（API Key 保存在浏览器本地）</p>
+                    </div>
+                    <div class="step">
+                        <h4>第 5 步：启动应用</h4>
+                        <pre><code>python app.py</code></pre>
+                        <p>启动后访问：<code>http://localhost:5002/evaluation</code></p>
+                    </div>
+                </div>
+
+                <h3>配置说明</h3>
+                <table>
+                    <tr>
+                        <th>环境变量</th>
+                        <th>说明</th>
+                        <th>默认值</th>
+                    </tr>
+                    <tr>
+                        <td>AI_API_KEY</td>
+                        <td>AI API Key（必需）</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td>AI_MODEL</td>
+                        <td>AI 模型</td>
+                        <td>gpt-4o</td>
+                    </tr>
+                    <tr>
+                        <td>AI_TEMPERATURE</td>
+                        <td>温度参数</td>
+                        <td>0.3</td>
+                    </tr>
+                    <tr>
+                        <td>PORT</td>
+                        <td>服务器端口</td>
+                        <td>5002</td>
+                    </tr>
+                    <tr>
+                        <td>DEBUG</td>
+                        <td>调试模式</td>
+                        <td>True</td>
+                    </tr>
+                </table>
+
+                <div class="tip warning">
+                    <div class="tip-title">⚠️ 注意事项</div>
+                    <p>1. 首次运行会在 data/ 目录创建 SQLite 数据库<br>
+                    2. 评估数据会缓存到 pdb_cache/ 和 uniprot_cache/ 目录<br>
+                    3. 如需重新安装，先删除 venv 目录</p>
+                </div>
+            </div>
+
+            <!-- 界面功能 -->
+            <div class="section" id="interface">
+                <h2>4. 界面功能介绍</h2>
+                <p>主界面分为三个区域：顶部操作区、中间内容区、右侧历史面板。</p>
+
+                <h3>顶部操作区</h3>
+                <ul>
+                    <li>📑 <strong>Tab 切换</strong> - 切换「单个评估」和「批量评估」两种模式</li>
+                    <li>📄 <strong>模板管理</strong> - 点击打开模板管理面板，可自定义 AI 提示词</li>
+                    <li>⚙️ <strong>AI 配置</strong> - 点击配置 API Key、模型等参数</li>
+                </ul>
+
+                <h3>中间内容区</h3>
+                <ul>
+                    <li>📥 <strong>输入框</strong> - 输入 UniProt ID（单个模式）或多个 ID（批量模式）</li>
+                    <li>▶️ <strong>开始按钮</strong> - 点击开始评估</li>
+                    <li>📊 <strong>进度条</strong> - 实时显示评估进度（0-100%）</li>
+                    <li>📝 <strong>详细日志</strong> - 可展开查看每个步骤的详细日志</li>
+                    <li>📄 <strong>结果区域</strong> - 评估完成后展示：基本信息、PDB数据、AI分析报告、参考文献</li>
+                </ul>
+
+                <h3>右侧历史面板</h3>
+                <ul>
+                    <li>🔍 <strong>搜索框</strong> - 通过 UniProt ID 或基因名搜索历史记录</li>
+                    <li>📋 <strong>历史列表</strong> - 显示所有评估记录，包含状态标识</li>
+                    <li>☑️ <strong>多选框</strong> - 勾选多条记录进行批量删除</li>
+                </ul>
+
+                <div class="tip info">
+                    <div class="tip-title">💡 状态颜色说明</div>
+                    <p>黄色=等待中，蓝色=处理中，绿色=已完成，红色=失败</p>
+                </div>
+            </div>
+
+            <!-- 单个评估 -->
+            <div class="section" id="single">
+                <h2>5. 单个蛋白评估</h2>
+                <p>对单个蛋白质进行全面的结构与功能评估。</p>
+
+                <h3>操作步骤</h3>
+                <ol>
+                    <li>确保在「单个评估」Tab 下（默认选中状态）</li>
+                    <li>在输入框中输入 UniProt ID（如 P04637）</li>
+                    <li>点击右侧的绿色「开始」按钮</li>
+                    <li>观察进度条和日志，等待评估完成</li>
+                    <li>查看评估结果，可导出 PDF 或 Markdown</li>
+                </ol>
+
+                <div class="tip info">
+                    <div class="tip-title">💡 输入格式说明</div>
+                    <p>支持以下格式：P04637、TP53_HUMAN、tr|P04637|P53_HUMAN</p>
+                </div>
+
+                <h3>评估流程</h3>
+                <table>
+                    <tr>
+                        <th>进度</th>
+                        <th>步骤</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td>0%</td>
+                        <td>等待开始</td>
+                        <td>准备评估环境</td>
+                    </tr>
+                    <tr>
+                        <td>30%</td>
+                        <td>获取 UniProt 数据</td>
+                        <td>蛋白名称、基因、物种、序列、功能</td>
+                    </tr>
+                    <tr>
+                        <td>50%</td>
+                        <td>获取 PDB 数据</td>
+                        <td>结构方法、分辨率、文献</td>
+                    </tr>
+                    <tr>
+                        <td>70%</td>
+                        <td>BLAST 搜索</td>
+                        <td>同源蛋白分析</td>
+                    </tr>
+                    <tr>
+                        <td>90%</td>
+                        <td>AI 分析</td>
+                        <td>调用 AI 生成报告</td>
+                    </tr>
+                    <tr>
+                        <td>100%</td>
+                        <td>完成</td>
+                        <td>结果展示</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- 批量评估 -->
+            <div class="section" id="batch">
+                <h2>6. 批量评估</h2>
+                <p>同时评估多个蛋白质，并分析蛋白之间的相互作用网络。</p>
+
+                <h3>操作步骤</h3>
+                <ol>
+                    <li>点击「批量评估」Tab 切换到批量模式</li>
+                    <li>（可选）输入任务名称</li>
+                    <li>输入多个 UniProt ID，用空格、逗号或换行分隔</li>
+                    <li>点击「开始」</li>
+                    <li>查看批量评估进度和结果</li>
+                </ol>
+
+                <div class="tip">
+                    <div class="tip-title">📝 ID 分隔示例</div>
+                    <p>以下三种方式均可：<br>
+                    P04637 P00533 P00720<br>
+                    P04637, P00533, P00720<br>
+                    P04637<br>
+                    P00533<br>
+                    P00720</p>
+                </div>
+
+                <h3>批量评估结果</h3>
+                <ul>
+                    <li>📊 <strong>综合关系分析报告</strong> - AI 分析多个蛋白之间的相互作用</li>
+                    <li>🔗 <strong>蛋白互作网络</strong> - 从 String Database 获取的相互作用信息</li>
+                    <li>📋 <strong>单独评估结果</strong> - 每个蛋白的详细评估报告</li>
+                </ul>
+            </div>
+
+            <!-- AI 配置 -->
+            <div class="section" id="config">
+                <h2>7. AI 配置</h2>
+                <p>点击右上角的「AI 配置」按钮打开配置面板。</p>
+
+                <h3>配置项说明</h3>
+                <table>
+                    <tr>
+                        <th>配置项</th>
+                        <th>说明</th>
+                        <th>默认值</th>
+                    </tr>
+                    <tr>
+                        <td>API 协议</td>
+                        <td>选择 OpenAI 或 Anthropic</td>
+                        <td>OpenAI</td>
+                    </tr>
+                    <tr>
+                        <td>模型名称</td>
+                        <td>如 gpt-4o, deepseek-chat, claude-3-opus</td>
+                        <td>gpt-4o</td>
+                    </tr>
+                    <tr>
+                        <td>Base URL</td>
+                        <td>API 端点地址</td>
+                        <td>https://api.deepseek.com</td>
+                    </tr>
+                    <tr>
+                        <td>API Key</td>
+                        <td>您的 API 密钥（仅保存在浏览器本地）</td>
+                        <td>-</td>
+                    </tr>
+                    <tr>
+                        <td>最大 PDB 数量</td>
+                        <td>最多获取的 PDB 结构数</td>
+                        <td>100</td>
+                    </tr>
+                    <tr>
+                        <td>最大文献数</td>
+                        <td>最多获取的参考文献数</td>
+                        <td>20</td>
+                    </tr>
+                    <tr>
+                        <td>温度参数</td>
+                        <td>AI 创造性程度 (0-1)</td>
+                        <td>0.3</td>
+                    </tr>
+                    <tr>
+                        <td>最大 Token</td>
+                        <td>AI 响应最大长度</td>
+                        <td>6000</td>
+                    </tr>
+                </table>
+
+                <div class="tip warning">
+                    <div class="tip-title">⚠️ 重要提示</div>
+                    <p>API Key 只保存在您的浏览器本地，不会发送到我们的服务器。请确保 API Key 有足够的配额。</p>
+                </div>
+            </div>
+
+            <!-- 模板管理 -->
+            <div class="section" id="template">
+                <h2>8. 模板管理</h2>
+                <p>点击「模板管理」按钮可以自定义 AI 提示词模板。</p>
+
+                <h3>模板类型</h3>
+                <ul>
+                    <li>📄 <strong>单个蛋白评估模板</strong> - 控制单个蛋白评估的 AI 分析逻辑</li>
+                    <li>🔗 <strong>批量关系分析模板</strong> - 控制批量评估中的蛋白互作分析</li>
+                </ul>
+
+                <h3>模板语法</h3>
+                <p>使用 <code>{outline}</code> 作为数据插入位置的占位符。例如：</p>
+                <pre><code>请分析以下蛋白质数据：
+{outline}
+
+请生成一份详细的分析报告，包含：
+1. 蛋白质功能描述
+2. 结构特征分析
+3. 研究建议</code></pre>
+
+                <h3>操作</h3>
+                <ul>
+                    <li><strong>新建模板</strong> - 创建新的提示词模板</li>
+                    <li><strong>编辑</strong> - 修改现有模板内容</li>
+                    <li><strong>设为默认</strong> - 将模板设为默认使用</li>
+                    <li><strong>删除</strong> - 删除不需要的模板</li>
+                </ul>
+            </div>
+
+            <!-- 历史记录 -->
+            <div class="section" id="history">
+                <h2>9. 历史记录</h2>
+                <p>右侧面板显示所有评估历史记录。</p>
+
+                <h3>功能</h3>
+                <ul>
+                    <li>🔍 <strong>搜索</strong> - 通过 UniProt ID 或基因名搜索</li>
+                    <li>👁️ <strong>查看</strong> - 点击记录查看详细结果</li>
+                    <li>☑️ <strong>多选</strong> - 勾选多条记录</li>
+                    <li>🗑️ <strong>批量删除</strong> - 一次性删除多条记录</li>
+                </ul>
+
+                <h3>状态标识</h3>
+                <table>
+                    <tr>
+                        <th>状态</th>
+                        <th>颜色</th>
+                        <th>说明</th>
+                    </tr>
+                    <tr>
+                        <td>等待中</td>
+                        <td><span style="background:#fef3c7;padding:2px 8px;border-radius:10px;">黄色</span></td>
+                        <td>任务等待处理</td>
+                    </tr>
+                    <tr>
+                        <td>处理中</td>
+                        <td><span style="background:#dbeafe;padding:2px 8px;border-radius:10px;">蓝色</span></td>
+                        <td>正在评估中</td>
+                    </tr>
+                    <tr>
+                        <td>已完成</td>
+                        <td><span style="background:#d1fae5;padding:2px 8px;border-radius:10px;">绿色</span></td>
+                        <td>评估成功</td>
+                    </tr>
+                    <tr>
+                        <td>失败</td>
+                        <td><span style="background:#fee2e2;padding:2px 8px;border-radius:10px;">红色</span></td>
+                        <td>评估出错</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- 导出功能 -->
+            <div class="section" id="export">
+                <h2>10. 导出功能</h2>
+                <p>评估完成后，可以导出结果报告。</p>
+
+                <h3>导出格式</h3>
+                <ul>
+                    <li>📄 <strong>导出 PDF</strong> - 生成 PDF 格式报告，适合打印和分享</li>
+                    <li>📝 <strong>导出 MD</strong> - 生成 Markdown 格式，方便二次编辑</li>
+                    <li>📋 <strong>查看 Prompt</strong> - 查看评估使用的 AI 提示词</li>
+                </ul>
+
+                <h3>导出按钮位置</h3>
+                <p>在评估结果页面顶部，有以下按钮：</p>
+                <div style="display:flex;gap:10px;margin:15px 0;">
+                    <span class="btn-demo secondary">查看Prompt</span>
+                    <span class="btn-demo">导出PDF</span>
+                    <span class="btn-demo">导出MD</span>
+                    <span class="btn-demo danger">删除</span>
+                </div>
+            </div>
+
+            <!-- 常见问题 -->
+            <div class="section" id="faq">
+                <h2>11. 常见问题</h2>
+
+                <h3>Q1: 如何获取 API Key？</h3>
+                <p>请访问对应 AI 服务的官网注册账号并获取 API Key：</p>
+                <ul>
+                    <li>OpenAI: https://platform.openai.com/</li>
+                    <li>DeepSeek: https://platform.deepseek.com/</li>
+                    <li>Anthropic: https://www.anthropic.com/</li>
+                </ul>
+
+                <h3>Q2: 评估进度卡住不动怎么办？</h3>
+                <p>检查网络连接，确保可以访问 UniProt、PDB 等外部 API。如果问题持续，可以查看详细日志了解具体错误信息。</p>
+
+                <h3>Q3: 为什么 PDB 数量显示为 0？</h3>
+                <p>该蛋白质可能没有对应的 PDB 结构，或者 PDB ID 列表未公开。</p>
+
+                <h3>Q4: 批量评估支持多少个蛋白？</h3>
+                <p>建议一次批量评估不超过 20 个蛋白，过多可能会导致处理时间过长或 API 超限。</p>
+
+                <h3>Q5: 报告生成失败怎么办？</h3>
+                <p>常见原因：</p>
+                <ul>
+                    <li>API Key 配额不足</li>
+                    <li>网络连接问题</li>
+                    <li>蛋白质数据异常</li>
+                </ul>
+                <p>请检查 AI 配置设置，或尝试重新评估。</p>
+
+                <h3>Q6: 模板中的 {outline} 是什么？</h3>
+                <p>{outline} 是系统占位符，会被自动替换为收集到的蛋白质数据（UniProt、PDB、BLAST 等）。</p>
+            </div>
+        </div>
+
+        <!-- 底部 -->
+        <div class="footer">
+            <p>🧬 Protein Evaluator - 蛋白质结构与功能综合评估系统</p>
+            <p>基于 UniProt、PDB、RCSB 与 AI 大模型</p>
+        </div>
+    </div>
+</body>
+</html>

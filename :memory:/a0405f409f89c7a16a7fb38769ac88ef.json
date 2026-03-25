@@ -1,0 +1,23 @@
+{
+  "data": {
+    "uniprot_id": "P12345",
+    "entry_name": "",
+    "protein_name": "",
+    "gene_names": [],
+    "organism": "",
+    "organism_id": 0,
+    "function": null,
+    "subcellular_location": [],
+    "sequence_length": null,
+    "mass": null,
+    "pdb_ids": [],
+    "go_annotations": null,
+    "keywords": [],
+    "references": null,
+    "created_at": null,
+    "last_updated": "2026-03-06T12:43:37.228048"
+  },
+  "query": "uniprot_P12345",
+  "cached_at": 1772772217.228107,
+  "cached_date": "2026-03-06T12:43:37.228107"
+}
