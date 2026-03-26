@@ -643,31 +643,118 @@ Please generate the report following this framework:""")
                 sections.append(f"**功能描述**: {func_text}")
             sections.append("")
 
-        # PDB Data
+        # PDB Data with detailed information
         if pdb_data:
             structures = pdb_data.get('structures', []) or []
             sections.append(f"## PDB结构数据 ({len(structures)} structures)\n")
+
             if structures:
                 for struct in structures[:10]:  # Limit to first 10
                     pdb_id = struct.get('pdb_id', 'N/A')
                     method = struct.get('experimental_method', 'N/A')
                     resolution = struct.get('resolution', 0)
                     title = struct.get('title', 'N/A')
+                    deposition_date = struct.get('deposition_date', '')
+                    entity_list = struct.get('entity_list', [])
+                    entity_info = struct.get('entity_info', {})
+                    citations = struct.get('citations', [])
+
                     sections.append(f"### {pdb_id}")
                     sections.append(f"- **方法**: {method}")
                     if resolution and resolution > 0:
                         sections.append(f"- **分辨率**: {resolution} Å")
+                    if deposition_date:
+                        sections.append(f"- **沉积日期**: {deposition_date}")
                     sections.append(f"- **标题**: {title[:200] if title and len(title) > 200 else title}")
+
+                    # Entity information
+                    if entity_list:
+                        polypeptide_count = entity_info.get('polypeptide', 0)
+                        if polypeptide_count > 0:
+                            sections.append(f"- **实体组成**: {polypeptide_count} 个多肽链")
+                        for ent in entity_list:
+                            ent_id = ent.get('entity_id', '')
+                            chain = ent.get('chain', '')
+                            polymer_type = ent.get('polymer_type', '')
+                            length = ent.get('length', 0)
+                            seq = ent.get('sequence', '')
+                            if seq and len(seq) > 0:
+                                seq_preview = seq[:50] + '...' if len(seq) > 50 else seq
+                                sections.append(f"  - 实体 {ent_id} (链 {chain}): {polymer_type}, 长度 {length}")
+                                sections.append(f"    序列: {seq_preview}")
+
+                    # Citations with abstracts
+                    if citations:
+                        sections.append(f"- **关联文献**: {len(citations)} 篇")
+                        for cite in citations[:3]:  # Show first 3 citations
+                            cite_title = cite.get('title', '')
+                            journal = cite.get('journal', '')
+                            year = cite.get('year', '')
+                            pubmed_id = cite.get('pubmed_id', '')
+                            abstract = cite.get('abstract', '')
+                            if cite_title:
+                                sections.append(f"  - 文献: \"{cite_title[:100]}\"")
+                                if journal or year:
+                                    sections.append(f"    ({journal}, {year}) [PMID: {pubmed_id}]")
+                                if abstract:
+                                    abstract_text = abstract[:300] + '...' if len(abstract) > 300 else abstract
+                                    sections.append(f"    摘要: {abstract_text}")
+
                     sections.append("")
+
+                # PDB Statistics Summary
+                stats_section = build_pdb_statistics_section(structures, language='zh')
+                if stats_section:
+                    sections.append(stats_section)
+
+                # Entity Details Section
+                entity_section = build_entity_section_for_prompt(pdb_data, language='zh')
+                if entity_section:
+                    sections.append(entity_section)
+
+                # Ligand/Drug Binding Information Section
+                ligand_section = build_ligand_section_for_prompt(pdb_data, language='zh')
+                if ligand_section:
+                    sections.append(ligand_section)
+
+                # Complete Literature Abstracts (for AI to summarize, NOT copy)
+                all_articles = []
+                for struct in structures:
+                    struct_citations = struct.get('citations', [])
+                    for cite in struct_citations:
+                        if cite.get('pubmed_id'):
+                            all_articles.append({
+                                'pubmed_id': cite.get('pubmed_id'),
+                                'title': cite.get('title', ''),
+                                'journal': cite.get('journal', ''),
+                                'year': cite.get('year', ''),
+                                'authors': cite.get('authors', []),
+                                'abstract': cite.get('abstract', ''),
+                                'doi': cite.get('doi', '')
+                            })
+
+                if all_articles:
+                    literature_for_ai = extract_literature_for_ai(all_articles)
+                    literature_section = build_literature_section_for_prompt(literature_for_ai, language='zh')
+                    sections.append(literature_section)
+
             else:
                 sections.append("暂无PDB结构数据")
+
+        # Homology Statistics
+        homology_details = blast_results.get('homology_details', []) if blast_results else []
+        if homology_details:
+            homology_stats = extract_homology_statistics(homology_details)
+            if homology_stats:
+                homology_section = build_homology_section_for_prompt(homology_stats, language='zh')
+                sections.append(homology_section)
 
         # BLAST Results
         if blast_results:
             results = blast_results.get('results', []) or []
             sections.append(f"\n## BLAST相似性搜索结果 ({len(results)} results)\n")
             if results:
-                for result in results[:5]:  # Limit to first 5
+                for result in results[:10]:  # Show up to 10 results
                     pdb_id = result.get('pdb_id', 'N/A')
                     identity = result.get('identity', 0)
                     coverage = result.get('coverage', 0)

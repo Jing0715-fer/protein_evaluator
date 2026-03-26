@@ -2,6 +2,17 @@
 
 蛋白质结构与功能综合评估系统，利用 UniProt、PDB、RCSB 等公共数据库和 AI 大模型生成专业的蛋白质评估报告。
 
+## 界面截图
+
+![单蛋白评估](./images/single-protein-evaluation.png)
+*单蛋白评估界面*
+
+![多靶点评估](./images/multi-target-evaluation.png)
+*多靶点批量评估*
+
+![报告预览](./images/report-preview.png)
+*AI 生成的分析报告*
+
 ## 简介
 
 Protein Evaluator 帮助研究人员分析蛋白质结构与功能，主要功能包括：

@@ -2,6 +2,17 @@
 
 A comprehensive protein structure and function evaluation system that generates professional protein assessment reports using public databases (UniProt, PDB, RCSB) and AI models.
 
+## Screenshots
+
+![Single Protein Evaluation](./images/single-protein-evaluation.png)
+*Single protein evaluation interface*
+
+![Multi-Target Evaluation](./images/multi-target-evaluation.png)
+*Multi-target batch evaluation*
+
+![Report Preview](./images/report-preview.png)
+*AI-generated analysis report*
+
 ## Overview
 
 Protein Evaluator helps researchers analyze protein structures and functions by:
