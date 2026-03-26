@@ -12,6 +12,7 @@ build/
 .venv
 venv/
 data/*.db
+data/model_configs.json
 *.log
 .DS_Store
 uniprot_cache/
