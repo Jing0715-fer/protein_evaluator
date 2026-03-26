@@ -15,6 +15,7 @@ import { Input } from '../components/Input';
 import { templatesApi, batchTemplatesApi } from '../services/api';
 import { useLanguage } from '../contexts/LanguageContext';
 import type { PromptTemplate } from '../types';
+import { applyInlineFormatting } from '../utils/markdown';
 
 // Simple markdown parser for preview with variable highlighting
 const parseMarkdown = (text: string): string => {
@@ -43,7 +44,6 @@ const parseMarkdown = (text: string): string => {
   const lines = processed.split('\n');
   const result: string[] = [];
   let inCodeBlock = false;
-  let tableRows: string[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -64,17 +64,20 @@ const parseMarkdown = (text: string): string => {
       continue;
     }
 
-    // Headers
+    // Headers - apply inline formatting
     if (line.startsWith('### ')) {
-      result.push(`<h3 class="text-lg font-semibold text-gray-900 mt-4 mb-2">${line.substring(4)}</h3>`);
+      const headerText = applyInlineFormatting(line.substring(4));
+      result.push(`<h3 class="text-lg font-semibold text-gray-900 mt-4 mb-2">${headerText}</h3>`);
       continue;
     }
     if (line.startsWith('## ')) {
-      result.push(`<h2 class="text-xl font-bold text-gray-900 mt-6 mb-3">${line.substring(3)}</h2>`);
+      const headerText = applyInlineFormatting(line.substring(3));
+      result.push(`<h2 class="text-xl font-bold text-gray-900 mt-6 mb-3">${headerText}</h2>`);
       continue;
     }
     if (line.startsWith('# ')) {
-      result.push(`<h1 class="text-2xl font-bold text-gray-900 mt-6 mb-4">${line.substring(2)}</h1>`);
+      const headerText = applyInlineFormatting(line.substring(2));
+      result.push(`<h1 class="text-2xl font-bold text-gray-900 mt-6 mb-4">${headerText}</h1>`);
       continue;
     }
 
@@ -84,34 +87,43 @@ const parseMarkdown = (text: string): string => {
       continue;
     }
 
-    // Table detection
+    // Table detection - markdown table structure: header, separator, then data rows
     if (line.startsWith('|')) {
-      tableRows.push(line);
-      // Check if next line is table separator
-      if (i + 1 < lines.length && lines[i + 1].match(/^\|[\s-|:]+\|$/)) {
-        // It's a table, process accumulated rows
-        const tableHtml = processTable(tableRows);
+      // Check if the next line is a table separator
+      if (i + 1 < lines.length && lines[i + 1].match(/^\|[\s\-:]+\|([\s\-:]+\|)*[\s\-:]*$/)) {
+        // It's a table - collect header (current line)
+        const tableLines: string[] = [line];
+        let rowIndex = i + 1; // separator index
+        tableLines.push(lines[rowIndex]); // add separator
+
+        // Collect all data rows (consecutive lines starting with | after separator)
+        rowIndex++;
+        while (rowIndex < lines.length && lines[rowIndex].startsWith('|')) {
+          tableLines.push(lines[rowIndex]);
+          rowIndex++;
+        }
+
+        // Process the table
+        const tableHtml = processTable(tableLines);
         result.push(tableHtml);
-        tableRows = [];
-        i++; // Skip separator line
+        i = rowIndex - 1; // Set i to last data row index, for loop will increment
+      } else {
+        // Not a table, output as raw text
+        result.push(line);
       }
       continue;
-    } else if (tableRows.length > 0) {
-      // Flush any pending table rows (wasn't actually a table)
-      result.push(...tableRows);
-      tableRows = [];
     }
 
     // Unordered lists
     if (line.match(/^[\s]*[-*]\s/)) {
-      const content = line.replace(/^[\s]*[-*]\s/, '');
+      const content = applyInlineFormatting(line.replace(/^[\s]*[-*]\s/, ''));
       result.push(`<li class="ml-4 text-gray-700 list-disc">${content}</li>`);
       continue;
     }
 
     // Ordered lists
     if (line.match(/^[\s]*\d+\.\s/)) {
-      const content = line.replace(/^[\s]*\d+\.\s/, '');
+      const content = applyInlineFormatting(line.replace(/^[\s]*\d+\.\s/, ''));
       result.push(`<li class="ml-4 text-gray-700 list-decimal">${content}</li>`);
       continue;
     }
@@ -132,11 +144,6 @@ const parseMarkdown = (text: string): string => {
     }
   }
 
-  // Close any unclosed table
-  if (tableRows.length > 0) {
-    result.push(...tableRows);
-  }
-
   return result.join('\n');
 };
 
@@ -147,20 +154,26 @@ function processTable(rows: string[]): string {
   const headerRow = rows[0];
   const bodyRows = rows.slice(2); // Skip header and separator
 
-  // Parse header cells
+  // Parse header cells - apply inline formatting
   const headers = headerRow.split('|').filter(c => c.trim()).map(c =>
-    `<th class="border px-3 py-2 bg-gray-50 text-left font-semibold">${c.trim()}</th>`
+    `<th class="border border-gray-200 px-4 py-3 bg-gradient-to-b from-gray-50 to-gray-100 text-left font-semibold text-gray-700 text-sm">${applyInlineFormatting(c.trim())}</th>`
   ).join('');
 
-  // Parse body cells
-  const body = bodyRows.map(row => {
+  // Parse body cells - apply inline formatting with alternating row colors
+  const body = bodyRows.map((row, rowIndex) => {
+    const bgClass = rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
     const cells = row.split('|').filter(c => c.trim()).map(c =>
-      `<td class="border px-3 py-2">${c.trim()}</td>`
+      `<td class="border border-gray-200 px-4 py-3 text-gray-600 text-sm ${bgClass}">${applyInlineFormatting(c.trim())}</td>`
     ).join('');
-    return `<tr>${cells}</tr>`;
+    return `<tr class="hover:bg-blue-50 transition-colors duration-150">${cells}</tr>`;
   }).join('');
 
-  return `<table class="w-full border-collapse my-4 text-sm"><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table>`;
+  return `<table class="w-full border-collapse my-4 text-sm rounded-lg overflow-hidden shadow-sm border border-gray-200">
+    <thead>
+      <tr class="bg-gradient-to-r from-gray-100 to-gray-50">${headers}</tr>
+    </thead>
+    <tbody>${body}</tbody>
+  </table>`;
 }
 
 export const TemplateEditor: React.FC = () => {
