@@ -980,7 +980,8 @@ class PubMedClient:
                         title_words = set(w.lower() for w in cleaned_title.split() if len(w) > 3)
                         article_words = set(w.lower() for w in article_title.split() if len(w) > 3)
                         overlap = title_words & article_words
-                        if len(overlap) >= min(5, len(title_words) * 0.4):
+                        # Lowered threshold: require at least 2 words overlap OR key terms match
+                        if len(overlap) >= max(2, len(title_words) * 0.3):
                             logger.info(f"Found PMID {pmid} via flexible search, overlap: {overlap}")
                             return pmid
             except Exception as e:
@@ -1010,15 +1011,14 @@ class PubMedClient:
                         title_words = set(w.lower() for w in cleaned_title.split() if len(w) > 3)
                         article_words = set(w.lower() for w in article_title.split() if len(w) > 3)
                         overlap = title_words & article_words
-                        if len(overlap) >= min(4, len(title_words) * 0.35):
+                        # Lowered threshold for strategy 3
+                        if len(overlap) >= max(2, len(title_words) * 0.25):
                             logger.info(f"Found PMID {pmid} via strategy 3, overlap: {overlap}")
                             return pmid
             except Exception as e:
                 logger.warning(f"Failed strategy 3 title search: {e}")
 
         logger.warning(f"Could not find PMID for title: {title[:50]}...")
-        return None
-
         return None
 
     def fetch_abstracts_for_structures(self, pdb_data: Dict) -> Dict:
