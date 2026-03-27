@@ -214,6 +214,17 @@ def build_literature_section_for_prompt(
         return _build_literature_section_english(literature)
 
 
+def _clean_abstract(text: str) -> str:
+    """Clean abstract text for better formatting in prompt."""
+    if not text:
+        return "无摘要"
+    # Replace newlines with spaces and strip extra whitespace
+    import re
+    text = text.replace('\n', ' ').strip()
+    text = re.sub(r'\s+', ' ', text)
+    return text if text else "无摘要"
+
+
 def _build_literature_section_chinese(literature: List[Dict]) -> str:
     """构建中文文献章节"""
     parts = []
@@ -236,7 +247,7 @@ def _build_literature_section_chinese(literature: List[Dict]) -> str:
         parts.append(f"- **标题**: {title}\n")
         parts.append(f"- **期刊**: {journal} ({year})\n")
         parts.append(f"- **作者**: {author_str}\n")
-        parts.append(f"- **完整摘要**:\n{abstract}\n\n")
+        parts.append(f"- **完整摘要**: {abstract}\n\n")
 
     parts.append("---\n\n")
     parts.append("## 文献关键发现总结\n\n")
@@ -267,7 +278,7 @@ def _build_literature_section_english(literature: List[Dict]) -> str:
         parts.append(f"- **Title**: {title}\n")
         parts.append(f"- **Journal**: {journal} ({year})\n")
         parts.append(f"- **Authors**: {author_str}\n")
-        parts.append(f"- **Complete Abstract**:\n{abstract}\n\n")
+        parts.append(f"- **Complete Abstract**: {abstract}\n\n")
 
     parts.append("---\n\n")
     parts.append("## Key Findings Summary from Literature\n\n")

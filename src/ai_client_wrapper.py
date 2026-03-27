@@ -622,146 +622,144 @@ Please generate the report following this framework:""")
         pdb_data: Dict,
         blast_results: Dict
     ) -> str:
-        """Generate the actual protein data section for AI analysis."""
+        """Generate the actual protein data section for AI analysis.
+
+        数据结构（避免重复，节省 token）：
+        1. 蛋白质基础信息
+        2. PDB 结构总览（列表，不含重复详情）
+        3. 实体信息汇总
+        4. 配体/药物信息汇总
+        5. 文献列表与摘要（统一在最后）
+        6. BLAST 同源结构统计
+        """
         sections = []
 
-        # UniProt Data
+        # ==================== 1. 蛋白质基础信息 ====================
         if uniprot_data:
-            sections.append("## 蛋白质数据 (Protein Data)\n")
-            sections.append(f"**UniProt ID**: {uniprot_data.get('uniprot_id', 'N/A')}")
-            sections.append(f"**蛋白名称**: {uniprot_data.get('protein_name', 'N/A')}")
+            sections.append("## 蛋白质基础信息\n")
+            sections.append(f"- **UniProt ID**: {uniprot_data.get('uniprot_id', 'N/A')}")
+            sections.append(f"- **蛋白名称**: {uniprot_data.get('protein_name', 'N/A')}")
             gene_names = uniprot_data.get('gene_names', [])
             if gene_names:
-                sections.append(f"**基因名称**: {', '.join(gene_names)}")
-            sections.append(f"**物种**: {uniprot_data.get('organism', 'N/A')}")
+                sections.append(f"- **基因名称**: {', '.join(gene_names)}")
+            sections.append(f"- **物种**: {uniprot_data.get('organism', 'N/A')}")
             seq_len = uniprot_data.get('sequence_length', 0)
             if seq_len:
-                sections.append(f"**序列长度**: {seq_len} aa")
+                sections.append(f"- **序列长度**: {seq_len} aa")
             function = uniprot_data.get('function', '')
             if function:
-                func_text = function[:2000] if len(function) > 2000 else function
-                sections.append(f"**功能描述**: {func_text}")
+                func_text = function[:1500] if len(function) > 1500 else function
+                sections.append(f"- **功能描述**: {func_text}")
             sections.append("")
 
-        # PDB Data with detailed information
+        # ==================== 2. PDB 结构总览 ====================
         if pdb_data:
             structures = pdb_data.get('structures', []) or []
-            sections.append(f"## PDB结构数据 ({len(structures)} structures)\n")
-
             if structures:
-                for struct in structures[:10]:  # Limit to first 10
+                # PDB 统计摘要
+                stats = extract_pdb_statistics(structures)
+                sections.append("## PDB 结构总览\n")
+                sections.append(f"- **结构总数**: {stats['total_structures']}")
+                if stats['resolution_range']:
+                    sections.append(f"- **分辨率范围**: {stats['resolution_range']} Å")
+                    if stats['avg_resolution']:
+                        sections.append(f"- **平均分辨率**: {stats['avg_resolution']} Å")
+                if stats['method_distribution']:
+                    methods_str = "; ".join([f"{k}: {v}" for k, v in stats['method_distribution'].items()])
+                    sections.append(f"- **实验方法**: {methods_str}")
+                sections.append("")
+
+                # PDB 列表（简洁版，不重复详情）
+                sections.append("### PDB 结构列表\n")
+                sections.append("| PDB ID | 方法 | 分辨率(Å) | 沉积日期 | 标题 |")
+                sections.append("|--------|------|------------|----------|------|")
+                for struct in structures[:15]:  # 最多15个
                     pdb_id = struct.get('pdb_id', 'N/A')
-                    method = struct.get('experimental_method', 'N/A')
-                    resolution = struct.get('resolution', 0)
+                    method = struct.get('experimental_method', 'N/A')[:20]
+                    resolution = struct.get('resolution', '')
+                    deposition_date = struct.get('deposition_date', '')[:10] if struct.get('deposition_date') else ''
                     title = struct.get('title', 'N/A')
-                    deposition_date = struct.get('deposition_date', '')
-                    entity_list = struct.get('entity_list', [])
-                    entity_info = struct.get('entity_info', {})
-                    citations = struct.get('citations', [])
+                    if title and len(title) > 40:
+                        title = title[:40] + '...'
+                    sections.append(f"| {pdb_id} | {method} | {resolution} | {deposition_date} | {title} |")
+                sections.append("")
 
-                    sections.append(f"### {pdb_id}")
-                    sections.append(f"- **方法**: {method}")
-                    if resolution and resolution > 0:
-                        sections.append(f"- **分辨率**: {resolution} Å")
-                    if deposition_date:
-                        sections.append(f"- **沉积日期**: {deposition_date}")
-                    sections.append(f"- **标题**: {title[:200] if title and len(title) > 200 else title}")
-
-                    # Entity information
-                    if entity_list:
-                        polypeptide_count = entity_info.get('polypeptide', 0)
-                        if polypeptide_count > 0:
-                            sections.append(f"- **实体组成**: {polypeptide_count} 个多肽链")
-                        for ent in entity_list:
-                            ent_id = ent.get('entity_id', '')
-                            chain = ent.get('chain', '')
-                            polymer_type = ent.get('polymer_type', '')
-                            length = ent.get('length', 0)
-                            seq = ent.get('sequence', '')
-                            if seq and len(seq) > 0:
-                                seq_preview = seq[:50] + '...' if len(seq) > 50 else seq
-                                sections.append(f"  - 实体 {ent_id} (链 {chain}): {polymer_type}, 长度 {length}")
-                                sections.append(f"    序列: {seq_preview}")
-
-                    # Citations with abstracts
-                    if citations:
-                        sections.append(f"- **关联文献**: {len(citations)} 篇")
-                        for cite in citations[:3]:  # Show first 3 citations
-                            cite_title = cite.get('title', '')
-                            journal = cite.get('journal', '')
-                            year = cite.get('year', '')
-                            pubmed_id = cite.get('pubmed_id', '')
-                            abstract = cite.get('abstract', '')
-                            if cite_title:
-                                sections.append(f"  - 文献: \"{cite_title[:100]}\"")
-                                if journal or year:
-                                    sections.append(f"    ({journal}, {year}) [PMID: {pubmed_id}]")
-                                if abstract:
-                                    abstract_text = abstract[:300] + '...' if len(abstract) > 300 else abstract
-                                    sections.append(f"    摘要: {abstract_text}")
-
-                    sections.append("")
-
-                # PDB Statistics Summary
-                stats_section = build_pdb_statistics_section(structures, language='zh')
-                if stats_section:
-                    sections.append(stats_section)
-
-                # Entity Details Section
+                # ==================== 3. 实体信息汇总 ====================
                 entity_section = build_entity_section_for_prompt(pdb_data, language='zh')
-                if entity_section:
+                if entity_section and "暂无" not in entity_section:
                     sections.append(entity_section)
 
-                # Ligand/Drug Binding Information Section
+                # ==================== 4. 配体/药物信息汇总 ====================
                 ligand_section = build_ligand_section_for_prompt(pdb_data, language='zh')
-                if ligand_section:
+                if ligand_section and "暂无" not in ligand_section:
                     sections.append(ligand_section)
 
-                # Complete Literature Abstracts (for AI to summarize, NOT copy)
+                # ==================== 5. 文献列表与摘要 ====================
                 all_articles = []
+                pdb_with_articles = {}  # 用于显示 PDB 与文献的关联
                 for struct in structures:
-                    struct_citations = struct.get('citations', [])
-                    for cite in struct_citations:
+                    pdb_id = struct.get('pdb_id', '')
+                    citations = struct.get('citations', []) or []
+                    for cite in citations:
                         if cite.get('pubmed_id'):
-                            all_articles.append({
+                            article = {
                                 'pubmed_id': cite.get('pubmed_id'),
                                 'title': cite.get('title', ''),
                                 'journal': cite.get('journal', ''),
                                 'year': cite.get('year', ''),
                                 'authors': cite.get('authors', []),
                                 'abstract': cite.get('abstract', ''),
-                                'doi': cite.get('doi', '')
-                            })
+                                'doi': cite.get('doi', ''),
+                                'pdb_id': pdb_id  # 关联 PDB
+                            }
+                            all_articles.append(article)
+                            if pdb_id not in pdb_with_articles:
+                                pdb_with_articles[pdb_id] = []
+                            pdb_with_articles[pdb_id].append(cite.get('pubmed_id'))
 
                 if all_articles:
+                    sections.append("## 文献列表与摘要\n")
+                    sections.append(f"共 **{len(all_articles)}** 篇关联文献。\n")
+
+                    # 按 PDB 分组显示文献关联（简洁列表）
+                    if pdb_with_articles:
+                        sections.append("### 文献-PDB 关联\n")
+                        for pdb_id, pmids in list(pdb_with_articles.items())[:5]:
+                            pmid_str = ", ".join([f"[{p}](https://pubmed.ncbi.nlm.nih.gov/{p}/)" for p in pmids[:3]])
+                            if len(pmids) > 3:
+                                pmid_str += f" 等{len(pmids)}篇"
+                            sections.append(f"- **{pdb_id}**: {pmid_str}")
+                        sections.append("")
+
+                    # 完整文献摘要（给 AI 分析用，不要复制）
                     literature_for_ai = extract_literature_for_ai(all_articles)
                     literature_section = build_literature_section_for_prompt(literature_for_ai, language='zh')
                     sections.append(literature_section)
-
             else:
-                sections.append("暂无PDB结构数据")
+                sections.append("## PDB 结构数据\n暂无 PDB 结构数据\n")
 
-        # Homology Statistics
+        # ==================== 6. BLAST 同源结构统计 ====================
         homology_details = blast_results.get('homology_details', []) if blast_results else []
         if homology_details:
             homology_stats = extract_homology_statistics(homology_details)
-            if homology_stats:
+            if homology_stats and homology_stats.get('total_homologs', 0) > 0:
                 homology_section = build_homology_section_for_prompt(homology_stats, language='zh')
                 sections.append(homology_section)
 
-        # BLAST Results
-        if blast_results:
-            results = blast_results.get('results', []) or []
-            sections.append(f"\n## BLAST相似性搜索结果 ({len(results)} results)\n")
-            if results:
-                for result in results[:10]:  # Show up to 10 results
-                    pdb_id = result.get('pdb_id', 'N/A')
-                    identity = result.get('identity', 0)
-                    coverage = result.get('coverage', 0)
-                    desc = result.get('description', 'N/A')
-                    sections.append(f"- **{pdb_id}**: {identity}% identity, {coverage}% coverage - {desc[:100]}")
-            else:
-                sections.append("暂无BLAST结果")
+                # 简洁的 BLAST 结果列表
+                results = blast_results.get('results', []) or []
+                if results:
+                    sections.append("### BLAST 搜索结果（Top 10）\n")
+                    sections.append("| 排名 | PDB ID | 相似度 | 方法 | 分辨率 | 来源 |")
+                    sections.append("|------|--------|--------|------|--------|------|")
+                    for idx, result in enumerate(results[:10], 1):
+                        pdb_id = result.get('pdb_id', 'N/A')
+                        identity = result.get('identity', 0)
+                        method = result.get('experimental_method', 'N/A')[:15]
+                        resolution = result.get('resolution', '')
+                        source = result.get('source_uniprot_id', result.get('uniprot_id', 'N/A'))[:15]
+                        sections.append(f"| {idx} | {pdb_id} | {identity}% | {method} | {resolution} | {source} |")
+                    sections.append("")
 
         return "\n".join(sections)
 

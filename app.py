@@ -7,10 +7,15 @@ import sys
 import logging
 from flask import Flask, render_template, send_from_directory, jsonify, request, make_response
 
-# Configure logging
+# Configure logging with UTF-8 encoding
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    encoding='utf-8'
 )
 logger = logging.getLogger(__name__)
 
