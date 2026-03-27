@@ -14,9 +14,9 @@ export const CreateJob: React.FC = () => {
 
   const handleSubmit = async (data: MultiTargetFormData) => {
     // Build config, looking up template content for both templates
-    let config = data.config || {};
+    let config: Record<string, string> = {};
 
-    // Fetch single templates and find the matching one
+    // Fetch single template and store as single_template (for per-protein evaluation)
     if (data.singleTemplate) {
       const singleResult = await api.templates.listTemplates();
       if (singleResult.success && singleResult.templates) {
@@ -28,13 +28,13 @@ export const CreateJob: React.FC = () => {
             ? (matchedTemplate.content_en || matchedTemplate.content)
             : matchedTemplate.content;
           if (templateContent) {
-            config.template = templateContent;
+            config.single_template = templateContent;
           }
         }
       }
     }
 
-    // Fetch batch templates and find the matching one
+    // Fetch batch template and store as template (for interaction analysis)
     if (data.batchTemplate) {
       const batchResult = await api.batchTemplates.listTemplates();
       if (batchResult.success && batchResult.templates) {
@@ -49,6 +49,14 @@ export const CreateJob: React.FC = () => {
             config.template = templateContent;
           }
         }
+      }
+    }
+
+    // If only singleTemplate is selected (no batchTemplate),
+    // use single_template for template (for backward compatibility)
+    if (data.singleTemplate && !data.batchTemplate) {
+      if (config.single_template) {
+        config.template = config.single_template;
       }
     }
 

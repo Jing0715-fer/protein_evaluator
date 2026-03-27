@@ -857,9 +857,12 @@ class PubMedClient:
             title_elem = article.find('.//ArticleTitle')
             title = title_elem.text if title_elem is not None else ''
 
-            # Abstract
-            abstract_elem = article.find('.//AbstractText')
-            abstract = abstract_elem.text if abstract_elem is not None else ''
+            # Abstract - can have multiple sections, so concatenate all
+            abstract_parts = []
+            for abstract_elem in article.findall('.//AbstractText'):
+                if abstract_elem.text:
+                    abstract_parts.append(abstract_elem.text)
+            abstract = ' '.join(abstract_parts)
 
             # Journal
             journal_elem = article.find('.//Title')

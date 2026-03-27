@@ -318,42 +318,54 @@ class MultiTargetScheduler:
                 # Merge configs - job config takes precedence
                 worker_config = {**self.config, **job_config}
 
-                # Priority: Check template (content) FIRST - it's the resolved content from CreateJob
-                # If template contains newlines, it's the actual content and should be used directly
-                if 'template' in worker_config:
-                    template_value = worker_config['template']
+                # Priority: single_template (per-protein eval) takes precedence over template (batch/interaction)
+                # single_template contains the template content for individual protein evaluation
+                if 'single_template' in worker_config:
+                    template_value = worker_config['single_template']
                     if '\n' in template_value:
+                        # Content is directly in single_template
                         worker_config['custom_template'] = template_value
-                        worker_config['batch_template'] = template_value
-                        logger.info(f"Using template content from config (length: {len(template_value)})")
-                    elif 'single_template' not in worker_config:
-                        # Only do database lookup if single_template doesn't exist
-                        # (single_template case is handled below)
+                        logger.info(f"Using single_template content for per-protein eval (length: {len(template_value)})")
+                    else:
+                        # It's a template name - look up in database
                         try:
                             from src.database import get_single_templates
                             all_templates = get_single_templates()
                             template_obj = next((t for t in all_templates if t.name == template_value or t.name_en == template_value), None)
                             if template_obj:
                                 worker_config['custom_template'] = template_obj.content
+                                logger.info(f"Using single_template from database: {template_value}")
+                            else:
+                                logger.info(f"Single template '{template_value}' not found")
+                        except Exception as e:
+                            logger.warning(f"Failed to get single_template: {e}")
+
+                # template is used for batch/interaction analysis (if not already set by single_template)
+                if 'template' in worker_config and 'custom_template' not in worker_config:
+                    template_value = worker_config['template']
+                    if '\n' in template_value:
+                        worker_config['custom_template'] = template_value
+                        worker_config['batch_template'] = template_value
+                        logger.info(f"Using template content (length: {len(template_value)})")
+                    else:
+                        # Template name - look up in database
+                        try:
+                            from src.database import get_all_prompt_templates
+                            all_templates = get_all_prompt_templates()
+                            template_obj = next((t for t in all_templates if t.name == template_value or t.name_en == template_value), None)
+                            if template_obj:
+                                worker_config['custom_template'] = template_obj.content
+                                worker_config['batch_template'] = template_obj.content
                                 logger.info(f"Using template from database: {template_value}")
                         except Exception as e:
                             logger.warning(f"Failed to get template from database: {e}")
-
-                # Handle single_template (template name from legacy frontend)
-                # This is only reached if template doesn't contain content (template name was passed)
-                if 'single_template' in worker_config and 'custom_template' not in worker_config:
-                    template_value = worker_config['single_template']
-                    try:
-                        from src.database import get_single_templates
-                        all_templates = get_single_templates()
-                        template_obj = next((t for t in all_templates if t.name == template_value or t.name_en == template_value), None)
-                        if template_obj:
-                            worker_config['custom_template'] = template_obj.content
-                            logger.info(f"Using single_template from database: {template_value}")
-                        else:
-                            logger.info(f"Single template '{template_value}' not found, using default")
-                    except Exception as e:
-                        logger.warning(f"Failed to get single_template: {e}")
+                elif 'template' in worker_config:
+                    # template exists but custom_template already set from single_template
+                    # Store template as batch_template for interaction analysis
+                    template_value = worker_config['template']
+                    if '\n' in template_value:
+                        worker_config['batch_template'] = template_value
+                        logger.info(f"Storing template as batch_template (length: {len(template_value)})")
 
                 # 这里调用实际的评估逻辑
                 from src.evaluation_worker import EvaluationWorker
