@@ -993,25 +993,30 @@ def update_ai_config():
     """
     try:
         import config as app_config
-        
+
         data = request.get_json()
         if not data:
             return jsonify({'success': False, 'error': '请求体不能为空'}), 400
-        
+
         # 更新配置（内存中）
         if 'model' in data:
             app_config.AI_MODEL = data['model']
+            app_config.save_to_env('AI_MODEL', data['model'])
         if 'temperature' in data:
             app_config.AI_TEMPERATURE = float(data['temperature'])
+            app_config.save_to_env('AI_TEMPERATURE', str(data['temperature']))
         if 'max_tokens' in data:
             app_config.AI_MAX_TOKENS = int(data['max_tokens'])
+            app_config.save_to_env('AI_MAX_TOKENS', str(data['max_tokens']))
         if 'base_url' in data:
             app_config.AI_BASE_URL = data['base_url']
+            app_config.save_to_env('AI_BASE_URL', data['base_url'])
         if 'api_key' in data and data['api_key']:
             app_config.AI_API_KEY = data['api_key']
-        
+            app_config.save_to_env('AI_API_KEY', data['api_key'])
+
         logger.info(f"AI 配置已更新: model={app_config.AI_MODEL}, temp={app_config.AI_TEMPERATURE}")
-        
+
         return jsonify({
             'success': True,
             'message': '配置已更新'
@@ -1035,13 +1040,20 @@ def _load_model_configs():
     """从文件加载模型配置"""
     global _model_configs, _default_model_id
     import json
-    
+
     if os.path.exists(MODEL_CONFIG_FILE):
         try:
             with open(MODEL_CONFIG_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 _model_configs = data.get('models', [])
-                _default_model_id = data.get('default_model_id')
+
+                # Compute default_model_id from isDefault flag, not from JSON's potentially stale value
+                default_model = next((m for m in _model_configs if m.get('isDefault')), None)
+                if default_model:
+                    _default_model_id = default_model['id']
+                else:
+                    _default_model_id = data.get('default_model_id')
+
                 logger.info(f"已加载 {len(_model_configs)} 个模型配置")
         except Exception as e:
             logger.error(f"加载模型配置失败: {e}")
@@ -1146,6 +1158,14 @@ def save_models():
         
         # Update default model
         default_model = next((m for m in _model_configs if m.get('isDefault')), None)
+
+        # If default model has no API key, find one that has API key
+        if not default_model or not default_model.get('apiKey'):
+            model_with_key = next((m for m in _model_configs if m.get('apiKey')), None)
+            if model_with_key:
+                default_model = model_with_key
+                logger.info(f"默认模型无API Key，已切换到有Key的模型: {default_model['name']}")
+
         if default_model:
             _default_model_id = default_model['id']
             # Update app config
@@ -1155,6 +1175,13 @@ def save_models():
             app_config.AI_API_KEY = default_model.get('apiKey', '')
             app_config.AI_TEMPERATURE = default_model.get('temperature', 0.3)
             app_config.AI_MAX_TOKENS = default_model.get('maxTokens', 20000)
+
+            # Persist to .env file for persistence across restarts
+            app_config.save_to_env('AI_MODEL', default_model['model'])
+            app_config.save_to_env('AI_BASE_URL', default_model.get('baseUrl', ''))
+            app_config.save_to_env('AI_API_KEY', default_model.get('apiKey', ''))
+            app_config.save_to_env('AI_TEMPERATURE', str(default_model.get('temperature', 0.3)))
+            app_config.save_to_env('AI_MAX_TOKENS', str(default_model.get('maxTokens', 20000)))
         
         logger.info(f"已保存 {len(_model_configs)} 个模型配置")
         
@@ -1194,7 +1221,24 @@ def test_model_connection():
         base_url = model_config.get('baseUrl', '')
         api_key = model_config.get('apiKey', '')
         api_type = model_config.get('apiType', '')
-        
+
+        # If apiKey is masked placeholder, look up the real one from stored configs
+        if api_key == '***':
+            model_id_from_request = model_config.get('id', '')
+            stored_model = next((m for m in _model_configs if m.get('id') == model_id_from_request), None)
+            if stored_model and stored_model.get('apiKey'):
+                api_key = stored_model['apiKey']
+                logger.info(f"使用存储的真实 API Key 进行测试")
+
+        # If baseUrl is empty, try to get from stored config or default
+        if not base_url:
+            if stored_model and stored_model.get('baseUrl'):
+                base_url = stored_model['baseUrl']
+            elif api_type == 'anthropic' or 'claude' in model_id.lower():
+                base_url = 'https://api.anthropic.com/v1'
+            else:
+                base_url = 'https://api.openai.com/v1'
+
         if not model_id:
             return jsonify({'success': False, 'error': '模型 ID 不能为空'}), 400
         

@@ -213,6 +213,12 @@ export const jobControlApi = {
     });
     return result.success;
   },
+
+  // Get job logs
+  getJobLogs: async (jobId: string): Promise<{ success: boolean; logs?: Array<{ timestamp: string; level: string; message: string }>; error?: string }> => {
+    const result = await fetchApi(`/api/v2/evaluate/multi/${jobId}/logs`);
+    return result as { success: boolean; logs?: Array<{ timestamp: string; level: string; message: string }>; error?: string };
+  },
 };
 
 // Job Progress API

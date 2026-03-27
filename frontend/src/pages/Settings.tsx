@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
-  Save,
   Settings as SettingsIcon,
   RefreshCw,
   AlertCircle,
@@ -82,7 +81,6 @@ export const Settings: React.FC = () => {
   const [editingModel, setEditingModel] = useState<ModelConfig | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [testingModel, setTestingModel] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
   const [error, setError] = useState<string | null>(null);
@@ -108,25 +106,6 @@ export const Settings: React.FC = () => {
       setModels(DEFAULT_MODELS);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    setError(null);
-    setSuccessMessage(null);
-    try {
-      const result = await configApi.saveModels(models);
-      if (result.success) {
-        setSuccessMessage(language === 'zh' ? '模型配置已保存' : 'Model config saved');
-        setTimeout(() => setSuccessMessage(null), 3000);
-      } else {
-        setError(result.error || (language === 'zh' ? '保存失败' : 'Save failed'));
-      }
-    } catch {
-      setError(language === 'zh' ? '保存配置失败' : 'Failed to save config');
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -206,7 +185,7 @@ export const Settings: React.FC = () => {
     setIsAddingNew(false);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingModel) return;
 
     if (!editingModel.name.trim() || !editingModel.model.trim()) {
@@ -214,15 +193,31 @@ export const Settings: React.FC = () => {
       return;
     }
 
+    // Update local state
+    let updatedModels: ModelConfig[];
     if (isAddingNew) {
-      setModels([...models, editingModel]);
+      updatedModels = [...models, editingModel];
     } else {
-      setModels(models.map(m => m.id === editingModel.id ? editingModel : m));
+      updatedModels = models.map(m => m.id === editingModel.id ? editingModel : m);
     }
-    
+    setModels(updatedModels);
+
     setEditingModel(null);
     setIsAddingNew(false);
     setError(null);
+
+    // Save to backend
+    try {
+      const result = await configApi.saveModels(updatedModels);
+      if (result.success) {
+        setSuccessMessage(language === 'zh' ? '模型配置已保存' : 'Model config saved');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        setError(result.error || (language === 'zh' ? '保存失败' : 'Save failed'));
+      }
+    } catch {
+      setError(language === 'zh' ? '保存配置失败' : 'Failed to save config');
+    }
   };
 
   const handleCancelEdit = () => {
@@ -247,10 +242,6 @@ export const Settings: React.FC = () => {
               <Button variant="outline" onClick={fetchModels} disabled={isLoading}>
                 <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
                 {t('app.refresh')}
-              </Button>
-              <Button onClick={handleSave} disabled={isSaving || isLoading}>
-                <Save className="w-4 h-4 mr-2" />
-                {isSaving ? (language === 'zh' ? '保存中...' : 'Saving...') : t('app.save')}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
                 <ArrowLeft className="w-4 h-4 mr-2" />

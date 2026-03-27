@@ -167,20 +167,40 @@ def _is_drug_or_active_ligand(molecule_name: str) -> bool:
 
 def extract_literature_for_ai(articles: List[Dict]) -> List[Dict[str, Any]]:
     """
-    提取文献完整信息给 AI 分析。
+    提取文献完整信息给 AI 分析，并去重。
 
     Args:
         articles: 文献列表
 
     Returns:
-        包含完整摘要的文献列表
+        包含完整摘要的去重文献列表
     """
+    seen_pmids = set()
+    seen_titles = set()
     result = []
 
     for article in articles:
+        pmid = article.get('pubmed_id', '')
+        title = article.get('title', '')
+
+        # Use PMID for deduplication if available, otherwise use title
+        if pmid:
+            if pmid in seen_pmids:
+                continue
+            seen_pmids.add(pmid)
+        elif title:
+            # Deduplicate by title when no PMID
+            title_lower = title.lower()
+            if title_lower in seen_titles:
+                continue
+            seen_titles.add(title_lower)
+        else:
+            # Skip if neither PMID nor title
+            continue
+
         result.append({
-            'pubmed_id': article.get('pubmed_id', ''),
-            'title': article.get('title', ''),
+            'pubmed_id': pmid,
+            'title': title,
             'journal': article.get('journal', ''),
             'year': article.get('year', ''),
             'authors': article.get('authors', []),

@@ -28,7 +28,7 @@ export const CreateJob: React.FC = () => {
             ? (matchedTemplate.content_en || matchedTemplate.content)
             : matchedTemplate.content;
           if (templateContent) {
-            config.single_template = templateContent;
+            config.template = templateContent;
           }
         }
       }

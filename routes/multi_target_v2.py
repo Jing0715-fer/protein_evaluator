@@ -2162,6 +2162,20 @@ def get_job_logs(job_id: int):
                                 'message': f"   序列覆盖率: {coverage}%"
                             })
 
+                    # 添加评估过程日志 (evaluation.logs) - 在PDB数据块之外
+                    if eval_record.logs:
+                        logs.append({
+                            'timestamp': eval_time,
+                            'level': 'info',
+                            'message': f"========== 评估过程日志 =========="
+                        })
+                        for eval_log in eval_record.logs:
+                            logs.append({
+                                'timestamp': eval_log.get('timestamp', eval_time),
+                                'level': eval_log.get('level', 'info'),
+                                'message': f"   {eval_log.get('message', '')}"
+                            })
+
                 if target.error_message:
                     logs.append({
                         'timestamp': target_time,

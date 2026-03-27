@@ -345,9 +345,10 @@ Please generate the report following this framework:""")
             for struct in structures:
                 citations = struct.get('citations', [])
                 for cite in citations:
-                    if cite.get('pubmed_id'):
+                    # Include citations with PMID, OR with title (even without PMID)
+                    if cite.get('pubmed_id') or cite.get('title'):
                         all_articles.append({
-                            'pubmed_id': cite.get('pubmed_id'),
+                            'pubmed_id': cite.get('pubmed_id') or '',
                             'title': cite.get('title', ''),
                             'journal': cite.get('journal', ''),
                             'year': cite.get('year', ''),
@@ -541,9 +542,10 @@ Please generate the report following this framework:""")
             for struct in structures:
                 citations = struct.get('citations', [])
                 for cite in citations:
-                    if cite.get('pubmed_id'):
+                    # Include citations with PMID, OR with title (even without PMID)
+                    if cite.get('pubmed_id') or cite.get('title'):
                         all_articles.append({
-                            'pubmed_id': cite.get('pubmed_id'),
+                            'pubmed_id': cite.get('pubmed_id') or '',
                             'title': cite.get('title', ''),
                             'journal': cite.get('journal', ''),
                             'year': cite.get('year', ''),
@@ -701,9 +703,10 @@ Please generate the report following this framework:""")
                     pdb_id = struct.get('pdb_id', '')
                     citations = struct.get('citations', []) or []
                     for cite in citations:
-                        if cite.get('pubmed_id'):
+                        # Include citations with PMID, OR with title (even without PMID)
+                        if cite.get('pubmed_id') or cite.get('title'):
                             article = {
-                                'pubmed_id': cite.get('pubmed_id'),
+                                'pubmed_id': cite.get('pubmed_id') or '',
                                 'title': cite.get('title', ''),
                                 'journal': cite.get('journal', ''),
                                 'year': cite.get('year', ''),
@@ -715,7 +718,7 @@ Please generate the report following this framework:""")
                             all_articles.append(article)
                             if pdb_id not in pdb_with_articles:
                                 pdb_with_articles[pdb_id] = []
-                            pdb_with_articles[pdb_id].append(cite.get('pubmed_id'))
+                            pdb_with_articles[pdb_id].append(cite.get('pubmed_id') or cite.get('title', '')[:50])
 
                 if all_articles:
                     sections.append("## 文献列表与摘要\n")

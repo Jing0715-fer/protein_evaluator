@@ -21,6 +21,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { parseMarkdown } from '../utils/markdown';
+import api from '../services/api';
 import { useJobs } from '../contexts/JobContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Button } from '../components/Button';
@@ -262,6 +263,10 @@ export const JobDetail: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const networkContainerRef = useRef<HTMLDivElement>(null);
+
+  // Job logs state for status bar
+  const [, setJobLogs] = useState<Array<{ timestamp: string; level: string; message: string }>>([]);
+  const [latestLog, setLatestLog] = useState<string>('');
 
   // Print report function - opens new window with just the report content
   const printReport = useCallback((_targetId: number, uniprotId: string, content: string) => {
@@ -703,6 +708,30 @@ export const JobDetail: React.FC = () => {
     };
   }, [jobId, selectedJob?.job.status, isPolling, startPolling, stopPolling]);
 
+  // Fetch job logs for status bar
+  useEffect(() => {
+    const fetchLogs = async () => {
+      if (!jobId) return;
+      try {
+        const result = await api.jobControl.getJobLogs(jobId);
+        if (result.success && result.logs) {
+          setJobLogs(result.logs);
+          // Set latest log message (last one in the array)
+          if (result.logs.length > 0) {
+            setLatestLog(result.logs[result.logs.length - 1].message);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch job logs:', err);
+      }
+    };
+
+    fetchLogs();
+    // Poll logs every 5 seconds when job is running
+    const interval = setInterval(fetchLogs, 5000);
+    return () => clearInterval(interval);
+  }, [jobId, selectedJob?.job.status]);
+
   // All hooks must be defined before any early returns or conditional logic
   // Memoize statusConfig to prevent recreation on every render
   const statusConfig = useMemo<Record<JobStatus, { label: string; color: string; icon: React.ReactNode }>>(() => ({
@@ -1036,6 +1065,13 @@ export const JobDetail: React.FC = () => {
                         </span>
                       )}
                     </div>
+                    {/* Status log bar - shows current step */}
+                    {latestLog && (
+                      <div className="mt-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800 truncate">
+                        <span className="font-medium">{language === 'zh' ? '当前步骤:' : 'Current step:'} </span>
+                        {latestLog}
+                      </div>
+                    )}
                   </>
                 )}
                 {/* Show completion summary only for failed jobs - hide for completed */}
@@ -1900,8 +1936,8 @@ export const JobDetail: React.FC = () => {
                               ? (target?.evaluation?.ai_analysis_en || target?.evaluation?.ai_analysis)
                               : (target?.evaluation?.ai_analysis);
                             const reportContent = aiAnalysis?.analysis || aiAnalysis?.summary || '';
-                            if (!reportContent) return null;
-                            
+                            const aiError = aiAnalysis?.error || target?.evaluation?.error_message || '';
+
                             // Get literature for this specific target (by matching PDB IDs)
                             const targetPdbIds = target?.evaluation?.pdb_data?.structures?.map((s: any) => s.pdb_id) || [];
                             const targetLiterature = literature.filter((lit: any) =>
@@ -2018,13 +2054,39 @@ export const JobDetail: React.FC = () => {
                                 
                                 {expandedReports.has(index) && (
                                   <CardContent className="py-3">
-                                    {/* AI Report Content */}
-                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                                      <div
-                                        className="prose prose-sm max-w-none"
-                                        dangerouslySetInnerHTML={{ __html: parseMarkdown(reportContent || '') }}
-                                      />
-                                    </div>
+                                    {/* AI Report Content or Error Display */}
+                                    {aiError ? (
+                                      /* Error Display */
+                                      <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                                        <div className="flex items-start gap-3">
+                                          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                          <div className="flex-1">
+                                            <h4 className="text-sm font-semibold text-red-800 mb-1">
+                                              {language === 'zh' ? 'AI 分析失败' : 'AI Analysis Failed'}
+                                            </h4>
+                                            <p className="text-sm text-red-700">{aiError}</p>
+                                            {target.status === 'failed' && (
+                                              <p className="text-xs text-red-600 mt-2">
+                                                {language === 'zh' ? '任务执行失败，请重试' : 'Task execution failed, please retry'}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ) : reportContent ? (
+                                      /* Normal Report Content */
+                                      <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                        <div
+                                          className="prose prose-sm max-w-none"
+                                          dangerouslySetInnerHTML={{ __html: parseMarkdown(reportContent) }}
+                                        />
+                                      </div>
+                                    ) : (
+                                      /* No Content Yet */
+                                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-100 text-center text-gray-500 text-sm">
+                                        {language === 'zh' ? '暂无报告内容' : 'No report content yet'}
+                                      </div>
+                                    )}
                                     
                                     {/* Literature for this target */}
                                     {targetLiterature.length > 0 && (

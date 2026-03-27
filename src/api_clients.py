@@ -897,12 +897,146 @@ class PubMedClient:
             return article.get('abstract', '')
         return None
 
+    def search_by_title(self, title: str) -> Optional[str]:
+        """Search PubMed by article title and return PMID.
+
+        Uses three strategies:
+        1. Exact title match with quotes
+        2. Flexible search with key terms
+        3. Try search without special characters
+        """
+        if not title or len(title) < 10:
+            return None
+
+        import re
+        url = f"{self.BASE_URL}/esearch.fcgi"
+
+        # Clean title for search - remove special characters but keep letters/numbers/spaces
+        def clean_title_for_search(t):
+            # Remove special characters but keep basic alphanumeric and spaces
+            cleaned = re.sub(r'[^a-zA-Z0-9\s]', ' ', t)
+            # Collapse multiple spaces
+            cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+            return cleaned
+
+        cleaned_title = clean_title_for_search(title)
+
+        # Strategy 1: Try exact title match with cleaned title
+        params = {
+            'db': 'pubmed',
+            'term': f'"{cleaned_title}"[Title]',
+            'retmax': 1,
+            'retmode': 'json'
+        }
+
+        try:
+            response = safe_api_call(
+                url, method="GET", session=self.session, params=params,
+                timeout=15, error_class=PubMedAPIError
+            )
+            result = response.json()
+            id_list = result.get('esearchresult', {}).get('idlist', [])
+            if id_list:
+                logger.info(f"Found PMID {id_list[0]} via exact title match")
+                return id_list[0]
+        except Exception as e:
+            logger.warning(f"Failed exact title search: {e}")
+
+        # Strategy 2: Extract key terms from cleaned title and search flexibly
+        # Use cleaned title for better matching
+        words = cleaned_title.split()
+        stop_words = {'from', 'with', 'that', 'this', 'have', 'were', 'been',
+                      'also', 'they', 'their', 'these', 'which', 'will', 'would',
+                      'structural', 'basis', 'human', 'protein', 'channel', 'molecular'}
+        key_terms = [w for w in words if len(w) > 4 and w.lower() not in stop_words]
+        if len(key_terms) < 3:
+            key_terms = [w for w in words if len(w) > 3]
+
+        if key_terms:
+            search_term = ' '.join(key_terms[:8])  # Use up to 8 key terms
+            params = {
+                'db': 'pubmed',
+                'term': search_term,
+                'retmax': 5,
+                'retmode': 'json'
+            }
+
+            try:
+                response = safe_api_call(
+                    url, method="GET", session=self.session, params=params,
+                    timeout=15, error_class=PubMedAPIError
+                )
+                result = response.json()
+                id_list = result.get('esearchresult', {}).get('idlist', [])
+                # Verify by fetching and checking title similarity
+                for pmid in id_list:
+                    article = self.get_article(pmid)
+                    if article:
+                        article_title = article.get('title', '').lower()
+                        # Check if there's significant word overlap
+                        title_words = set(w.lower() for w in cleaned_title.split() if len(w) > 3)
+                        article_words = set(w.lower() for w in article_title.split() if len(w) > 3)
+                        overlap = title_words & article_words
+                        if len(overlap) >= min(5, len(title_words) * 0.4):
+                            logger.info(f"Found PMID {pmid} via flexible search, overlap: {overlap}")
+                            return pmid
+            except Exception as e:
+                logger.warning(f"Failed flexible title search: {e}")
+
+        # Strategy 3: Try searching with just the first few significant words
+        significant_words = [w for w in cleaned_title.split() if len(w) > 5][:5]
+        if significant_words:
+            search_term = ' '.join(significant_words) + '[Title/Abstract]'
+            params = {
+                'db': 'pubmed',
+                'term': search_term,
+                'retmax': 10,
+                'retmode': 'json'
+            }
+            try:
+                response = safe_api_call(
+                    url, method="GET", session=self.session, params=params,
+                    timeout=15, error_class=PubMedAPIError
+                )
+                result = response.json()
+                id_list = result.get('esearchresult', {}).get('idlist', [])
+                for pmid in id_list:
+                    article = self.get_article(pmid)
+                    if article:
+                        article_title = article.get('title', '').lower()
+                        title_words = set(w.lower() for w in cleaned_title.split() if len(w) > 3)
+                        article_words = set(w.lower() for w in article_title.split() if len(w) > 3)
+                        overlap = title_words & article_words
+                        if len(overlap) >= min(4, len(title_words) * 0.35):
+                            logger.info(f"Found PMID {pmid} via strategy 3, overlap: {overlap}")
+                            return pmid
+            except Exception as e:
+                logger.warning(f"Failed strategy 3 title search: {e}")
+
+        logger.warning(f"Could not find PMID for title: {title[:50]}...")
+        return None
+
+        return None
+
     def fetch_abstracts_for_structures(self, pdb_data: Dict) -> Dict:
         """Fetch PubMed abstracts for all citations in PDB structures."""
         for struct in pdb_data.get('structures', []):
             citations = struct.get('citations', [])
             for cit in citations:
                 pubmed_id = cit.get('pubmed_id')
+                title = cit.get('title', '')
+
+                # If no PMID, try to find it by title search
+                if not pubmed_id and title:
+                    try:
+                        pubmed_id = self.search_by_title(title)
+                        if pubmed_id:
+                            cit['pubmed_id'] = pubmed_id
+                            logger.info(f"Found PMID {pubmed_id} via title search for: {title[:50]}...")
+                    except Exception as e:
+                        logger.warning(f"Failed to search PMID by title: {e}")
+
+                # Fetch abstract if we have a PMID now
                 if pubmed_id:
                     try:
                         abstract = self.get_abstract_simple(str(pubmed_id))

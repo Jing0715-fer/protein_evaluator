@@ -318,34 +318,42 @@ class MultiTargetScheduler:
                 # Merge configs - job config takes precedence
                 worker_config = {**self.config, **job_config}
 
-                # Handle single_template (for individual protein evaluation)
-                # EvaluationWorker expects 'custom_template' field
-                if 'single_template' in worker_config:
-                    template_value = worker_config['single_template']
-                    # If contains newline, it's actual template content - use directly
+                # Priority: Check template (content) FIRST - it's the resolved content from CreateJob
+                # If template contains newlines, it's the actual content and should be used directly
+                if 'template' in worker_config:
+                    template_value = worker_config['template']
                     if '\n' in template_value:
                         worker_config['custom_template'] = template_value
-                        logger.info(f"Using single_template content directly (length: {len(template_value)})")
-                    else:
-                        # Otherwise it's a template name - look up in database
+                        worker_config['batch_template'] = template_value
+                        logger.info(f"Using template content from config (length: {len(template_value)})")
+                    elif 'single_template' not in worker_config:
+                        # Only do database lookup if single_template doesn't exist
+                        # (single_template case is handled below)
                         try:
                             from src.database import get_single_templates
                             all_templates = get_single_templates()
                             template_obj = next((t for t in all_templates if t.name == template_value or t.name_en == template_value), None)
                             if template_obj:
                                 worker_config['custom_template'] = template_obj.content
-                                logger.info(f"Using single_template from database: {template_value}")
-                            else:
-                                logger.info(f"Single template '{template_value}' not found, using default")
+                                logger.info(f"Using template from database: {template_value}")
                         except Exception as e:
-                            logger.warning(f"Failed to get single_template: {e}")
+                            logger.warning(f"Failed to get template from database: {e}")
 
-                # Handle batch template (for interaction analysis) - store in separate field
-                if 'template' in worker_config:
-                    template_value = worker_config['template']
-                    if '\n' in template_value:
-                        worker_config['batch_template'] = template_value
-                        logger.info(f"Storing batch_template content (length: {len(template_value)})")
+                # Handle single_template (template name from legacy frontend)
+                # This is only reached if template doesn't contain content (template name was passed)
+                if 'single_template' in worker_config and 'custom_template' not in worker_config:
+                    template_value = worker_config['single_template']
+                    try:
+                        from src.database import get_single_templates
+                        all_templates = get_single_templates()
+                        template_obj = next((t for t in all_templates if t.name == template_value or t.name_en == template_value), None)
+                        if template_obj:
+                            worker_config['custom_template'] = template_obj.content
+                            logger.info(f"Using single_template from database: {template_value}")
+                        else:
+                            logger.info(f"Single template '{template_value}' not found, using default")
+                    except Exception as e:
+                        logger.warning(f"Failed to get single_template: {e}")
 
                 # 这里调用实际的评估逻辑
                 from src.evaluation_worker import EvaluationWorker
