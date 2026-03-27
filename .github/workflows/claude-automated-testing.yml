@@ -1,0 +1,208 @@
+name: 🧪 Claude Automated Testing
+
+on:
+  workflow_dispatch:
+    inputs:
+      focus:
+        description: '测试焦点 (backend|frontend|all)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - backend
+          - frontend
+  pull_request:
+    types: [opened, synchronize]
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # ─── 后端测试生成 ────────────────────────────────────────────────────────
+  generate-backend-tests:
+    name: Generate Backend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic/claude-code
+
+      - name: Install deps
+        run: pip install -r requirements.txt pytest
+
+      - name: Claude: Generate Backend Tests
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          mkdir -p tests/ai_generated
+          claude -p \
+            --no-input \
+            --permission-mode bypassPermissions \
+            "Analyze this Flask backend and generate comprehensive pytest tests.
+
+Files to cover:
+- app.py (Flask app setup, routes registration)
+- routes/evaluation.py (protein evaluation endpoints)
+- routes/multi_target_v2.py (multi-target evaluation)
+- core/evaluation_worker.py, core/service.py, core/database_service.py
+- core/ai_client_wrapper.py, core/alphafold_client.py
+
+Generate test files in tests/ai_generated/:
+1. test_routes.py - All Flask API endpoints (happy + error cases)
+2. test_core_logic.py - Core evaluation functions
+3. test_ai_clients.py - Mock AI API responses and error handling
+
+Use @pytest.fixture with Flask test client.
+Mock all external HTTP calls (AlphaFold, UniProt, EMDB APIs).
+Each endpoint needs: success case, 400/404 error case, 500 error case."
+          2>&1 | tee tests/generate-log.txt
+
+      - name: Show generated files
+        run: |
+          echo "=== Generated test files ==="
+          find tests/ai_generated -name "*.py" 2>/dev/null | head -20
+          wc -l tests/ai_generated/*.py 2>/dev/null || echo "No files"
+
+      - name: Run generated tests
+        run: |
+          python -m pytest tests/ai_generated/ -v --tb=short 2>&1 | head -80
+        continue-on-error: true
+
+      - name: Commit new tests
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          if git diff --stat | grep -q "tests/ai_generated"; then
+            git add tests/ai_generated/
+            git commit -m "🤖 Auto: add Claude-generated backend tests [skip ci]"
+            git push || echo "Push failed (may be detached HEAD)"
+          else
+            echo "No new test files to commit"
+          fi
+
+      - name: Upload log
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-log
+          path: tests/generate-log.txt
+          retention-days: 7
+
+  # ─── 前端测试生成 ────────────────────────────────────────────────────────
+  generate-frontend-tests:
+    name: Generate Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install deps + Vitest
+        run: |
+          npm install
+          npm install -D vitest @testing-library/react @testing-library/user-event jsdom
+        working-directory: frontend
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic/claude-code
+
+      - name: Configure Vitest
+        run: |
+          cat >> frontend/vite.config.ts << 'EOF'
+import vitest from 'vitest/config'
+EOF
+
+          cat > frontend/vitest.config.ts << 'VITEST'
+import { defineConfig } from 'vitest/config'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test/setup.ts'],
+  },
+})
+VITEST
+
+          mkdir -p frontend/src/test
+          cat > frontend/src/test/setup.ts << 'SETUP'
+import { expect, afterEach } from 'vitest'
+import { cleanup } from '@testing-library/react'
+import * as matchers from '@testing-library/jest-dom'
+expect.extend(matchers)
+afterEach(() => cleanup())
+SETUP
+        continue-on-error: true
+
+      - name: Claude: Generate Frontend Tests
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p \
+            --no-input \
+            --permission-mode bypassPermissions \
+            "Analyze this React 19 + TypeScript frontend project.
+
+First, explore the structure:
+  find frontend/src -name '*.tsx' -o -name '*.ts' | head -30
+
+Read the key React components to understand the app structure.
+This is a protein structure evaluation web app.
+
+Generate Vitest + Testing Library tests for all components found.
+
+For each component:
+- Test that it renders without crashing
+- Test loading/success/error states if applicable
+- Test user interactions (clicks, form inputs)
+- Mock API calls with inline mock functions
+
+Output: write test files as *.test.tsx next to their components.
+Example: frontend/src/components/Foo.tsx → frontend/src/components/Foo.test.tsx"
+          2>&1 | tee frontend/src/test/generate-log.txt
+
+      - name: Show generated files
+        run: |
+          echo "=== Generated frontend test files ==="
+          find frontend/src -name "*.test.*" 2>/dev/null | head -20
+
+      - name: Run frontend tests
+        run: |
+          npx vitest --run 2>&1 | tail -40
+        working-directory: frontend
+        continue-on-error: true
+
+      - name: Commit new tests
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          if git diff --stat frontend/ | grep -q "test"; then
+            git add frontend/src/
+            git commit -m "🤖 Auto: add Claude-generated frontend tests [skip ci]"
+            git push || echo "Push failed (may be detached HEAD)"
+          else
+            echo "No new frontend test files"
+          fi
+
+      - name: Upload log
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-log
+          path: frontend/src/test/generate-log.txt
+          retention-days: 7

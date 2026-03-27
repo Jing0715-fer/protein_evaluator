@@ -1,0 +1,87 @@
+name: 🤖 Claude Code Auto Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          git diff origin/${{ github.event.pull_request.base.ref }}...HEAD > pr-diff.txt
+          echo "" >> pr-diff.txt
+          echo "=== Diff stats ===" >> pr-diff.txt
+          git diff --stat origin/${{ github.event.pull_request.base.ref }}...HEAD >> pr-diff.txt
+
+      - name: Install Claude Code
+        run: npm install -g @anthropic/claude-code
+
+      - name: Claude Code Review
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p \
+            --no-input \
+            --permission-mode bypassPermissions \
+            "You are a senior code reviewer for protein_evaluator.
+Project: React 19 + Flask protein structure evaluation platform.
+Backend: Flask + SQLAlchemy, AI clients (AlphaFold, UniProt, EMDB).
+Frontend: React 19 + TypeScript + Vite + Tailwind CSS.
+
+Review the PR changes in pr-diff.txt (if it exists) or by reading the changed files.
+
+Focus on:
+1. 🔴 Logic errors or bugs
+2. 🔴 Security issues (SQL injection, XSS, unsafe eval)
+3. 🔴 API contract changes that break endpoints
+4. 🟡 Error handling quality
+5. 🟡 Test coverage for new features
+6. 🟡 React 19 hooks correctness
+
+Format your response as:
+## 🤖 Claude Code Review
+
+### 🔴 Blocking Issues
+(List files + line numbers + description + fix)
+
+### 🟡 Suggestions
+(List files + description + recommendation)
+
+### ✅ What's Good
+
+### 📊 Summary
+- Files changed: X
+- Blocking issues: X
+- Recommendation: **Approve** / **Request Changes**"
+          2>&1 | tee review-output.txt
+
+      - name: Post PR comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const review = fs.readFileSync('review-output.txt', 'utf8');
+            const truncated = review.length > 6500
+              ? review.slice(0, 6500) + '\n\n_(Output truncated)_'
+              : review;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '## 🤖 Claude Code 自动审查\n\n' + truncated
+            });
