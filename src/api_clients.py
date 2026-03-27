@@ -1093,31 +1093,64 @@ class PubMedClient:
         return None
 
     def fetch_abstracts_for_structures(self, pdb_data: Dict) -> Dict:
-        """Fetch PubMed abstracts for all citations in PDB structures."""
+        """Fetch PubMed abstracts for all citations in PDB structures with retry logic."""
         for struct in pdb_data.get('structures', []):
             citations = struct.get('citations', [])
             for cit in citations:
                 pubmed_id = cit.get('pubmed_id')
                 title = cit.get('title', '')
 
-                # If no PMID, try to find it by title search
+                # If no PMID, try to find it by title search with retries
                 if not pubmed_id and title:
-                    try:
-                        pubmed_id = self.search_by_title(title)
-                        if pubmed_id:
-                            cit['pubmed_id'] = pubmed_id
-                            logger.info(f"Found PMID {pubmed_id} via title search for: {title[:50]}...")
-                    except Exception as e:
-                        logger.warning(f"Failed to search PMID by title: {e}")
+                    for retry in range(3):
+                        try:
+                            found_pmid = self.search_by_title(title)
+                            if found_pmid:
+                                pubmed_id = found_pmid
+                                cit['pubmed_id'] = pubmed_id
+                                logger.info(f"Found PMID {pubmed_id} via title search for: {title[:50]}...")
+                                break
+                            elif retry < 2:
+                                logger.info(f"Title search failed, retry {retry + 1}/3...")
+                                time.sleep(1)  # Brief pause before retry
+                        except Exception as e:
+                            if retry < 2:
+                                logger.warning(f"Title search error, retry {retry + 1}/3: {e}")
+                                time.sleep(1)
+                            else:
+                                logger.warning(f"Title search failed after 3 attempts for: {title[:50]}...")
 
                 # Fetch abstract if we have a PMID now
                 if pubmed_id:
-                    try:
-                        abstract = self.get_abstract_simple(str(pubmed_id))
-                        if abstract:
-                            cit['abstract'] = abstract
-                            logger.info(f"Retrieved abstract for PMID {pubmed_id}")
-                    except Exception as e:
-                        logger.warning(f"Failed to get abstract for PMID {pubmed_id}: {e}")
+                    for retry in range(3):
+                        try:
+                            abstract = self.get_abstract_simple(str(pubmed_id))
+                            if abstract:
+                                cit['abstract'] = abstract
+                                logger.info(f"Retrieved abstract for PMID {pubmed_id} (length: {len(abstract)})")
+                                break
+                            elif retry < 2:
+                                logger.info(f"Abstract fetch failed for PMID {pubmed_id}, retry {retry + 1}/3...")
+                                time.sleep(1)
+                            else:
+                                logger.warning(f"Failed to get abstract for PMID {pubmed_id} after 3 attempts")
+                        except Exception as e:
+                            if retry < 2:
+                                logger.warning(f"Abstract fetch error for PMID {pubmed_id}, retry {retry + 1}/3: {e}")
+                                time.sleep(1)
+                            else:
+                                logger.warning(f"Abstract fetch failed after 3 attempts for PMID {pubmed_id}: {e}")
+
+                    # If still no abstract, try CrossRef directly via DOI
+                    if not cit.get('abstract'):
+                        try:
+                            doi = self._get_doi_from_pubmed(pubmed_id)
+                            if doi:
+                                crossref_abstract = self._get_abstract_from_crossref_by_doi(doi)
+                                if crossref_abstract:
+                                    cit['abstract'] = crossref_abstract
+                                    logger.info(f"Got abstract from CrossRef for PMID {pubmed_id} via DOI {doi}")
+                        except Exception as e:
+                            logger.warning(f"CrossRef fallback failed for PMID {pubmed_id}: {e}")
 
         return pdb_data
