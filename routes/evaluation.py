@@ -5,6 +5,7 @@
 
 import os
 import sys
+from datetime import datetime
 from flask import Blueprint, jsonify, request, render_template
 import logging
 
@@ -187,7 +188,8 @@ def get_settings():
             # 替换现有的 AI_PROMPT_TEMPLATE
             import re
             pattern = r"AI_PROMPT_TEMPLATE\s*=\s*os\.environ\.get\('AI_PROMPT_TEMPLATE',\s*'''.*?'''\)"
-            replacement = f"AI_PROMPT_TEMPLATE = os.environ.get('AI_PROMPT_TEMPLATE', '''{template}''')"
+            escaped_template = re.escape(template)
+            replacement = f"AI_PROMPT_TEMPLATE = os.environ.get('AI_PROMPT_TEMPLATE', '''{escaped_template}''')"
             config_content = re.sub(pattern, replacement, config_content, flags=re.DOTALL)
 
         with open(config_path, 'w', encoding='utf-8') as f:

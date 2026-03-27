@@ -8,10 +8,6 @@ import logging
 from flask import Flask, render_template, send_from_directory, jsonify, request, make_response
 
 # Configure logging with UTF-8 encoding
-import io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
-
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -31,9 +27,9 @@ def create_app():
     app = Flask(__name__)
 
     # Load config
-    # Use SECRET_KEY from environment variable, fallback to a development key
+    # Use SECRET_KEY: env var takes priority, then config, then auto-generate
     # In production, SECRET_KEY must be set (enforced in config.py)
-    secret_key = config.SECRET_KEY or os.environ.get('SECRET_KEY')
+    secret_key = os.environ.get('SECRET_KEY') or config.SECRET_KEY
     if not secret_key:
         # Development fallback - generate a random key
         import secrets
@@ -149,8 +145,26 @@ def _init_default_templates():
             session.close()
 
 
-# Create app instance
-app = create_app()
+# Lazy app instance - only created when accessed (not at import time)
+_app_instance = None
+
+def _get_app():
+    """Get or create the Flask app instance (lazy initialization)"""
+    global _app_instance
+    if _app_instance is None:
+        _app_instance = create_app()
+    return _app_instance
+
+# For backwards compatibility: app object that lazily initializes
+class LazyApp:
+    """Lazy proxy to app instance"""
+    def __getattr__(self, name):
+        return getattr(_get_app(), name)
+
+    def __call__(self, *args, **kwargs):
+        return _get_app()(*args, **kwargs)
+
+app = LazyApp()
 
 
 @app.route('/api/config', methods=['GET', 'PUT', 'OPTIONS'])
