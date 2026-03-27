@@ -9,9 +9,9 @@ cd "$PROJECT"
 ACTION="${1:-all}"
 
 check_api_key() {
-  if [ -z "$ANTHROPIC_API_KEY" ]; then
-    echo "❌ 请设置 ANTHROPIC_API_KEY 环境变量"
-    echo "   export ANTHROPIC_API_KEY=sk-..."
+  if ! claude --version &>/dev/null; then
+    echo "❌ Claude Code CLI 未安装"
+    echo "   npm install -g @anthropic/claude-code"
     exit 1
   fi
 }
