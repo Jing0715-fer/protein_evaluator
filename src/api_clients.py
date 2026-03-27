@@ -894,11 +894,79 @@ class PubMedClient:
             return None
 
     def get_abstract_simple(self, pubmed_id: str) -> Optional[str]:
-        """Get just the abstract text for a PubMed ID."""
+        """Get just the abstract text for a PubMed ID, with CrossRef fallback."""
+        # Try PubMed first
         article = self.get_article(pubmed_id)
         if article:
-            return article.get('abstract', '')
+            abstract = article.get('abstract', '')
+            # If abstract is too short (< 100 chars), try CrossRef as fallback
+            if abstract and len(abstract) >= 100:
+                return abstract
+            # Try CrossRef for better abstract
+            crossref_abstract = self._get_abstract_from_crossref(pubmed_id)
+            if crossref_abstract and len(crossref_abstract) > len(abstract):
+                logger.info(f"CrossRef returned better abstract for PMID {pubmed_id}: {len(crossref_abstract)} vs {len(abstract)}")
+                return crossref_abstract
+            return abstract if abstract else None
         return None
+
+    def _get_abstract_from_crossref(self, pubmed_id: str) -> Optional[str]:
+        """Fetch abstract from CrossRef API using DOI lookup via PubMed E-utilities."""
+        try:
+            # First, get the DOI from PubMed
+            doi = self._get_doi_from_pubmed(pubmed_id)
+            if not doi:
+                return None
+            return self._get_abstract_from_crossref_by_doi(doi)
+        except Exception as e:
+            logger.warning(f"CrossRef fallback failed for PMID {pubmed_id}: {e}")
+            return None
+
+    def _get_doi_from_pubmed(self, pubmed_id: str) -> Optional[str]:
+        """Get DOI from PubMed article using efetch."""
+        try:
+            url = f"{self.BASE_URL}/efetch.fcgi"
+            params = {
+                'db': 'pubmed',
+                'id': pubmed_id,
+                'rettype': 'xml',
+                'retmode': 'xml'
+            }
+            response = self.session.get(url, params=params, timeout=15)
+            root = ET.fromstring(response.text)
+
+            # Look for ArticleId with IdType='doi'
+            for article_id in root.findall('.//ArticleId'):
+                if article_id.get('IdType') == 'doi':
+                    doi = article_id.text
+                    if doi:
+                        return doi
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to get DOI from PubMed for {pubmed_id}: {e}")
+            return None
+
+    def _get_abstract_from_crossref_by_doi(self, doi: str) -> Optional[str]:
+        """Fetch abstract from CrossRef API using DOI."""
+        try:
+            url = f"https://api.crossref.org/works/{urllib.parse.quote(doi)}"
+            headers = {'Accept': 'application/json'}
+            response = self.session.get(url, headers=headers, timeout=20)
+            if response.status_code != 200:
+                return None
+
+            data = response.json()
+            abstract = data.get('message', {}).get('abstract', '')
+            if abstract:
+                # Clean HTML tags from abstract
+                abstract = re.sub(r'<[^>]+>', '', abstract)
+                return abstract.strip()
+
+            # Try another field - sometimes abstract is in 'subtitle' or 'short-title'
+            return None
+        except Exception as e:
+            logger.warning(f"CrossRef API failed for DOI {doi}: {e}")
+            return None
 
     def search_by_title(self, title: str) -> Optional[str]:
         """Search PubMed by article title and return PMID.
