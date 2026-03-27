@@ -858,10 +858,13 @@ class PubMedClient:
             title = title_elem.text if title_elem is not None else ''
 
             # Abstract - can have multiple sections, so concatenate all
+            # Use itertext() to properly handle elements like <sup>2+</sup>
             abstract_parts = []
             for abstract_elem in article.findall('.//AbstractText'):
-                if abstract_elem.text:
-                    abstract_parts.append(abstract_elem.text)
+                # itertext() gets all text including child element tails
+                elem_text = ''.join(abstract_elem.itertext())
+                if elem_text:
+                    abstract_parts.append(elem_text)
             abstract = ' '.join(abstract_parts)
 
             # Journal
