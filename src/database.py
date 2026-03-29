@@ -2,6 +2,7 @@
 Database operations for Protein Evaluation
 """
 import logging
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional, List, Dict
 from datetime import datetime
@@ -16,25 +17,62 @@ import config
 
 logger = logging.getLogger(__name__)
 
-# Database path
-DATABASE_PATH = config.DATABASE_PATH
 
-# Ensure data directory exists
-Path(DATABASE_PATH).parent.mkdir(parents=True, exist_ok=True)
+def reset_engine():
+    """Reset the cached engine. Call this in tests before patching DATABASE_PATH."""
+    _get_engine.cache_clear()
 
-# Create engine
-engine = create_engine(
-    f'sqlite:///{DATABASE_PATH}',
-    echo=False,
-    poolclass=NullPool,
-    connect_args={'check_same_thread': False}
-)
 
-# Create tables
-Base.metadata.create_all(engine)
+def get_engine():
+    """Public entry point for the engine. Delegates to the cached _get_engine()."""
+    return _get_engine()
 
-# Run migrations for new columns
-def _run_migrations():
+
+@lru_cache(maxsize=1)
+def _get_engine():
+    """Lazily create and return the SQLAlchemy engine. Deferred until first call."""
+    import importlib
+    # Re-import config inside the lazy function so any test-level patches
+    # to config.DATABASE_PATH take effect before we read it.
+    importlib.reload(config)
+    DATABASE_PATH = config.DATABASE_PATH
+
+    # Ensure data directory exists
+    Path(DATABASE_PATH).parent.mkdir(parents=True, exist_ok=True)
+
+    engine = create_engine(
+        f'sqlite:///{DATABASE_PATH}',
+        echo=False,
+        poolclass=NullPool,
+        connect_args={'check_same_thread': False}
+    )
+
+    # Create tables
+    Base.metadata.create_all(engine)
+
+    # Run migrations for new columns
+    _run_migrations(engine)
+
+    return engine
+
+
+# Backwards-compatibility: module-level 'engine' proxy that delegates lazily
+class _EngineProxy:
+    """Proxy object that resolves the real engine on first use."""
+    def __getattr__(self, name):
+        return getattr(_get_engine(), name)
+
+    def __repr__(self):
+        return repr(_get_engine())
+
+    def __bool__(self):
+        return True
+
+
+engine = _EngineProxy()
+
+
+def _run_migrations(engine):
     """Run database migrations for schema updates"""
     with engine.connect() as conn:
         # Check if description_en column exists in prompt_templates
@@ -61,9 +99,8 @@ def _run_migrations():
             conn.commit()
             logger.info("Migration: Added ai_analysis_en column to protein_evaluations")
 
-_run_migrations()
 
-# Create session factory
+# Create session factory — bind=engine is a _EngineProxy that defers to _get_engine()
 Session = sessionmaker(bind=engine)
 
 
