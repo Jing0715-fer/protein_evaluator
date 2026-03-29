@@ -714,10 +714,15 @@ def generate_multi_target_report_endpoint(job_id):
             if include_interactions:
                 relationships = session.query(TargetRelationship).filter_by(job_id=job_id).all()
                 if relationships:
+                    # Pre-fetch all targets in a single query to avoid N+1 problem
+                    target_ids = list({rel.source_target_id for rel in relationships} |
+                                      {rel.target_target_id for rel in relationships})
+                    targets_map = {t.target_id: t
+                                   for t in session.query(Target).filter(Target.target_id.in_(target_ids)).all()}
                     interactions = []
                     for rel in relationships:
-                        source_target = session.get(Target, rel.source_target_id)
-                        target_target = session.get(Target, rel.target_target_id)
+                        source_target = targets_map.get(rel.source_target_id)
+                        target_target = targets_map.get(rel.target_target_id)
                         interactions.append({
                             'source_uniprot': source_target.uniprot_id if source_target else None,
                             'target_uniprot': target_target.uniprot_id if target_target else None,

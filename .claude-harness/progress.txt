@@ -16,3 +16,4 @@ S017 | correctness | src/cache_service.py | __del__ destructor unreliable cleanu
 S018 | security | config.py | SECRET_KEY FLASK_ENV production enforcement | done | pass
 S019 | correctness | src/database.py | _run_migrations() uncaught exceptions + no tracking table | done | pass
 S020 | pytest | tests/conftest.py | os.environ.clear() strips system env vars | done | pass
+S021 | correctness | routes/evaluation.py | N+1 query in generate_multi_target_report_endpoint() | done | pass

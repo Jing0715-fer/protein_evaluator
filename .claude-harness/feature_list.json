@@ -205,8 +205,9 @@
     "file": "routes/evaluation.py",
     "description": "N+1 query problem in `generate_multi_target_report_endpoint()` (lines 729-738). For each relationship, `session.query(Target).get(rel.source_target_id)` and `session.query(Target).get(rel.target_target_id)` are called — if there are N relationships, this makes 2N+1 queries. Also uses deprecated `.get()` API. The inner `session` created via `get_session()` is not explicitly closed if an exception occurs mid-function.",
     "priority": "medium",
-    "status": "pending",
-    "fix": "Pre-fetch all targets in a single query before the loop: `target_ids = [r.source_target_id for r in relationships] + [r.target_target_id for r in relationships]; targets_map = {t.target_id: t for t in session.query(Target).filter(Target.target_id.in_(target_ids)).all()}`. Replace `.get(id)` with `targets_map.get(id)`."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Pre-fetch all targets in a single query before the loop: `target_ids = list({rel.source_target_id for rel in relationships} | {rel.target_target_id for rel in relationships}); targets_map = {t.target_id: t for t in session.query(Target).filter(Target.target_id.in_(target_ids)).all()}`. Replace in-loop `session.get(Target, id)` calls with `targets_map.get(id)`. Also note: `session.get(Target, id)` is the correct SQLAlchemy 2.0 style (not deprecated); the deprecated form was `session.query(Target).get(id)` which was already fixed in S009."
   },
   {
     "id": "S022",
