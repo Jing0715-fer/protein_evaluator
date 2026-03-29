@@ -6,3 +6,4 @@ S006 | pytest | tests/test_smoke.py | importlib.reload mutates global module sta
 S007 | security | routes/evaluation.py | path traversal in download_report() | done | pass
 S008 | correctness | src/multi_target_scheduler.py | nested session + deprecated .get() API | done | pass
 S009 | correctness | src/database.py (and others) | deprecated .get() API in multiple files | done | pass
+S010 | error_handling | src/service.py | bare except swallows exceptions in _run_evaluation_task | done | pass

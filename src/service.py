@@ -7,6 +7,7 @@ import os
 import sys
 import logging
 import threading
+import traceback
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 
@@ -162,12 +163,16 @@ class ProteinEvaluationService:
                 logger.error(f"评估任务失败 [ID={evaluation_id}]: {results.get('error')}")
 
         except Exception as e:
-            logger.error(f"评估任务异常 [ID={evaluation_id}]: {e}")
-            update_protein_evaluation(evaluation_id, {
-                'evaluation_status': 'failed',
-                'current_step': 'failed',
-                'error': str(e)
-            })
+            tb = traceback.format_exc()
+            logger.exception("评估任务异常 [ID=%s]: %s", evaluation_id, e)
+            try:
+                update_protein_evaluation(evaluation_id, {
+                    'evaluation_status': 'failed',
+                    'current_step': 'failed',
+                    'error': tb
+                })
+            except Exception:
+                logger.error("评估任务异常 [ID=%s]: also failed to update DB: %s", evaluation_id, traceback.format_exc())
 
     def get_evaluation_status(self, evaluation_id: int) -> Dict[str, Any]:
         """获取评估状态"""

@@ -94,8 +94,9 @@
     "file": "src/service.py",
     "description": "Bare `except Exception` in `_run_evaluation_task()` (lines 164-170) catches all exceptions including `SystemExit`, `KeyboardInterrupt`, and `MemoryError`. If `update_protein_evaluation()` fails inside the except block, the error is silently swallowed — no traceback, no logging, and the user gets no feedback. The `error` field in the DB may show a truncated message.",
     "priority": "medium",
-    "status": "pending",
-    "fix": "Change to `except Exception as e: logger.exception('Evaluation task failed: %s', e)` and capture `traceback.format_exc()`. Store the full traceback in the error field. Consider adding a dead-letter queue for failed evaluations."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Added `import traceback` at module level. Replaced bare `except` with `except Exception as e:` capturing `traceback.format_exc()` into `tb`. Used `logger.exception()` for structured logging with automatic traceback. Stored `tb` (full traceback) in the DB error field instead of `str(e)`. Wrapped `update_protein_evaluation()` in an inner try/except — if DB update itself fails, a second `logger.error()` with separate traceback fires, so no error is ever silently swallowed."
   },
   {
     "id": "S011",
