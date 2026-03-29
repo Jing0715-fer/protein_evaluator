@@ -5,6 +5,7 @@ Prompt Helper Functions for Structuring Data for AI Analysis
 以结构化的方式组织后供 AI 分析使用。
 """
 
+import re
 from typing import Dict, List, Any, Optional
 from collections import defaultdict
 
@@ -101,7 +102,7 @@ def extract_entity_details(pdb_data: Dict) -> List[Dict[str, Any]]:
 
 def extract_ligand_info(pdb_data: Dict) -> List[Dict[str, Any]]:
     """
-    从 PDB 数据中提取配体/药物结合信息。
+    从 PDB 数据中提取配体/小分子结合信息。
 
     Args:
         pdb_data: PDB 数据字典
@@ -126,43 +127,16 @@ def extract_ligand_info(pdb_data: Dict) -> List[Dict[str, Any]]:
             if mol_type == 'bound' or 'polypeptide' not in str(mol_type).lower():
                 molecule_name = entity.get('molecule_name', '')
 
-                # 判断是否是药物/活性分子
-                is_drug = _is_drug_or_active_ligand(molecule_name)
-
                 ligands.append({
                     'pdb_id': pdb_id,
                     'entity_id': entity.get('entity_id'),
                     'ligand_name': molecule_name,
                     'molecule_type': mol_type,
                     'chain': entity.get('chain', ''),
-                    'is_drug': is_drug,
                     'organism': entity.get('organism', '')
                 })
 
     return ligands
-
-
-def _is_drug_or_active_ligand(molecule_name: str) -> bool:
-    """
-    判断分子是否是药物或活性配体。
-
-    这是一个启发式判断，基于常见的药物/配体名称模式。
-    """
-    if not molecule_name:
-        return False
-
-    name_lower = molecule_name.lower()
-
-    # 常见的药物/配体模式
-    drug_patterns = [
-        'drug', 'inhibitor', 'agonist', 'antagonist', 'activator',
-        'blocker', 'modulator', 'binder', 'compound', 'molecule',
-        'atp', 'gtp', 'nad', 'nap', 'heme', 'hem', 'fol', 'hdv',
-        'sam', 'sah', 'coa', 'gdp', 'mg', 'mn', 'zn', 'fe', 'cu',
-        'ca', 'mg', 'drug', 'pubchem'
-    ]
-
-    return any(pattern in name_lower for pattern in drug_patterns)
 
 
 def extract_literature_for_ai(articles: List[Dict]) -> List[Dict[str, Any]]:
@@ -239,7 +213,6 @@ def _clean_abstract(text: str) -> str:
     if not text:
         return "无摘要"
     # Replace newlines with spaces and strip extra whitespace
-    import re
     text = text.replace('\n', ' ').strip()
     text = re.sub(r'\s+', ' ', text)
     return text if text else "无摘要"
@@ -551,19 +524,8 @@ def _build_ligand_section_chinese(ligands: List[Dict]) -> str:
     """构建中文配体章节"""
     parts = []
 
-    parts.append("## 配体/药物结合信息\n\n")
+    parts.append("## 配体/小分子结合信息\n\n")
 
-    # 检查是否有药物结合蛋白
-    drug_ligands = [l for l in ligands if l.get('is_drug')]
-    if drug_ligands:
-        parts.append("### 药物/活性配体\n\n")
-        for ligand in drug_ligands:
-            parts.append(f"- **{ligand.get('ligand_name', 'N/A')}** (PDB: {ligand.get('pdb_id')}, 类型: {ligand.get('molecule_type', 'N/A')})\n")
-            if ligand.get('organism'):
-                parts.append(f"  - 来源: {ligand.get('organism')}\n")
-
-    # 所有配体
-    parts.append("\n### 所有配体/小分子\n\n")
     for ligand in ligands:
         parts.append(f"- {ligand.get('ligand_name', 'N/A')} (PDB: {ligand.get('pdb_id')}, 类型: {ligand.get('molecule_type', 'N/A')})\n")
 
@@ -576,17 +538,8 @@ def _build_ligand_section_english(ligands: List[Dict]) -> str:
     """构建英文配体章节"""
     parts = []
 
-    parts.append("## Ligand/Drug Binding Information\n\n")
+    parts.append("## Ligand/Small Molecule Binding Information\n\n")
 
-    drug_ligands = [l for l in ligands if l.get('is_drug')]
-    if drug_ligands:
-        parts.append("### Drug/Active Ligands\n\n")
-        for ligand in drug_ligands:
-            parts.append(f"- **{ligand.get('ligand_name', 'N/A')}** (PDB: {ligand.get('pdb_id')}, Type: {ligand.get('molecule_type', 'N/A')})\n")
-            if ligand.get('organism'):
-                parts.append(f"  - Source: {ligand.get('organism')}\n")
-
-    parts.append("\n### All Ligands/Small Molecules\n\n")
     for ligand in ligands:
         parts.append(f"- {ligand.get('ligand_name', 'N/A')} (PDB: {ligand.get('pdb_id')}, Type: {ligand.get('molecule_type', 'N/A')})\n")
 

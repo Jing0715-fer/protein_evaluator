@@ -104,8 +104,9 @@
     "file": "src/prompt_helpers.py",
     "description": "`_clean_abstract()` (line 215) has `import re` inside the function body instead of at module level. While Python caches module imports so subsequent calls are fast, this pattern makes static analysis harder and is inconsistent with the rest of the codebase. Also makes it unclear whether `re` is meant to be lazy-loaded for startup performance (unlikely given the codebase size).",
     "priority": "low",
-    "status": "pending",
-    "fix": "Move `import re` to the top of the file alongside other imports (around line 8). Same for `src/api_clients.py` line 985."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Moved `import re` to module level in src/prompt_helpers.py (line 8). Removed inline `import re` from `_clean_abstract()`. Removed redundant inline `import re` from `PubMedClient.search_by_title()` in src/api_clients.py — module-level `import re` at line 9 already covers it."
   },
   {
     "id": "S012",

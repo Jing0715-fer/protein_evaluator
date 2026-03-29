@@ -982,7 +982,6 @@ class PubMedClient:
         if not title or len(title) < 10:
             return None
 
-        import re
         url = f"{self.BASE_URL}/esearch.fcgi"
 
         # Clean title for search - remove special characters but keep letters/numbers/spaces

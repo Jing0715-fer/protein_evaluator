@@ -7,3 +7,4 @@ S007 | security | routes/evaluation.py | path traversal in download_report() | d
 S008 | correctness | src/multi_target_scheduler.py | nested session + deprecated .get() API | done | pass
 S009 | correctness | src/database.py (and others) | deprecated .get() API in multiple files | done | pass
 S010 | error_handling | src/service.py | bare except swallows exceptions in _run_evaluation_task | done | pass
+S011 | correctness | src/prompt_helpers.py, src/api_clients.py | inline import re moved to module level | done | pass
