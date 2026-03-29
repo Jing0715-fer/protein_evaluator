@@ -58,12 +58,39 @@ class DataCacheService:
         logger.debug("DataCacheService initialized")
     
     def __del__(self):
-        """Cleanup database session if we created it."""
+        """Safety net: close session on garbage collection.
+
+        Warning: __del__ is NOT guaranteed to run (interpreter shutdown,
+        reference cycles, etc.). Use `close()` directly or the context
+        manager (`with DataCacheService() as cache:`) for reliable cleanup.
+        """
         if self._local_db and self.db:
             try:
                 self.db.close()
             except Exception:
-                pass
+                pass  # swallow in __del__ — logging may be unavailable during shutdown
+
+    def __enter__(self):
+        """Enter context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit context manager: close locally-created session."""
+        self.close()
+        return False
+
+    def close(self):
+        """Close the locally-created database session.
+
+        Safe to call multiple times. No-op if the session was passed in
+        from outside (self._local_db is False).
+        """
+        if self._local_db and self.db:
+            try:
+                self.db.close()
+            except Exception as e:
+                logger.warning(f"Error closing local DB session in DataCacheService: {e}")
+            self._local_db = False
     
     def _compute_hash(self, data: Dict[str, Any]) -> str:
         """Compute hash of data for change detection."""
@@ -309,12 +336,32 @@ class DataCacheService:
 # Convenience functions
 _cache_service = None
 
+
 def get_cache_service() -> DataCacheService:
-    """Get singleton cache service instance."""
+    """Get singleton cache service instance.
+
+    The returned instance is owned by the caller and should be closed
+    when done, or used as a context manager::
+
+        with get_cache_service() as cache:
+            cache.set(...)
+    """
     global _cache_service
     if _cache_service is None:
         _cache_service = DataCacheService()
     return _cache_service
+
+
+def reset_cache_service():
+    """Close and discard the singleton cache service.
+
+    Call this in test teardown to ensure session cleanup and fresh state
+    between tests. Idempotent — safe to call even when _cache_service is None.
+    """
+    global _cache_service
+    if _cache_service is not None:
+        _cache_service.close()
+        _cache_service = None
 
 
 def cache_get(cache_type: str, cache_key: str) -> Optional[Dict[str, Any]]:

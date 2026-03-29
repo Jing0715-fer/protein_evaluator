@@ -162,5 +162,86 @@ class TestDataCacheModel:
         assert 'created_at' in result
 
 
+class TestDataCacheServiceContextManager:
+    """Tests for context manager and close() behaviour."""
+
+    def test_context_manager_closes_local_session(self):
+        """Entering and exiting the context manager closes the local session."""
+        from unittest.mock import MagicMock
+        from src.cache_service import DataCacheService
+
+        # Patch get_session so we get a mock DB with tracking
+        mock_session = MagicMock()
+        with patch('src.cache_service.get_session', return_value=mock_session):
+            with DataCacheService() as cache:
+                assert cache.db is mock_session
+                assert cache._local_db is True
+            # After exiting the context, close() must have been called
+            mock_session.close.assert_called_once()
+
+    def test_context_manager_noop_when_external_session(self):
+        """close() is a no-op when the session was passed in from outside."""
+        from unittest.mock import MagicMock
+        from src.cache_service import DataCacheService
+
+        mock_session = MagicMock()
+        service = DataCacheService(db=mock_session)
+        assert service._local_db is False
+
+        with service:
+            pass  # __exit__ calls close() but should not close external session
+        mock_session.close.assert_not_called()
+
+    def test_close_is_idempotent(self):
+        """close() can be called multiple times without error."""
+        from unittest.mock import MagicMock
+        from src.cache_service import DataCacheService
+
+        mock_session = MagicMock()
+        with patch('src.cache_service.get_session', return_value=mock_session):
+            service = DataCacheService()
+            service.close()
+            service.close()  # must not raise
+            mock_session.close.assert_called_once()  # still only once
+
+    def test_del_does_not_raise(self):
+        """__del__ swallows exceptions and must not propagate."""
+        import gc
+        from unittest.mock import MagicMock
+        from src.cache_service import DataCacheService
+
+        mock_session = MagicMock()
+        mock_session.close.side_effect = RuntimeError("session close failed")
+        with patch('src.cache_service.get_session', return_value=mock_session):
+            service = DataCacheService()
+        # Assigning to None drops the ref; __del__ fires; must not raise
+        service = None
+        gc.collect()  # force collection
+
+    def test_reset_cache_service(self):
+        """reset_cache_service() closes and clears the singleton."""
+        import gc
+        from unittest.mock import MagicMock
+        from src.cache_service import (
+            get_cache_service, reset_cache_service, _cache_service
+        )
+
+        mock_session = MagicMock()
+        with patch('src.cache_service.get_session', return_value=mock_session):
+            s1 = get_cache_service()
+            assert s1._local_db is True
+            assert s1.db is mock_session
+
+            # reset closes and discards
+            reset_cache_service()
+            mock_session.close.assert_called()
+
+            # Next get_cache_service() returns a fresh instance
+            import importlib
+            import src.cache_service as cs_mod
+            importlib.reload(cs_mod)
+            assert cs_mod._cache_service is None
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

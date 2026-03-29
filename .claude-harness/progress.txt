@@ -12,3 +12,4 @@ S012 | correctness | src/api_clients.py, src/prompt_helpers.py | inline import r
 S013 | error_handling | src/api_clients.py | silent exception swallowing in fetch_abstracts_for_structures() | done | pass
 S015 | correctness | routes/multi_target_v2.py, src/multi_target_scheduler.py | global _scheduler race condition | done | pass
 S016 | correctness | app.py | redundant inner import config in get_config() | done | pass
+S017 | correctness | src/cache_service.py | __del__ destructor unreliable cleanup | done | pass

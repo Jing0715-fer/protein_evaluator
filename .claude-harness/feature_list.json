@@ -165,8 +165,9 @@
     "file": "src/cache_service.py",
     "description": "`DataCacheService.__del__()` (lines 60-66) attempts session cleanup in a destructor. Python destructors (`__del__`) are not guaranteed to run (they may be skipped during interpreter shutdown, or skipped if the object is in a reference cycle). If `close()` raises an exception during GC, it is silently ignored. This can lead to session leaks in long-running processes.",
     "priority": "low",
-    "status": "pending",
-    "fix": "Replace `__del__` with a context manager: implement `__enter__`/`__exit__` methods. In Flask, use `app.teardown_appcontext()` to call `cache.close()`. In tests, use `pytest.fixture(autouse=True, scope='function')` to clean up."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Replaced `__del__` with three-part fix: (1) `close()` method — reliable explicit cleanup that sets `_local_db = False` after closing; (2) `__enter__`/`__exit__` context manager — callers can use `with DataCacheService() as cache:` for guaranteed cleanup; (3) `__del__` retained as safety-net only, with updated docstring warning it is not guaranteed to run. Added `reset_cache_service()` for test isolation. Added `autouse` pytest fixture `_reset_cache_service` in tests/conftest.py that calls `reset_cache_service()` after every test. All 19 tests pass."
   },
   {
     "id": "S018",
