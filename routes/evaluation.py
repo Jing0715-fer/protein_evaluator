@@ -178,22 +178,11 @@ def get_settings():
         data = request.get_json()
         template = data.get('prompt_template', '')
 
-        # 保存到配置文件
-        config_path = os.path.join(os.path.dirname(__file__), '..', 'config.py')
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config_content = f.read()
-
-        # 更新配置
-        if 'AI_PROMPT_TEMPLATE' in config_content:
-            # 替换现有的 AI_PROMPT_TEMPLATE
-            import re
-            pattern = r"AI_PROMPT_TEMPLATE\s*=\s*os\.environ\.get\('AI_PROMPT_TEMPLATE',\s*'''.*?'''\)"
-            escaped_template = re.escape(template)
-            replacement = f"AI_PROMPT_TEMPLATE = os.environ.get('AI_PROMPT_TEMPLATE', '''{escaped_template}''')"
-            config_content = re.sub(pattern, replacement, config_content, flags=re.DOTALL)
-
-        with open(config_path, 'w', encoding='utf-8') as f:
-            f.write(config_content)
+        # 保存到 .env 文件（持久化）+ 当前进程环境变量（立即生效）
+        success = config.save_to_env('AI_PROMPT_TEMPLATE', template)
+        if not success:
+            return jsonify({'success': False, 'error': '保存模板失败，请检查 .env 文件权限'}), 500
+        os.environ['AI_PROMPT_TEMPLATE'] = template
 
         return jsonify({'success': True, 'message': '设置已保存'})
 

@@ -1,3 +1,4 @@
 # Review progress
 S003 | pytest | src/database.py | lazy engine init | done | pass
 S004 | security | src/database.py | LIKE pattern injection | done | pass
+S005 | correctness | routes/evaluation.py | broken re.sub() save_template | done | pass

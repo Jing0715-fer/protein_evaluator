@@ -44,8 +44,9 @@
     "file": "routes/evaluation.py",
     "description": "Broken regex substitution in `get_settings()` (lines 172-196). The function tries to update `AI_PROMPT_TEMPLATE` in config.py using `re.sub()` with `re.escape(template)`. Problems: (1) `re.escape()` escapes ALL non-alphanumeric characters including newlines and triple-quotes (`'''`), turning a valid Python string literal into an escaped mess; (2) If the regex pattern doesn't match (due to formatting changes), the entire template is silently not saved with no error raised; (3) The replacement uses `'''{escaped_template}'''` which after `re.escape()` will have backslashes that Python interprets as escape sequences in the saved file.",
     "priority": "high",
-    "status": "pending",
-    "fix": "Remove the re.sub() approach entirely. Call `config.save_to_env('AI_PROMPT_TEMPLATE', template)` which already exists in config.py and properly handles the value. Raise a clear error if the update fails."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Replaced broken re.sub() file-manipulation with config.save_to_env('AI_PROMPT_TEMPLATE', template) which correctly handles arbitrary content (newlines, quotes, etc.). Removed re.escape() and the fragile regex. Added os.environ['AI_PROMPT_TEMPLATE'] = template for immediate in-process effect. Raises 500 error if save_to_env returns False."
   },
   {
     "id": "S006",
