@@ -22,8 +22,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
 
 
-def create_app():
-    """创建Flask应用"""
+def create_app(debug=None):
+    """创建Flask应用
+
+    Args:
+        debug: Optional bool to override DEBUG setting. If None, reads
+               from os.environ['DEBUG'] (consistent with config.DEBUG behaviour).
+    """
     app = Flask(__name__)
 
     # Load config
@@ -37,7 +42,10 @@ def create_app():
         logger.warning("SECRET_KEY not set, using auto-generated key for development")
 
     app.config['SECRET_KEY'] = secret_key
-    app.config['DEBUG'] = config.DEBUG
+    if debug is not None:
+        app.config['DEBUG'] = debug
+    else:
+        app.config['DEBUG'] = os.environ.get('DEBUG', 'False').lower() == 'true'
 
     # CORS middleware for all API routes
     @app.after_request
@@ -67,16 +75,33 @@ def create_app():
     except ImportError as e:
         logger.warning(f"v2 多靶点API注册失败: {e}")
 
-    # Main routes
+    # Frontend static files (Vite build from frontend/dist/)
+    FRONTEND_DIST = os.path.join(os.path.dirname(__file__), 'frontend', 'dist')
+
     @app.route('/')
     def index():
-        """首页/评估页面"""
-        return render_template('evaluation.html')
+        """首页/评估页面 - 服务 Vite 构建的前端"""
+        return send_from_directory(FRONTEND_DIST, 'index.html')
 
     @app.route('/evaluation')
     def evaluation_page():
-        """评估页面"""
-        return render_template('evaluation.html')
+        """评估页面 - 服务 Vite 构建的前端"""
+        return send_from_directory(FRONTEND_DIST, 'index.html')
+
+    # Serve static assets from Vite build
+    @app.route('/assets/<path:filename>')
+    def serve_assets(filename):
+        """服务 Vite 构建的静态资源"""
+        return send_from_directory(os.path.join(FRONTEND_DIST, 'assets'), filename)
+
+    # Serve root-level static files from dist (favicon, icons, etc.)
+    @app.route('/favicon.svg')
+    def serve_favicon():
+        return send_from_directory(FRONTEND_DIST, 'favicon.svg')
+
+    @app.route('/icons.svg')
+    def serve_icons():
+        return send_from_directory(FRONTEND_DIST, 'icons.svg')
 
     @app.route('/health')
     def health():

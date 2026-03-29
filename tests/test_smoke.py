@@ -29,19 +29,31 @@ class TestAppCreation:
             assert 'SECRET_KEY' in app.config
             assert app.config['SECRET_KEY'] == 'test-secret-key'
 
-    def test_app_debug_config(self):
-        """Test app debug configuration"""
-        import importlib
-        import config as config_module
-        import app as app_module
+    def test_app_debug_config(self, monkeypatch):
+        """Test app debug configuration via explicit debug parameter.
 
-        with patch.dict(os.environ, {'DEBUG': 'true'}, clear=False):
-            # Reload config to pick up new environment
-            importlib.reload(config_module)
-            # Reload app to pick up new config
-            importlib.reload(app_module)
-            app = app_module.create_app()
-            assert app.config['DEBUG'] is True
+        Uses monkeypatch instead of importlib.reload() to avoid mutating
+        global module state that other tests depend on.
+        """
+        from app import create_app
+
+        # Test explicit debug=True parameter
+        app = create_app(debug=True)
+        assert app.config['DEBUG'] is True
+
+        # Test explicit debug=False parameter
+        app = create_app(debug=False)
+        assert app.config['DEBUG'] is False
+
+        # Test environment-variable-driven DEBUG=true
+        monkeypatch.setenv('DEBUG', 'true', raising=False)
+        app = create_app()  # no explicit override — should read env
+        assert app.config['DEBUG'] is True
+
+        # Test environment-variable-driven DEBUG=false
+        monkeypatch.setenv('DEBUG', 'false', raising=False)
+        app = create_app()
+        assert app.config['DEBUG'] is False
 
 
 @pytest.mark.smoke

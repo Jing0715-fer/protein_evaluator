@@ -54,8 +54,9 @@
     "file": "tests/test_smoke.py",
     "description": "`test_app_debug_config()` (lines 32-44) uses `importlib.reload(config_module)` and `importlib.reload(app_module)` inside a test. This reloads global module state that other tests depend on. After this test runs, any subsequent test that imported `app` or `config` will have stale module references pointing to the old in-memory state (the reloaded module). Additionally, `clear=True` on `patch.dict` strips the entire environment during the test, which can break other tests running in the same pytest worker.",
     "priority": "high",
-    "status": "pending",
-    "fix": "Use pytest fixtures with `monkeypatch.setenv()` and `monkeypatch.delenv()` instead of `importlib.reload()`. Store the original module reference before reload and restore it in teardown. Consider using `pytest --forked` if true module isolation is required."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Added `debug=None` optional parameter to `create_app()` in app.py. When debug is None, reads from `os.environ['DEBUG']` (matching original config.DEBUG behaviour). When explicitly passed, uses that value. Replaced the importlib.reload()-based `test_app_debug_config()` with a monkeypatch-based version that: (1) tests explicit debug=True/False via direct parameter; (2) tests env-driven DEBUG=true/false via monkeypatch.setenv(). No global module state is mutated."
   },
   {
     "id": "S007",
