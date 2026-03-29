@@ -73,31 +73,77 @@ engine = _EngineProxy()
 
 
 def _run_migrations(engine):
-    """Run database migrations for schema updates"""
-    with engine.connect() as conn:
-        # Check if description_en column exists in prompt_templates
-        result = conn.execute(text("PRAGMA table_info(prompt_templates)"))
-        columns = [row[1] for row in result.fetchall()]
-        if 'description_en' not in columns:
-            conn.execute(text("ALTER TABLE prompt_templates ADD COLUMN description_en TEXT"))
-            conn.commit()
-            logger.info("Migration: Added description_en column to prompt_templates")
-        if 'content_en' not in columns:
-            conn.execute(text("ALTER TABLE prompt_templates ADD COLUMN content_en TEXT"))
-            conn.commit()
-            logger.info("Migration: Added content_en column to prompt_templates")
-        if 'name_en' not in columns:
-            conn.execute(text("ALTER TABLE prompt_templates ADD COLUMN name_en TEXT"))
-            conn.commit()
-            logger.info("Migration: Added name_en column to prompt_templates")
+    """Run database migrations for schema updates.
 
-        # Check if ai_analysis_en column exists in protein_evaluations
-        result = conn.execute(text("PRAGMA table_info(protein_evaluations)"))
-        eval_columns = [row[1] for row in result.fetchall()]
-        if 'ai_analysis_en' not in eval_columns:
-            conn.execute(text("ALTER TABLE protein_evaluations ADD COLUMN ai_analysis_en JSON"))
+    Uses a schema_migrations tracking table to skip already-run migrations.
+    Each ALTER TABLE is wrapped in try/except so concurrent process restarts
+    (where another process already added the column) do not crash startup.
+    """
+    with engine.connect() as conn:
+        # Ensure the migrations tracking table exists (idempotent).
+        try:
+            conn.execute(text(
+                "CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY)"
+            ))
             conn.commit()
-            logger.info("Migration: Added ai_analysis_en column to protein_evaluations")
+        except Exception as e:
+            logger.debug(f"schema_migrations table check: {e}")
+
+        # Helper: record and skip if already recorded.
+        def run_migration(version: str, sql: str, log_msg: str):
+            try:
+                result = conn.execute(text("SELECT 1 FROM schema_migrations WHERE version = :v"), {"v": version})
+                if result.fetchone():
+                    logger.debug(f"Migration {version} already applied, skipping")
+                    return
+            except Exception as e:
+                logger.warning(f"Could not check migration {version}: {e}")
+
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+                conn.execute(text("INSERT INTO schema_migrations (version) VALUES (:v)"), {"v": version})
+                conn.commit()
+                logger.info(f"Migration: {log_msg}")
+            except Exception as e:
+                # OperationalError "duplicate column name" means another process
+                # already ran this migration — treat as success.
+                err_str = str(e).lower()
+                if "duplicate column name" in err_str or "already exists" in err_str:
+                    logger.debug(f"Migration {version} column already exists (concurrent run), treating as applied")
+                    try:
+                        conn.execute(text(
+                            "INSERT OR IGNORE INTO schema_migrations (version) VALUES (:v)"
+                        ), {"v": version})
+                        conn.commit()
+                    except Exception:
+                        pass
+                else:
+                    logger.warning(f"Migration {version} failed: {e}")
+
+        # v1: add *_en columns to prompt_templates
+        run_migration(
+            "v1_description_en",
+            "ALTER TABLE prompt_templates ADD COLUMN description_en TEXT",
+            "Added description_en column to prompt_templates"
+        )
+        run_migration(
+            "v1_content_en",
+            "ALTER TABLE prompt_templates ADD COLUMN content_en TEXT",
+            "Added content_en column to prompt_templates"
+        )
+        run_migration(
+            "v1_name_en",
+            "ALTER TABLE prompt_templates ADD COLUMN name_en TEXT",
+            "Added name_en column to prompt_templates"
+        )
+
+        # v2: add ai_analysis_en to protein_evaluations
+        run_migration(
+            "v2_ai_analysis_en",
+            "ALTER TABLE protein_evaluations ADD COLUMN ai_analysis_en JSON",
+            "Added ai_analysis_en column to protein_evaluations"
+        )
 
 
 # Create session factory — bind=engine is a _EngineProxy that defers to _get_engine()

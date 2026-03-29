@@ -185,8 +185,9 @@
     "file": "src/database.py",
     "description": "`_run_migrations()` (lines 37-64) runs on every process startup. Each ALTER TABLE call commits individually (correct) but the exceptions from failed ALTER TABLEs are not caught. If a column already exists (e.g., migration already ran on a different process instance), the exception propagates and crashes startup. The migration system has no version table to skip already-run migrations.",
     "priority": "medium",
-    "status": "pending",
-    "fix": "Wrap each ALTER TABLE in a try/except that catches `OperationalError` with message 'duplicate column name'. Use a `schema_migrations` tracking table: `CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY);` and check it before running each migration."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Added `schema_migrations` tracking table (`CREATE TABLE IF NOT EXISTS schema_migrations (version TEXT PRIMARY KEY)`) — created idempotently at migration start. Each migration now uses a `run_migration(version, sql, log_msg)` helper that (1) checks the tracking table and skips if already recorded, (2) runs the ALTER TABLE in a try/except, (3) catches 'duplicate column name' / 'already exists' OperationalError from concurrent restarts and inserts the version record anyway via `INSERT OR IGNORE`, (4) logs a warning for any other failure. Four previously-untracked migrations are now versioned: v1_description_en, v1_content_en, v1_name_en, v2_ai_analysis_en."
   },
   {
     "id": "S020",
