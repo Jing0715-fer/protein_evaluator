@@ -155,8 +155,9 @@
     "file": "app.py",
     "description": "Route `get_config()` at line 187 imports `config` inside the function body (`import config`). This shadows the module-level `import config` at line 22 but is redundant — the module-level import is accessible inside the function. More importantly, `update_ai_config()` (line 977) modifies `config.AI_MODEL` etc. directly on the module object. In multi-worker deployments (gunicorn -w N), these in-memory changes only persist for the lifetime of that worker process and are not visible to other workers.",
     "priority": "medium",
-    "status": "pending",
-    "fix": "Remove the inner `import config` in `get_config()`. For multi-worker deployments, write config changes to `.env` via `config.save_to_env()` (already done in `update_ai_config()`) and signal workers to reload, or use a database-backed config store."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Removed redundant inner `import config` from `get_config()` in app.py. The module-level `import config` (line 22) is used directly. `update_ai_config()` in routes/evaluation.py already calls `save_to_env()` for all changes, writing them to `.env` for persistence across restarts. The in-process mutation (`app_config.AI_MODEL = ...`) is supplemented by the `.env` write; the per-worker in-memory scope is explicitly documented in the function's docstring."
   },
   {
     "id": "S017",

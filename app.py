@@ -195,8 +195,6 @@ app = LazyApp()
 @app.route('/api/config', methods=['GET', 'PUT', 'OPTIONS'])
 def get_config():
     """Get or update AI configuration"""
-    import config
-
     if request.method == 'OPTIONS':
         return make_response(jsonify({'success': True}), 200)
 
