@@ -365,7 +365,7 @@ class TargetInteractionAnalyzer:
         relationships = []
         
         with get_session() as session:
-            job = session.query(MultiTargetJob).get(job_id)
+            job = session.get(MultiTargetJob, job_id)
             if not job:
                 logger.error(f"任务 {job_id} 不存在")
                 return []

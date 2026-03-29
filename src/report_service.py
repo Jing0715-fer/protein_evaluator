@@ -236,8 +236,8 @@ class MultiTargetReportService:
         
         interactions = []
         for rel in relationships:
-            source_target = session.query(Target).get(rel.source_target_id)
-            target_target = session.query(Target).get(rel.target_target_id)
+            source_target = session.get(Target, rel.source_target_id)
+            target_target = session.get(Target, rel.target_target_id)
             
             interactions.append({
                 'source_target_id': rel.source_target_id,

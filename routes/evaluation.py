@@ -716,8 +716,8 @@ def generate_multi_target_report_endpoint(job_id):
                 if relationships:
                     interactions = []
                     for rel in relationships:
-                        source_target = session.query(Target).get(rel.source_target_id)
-                        target_target = session.query(Target).get(rel.target_target_id)
+                        source_target = session.get(Target, rel.source_target_id)
+                        target_target = session.get(Target, rel.target_target_id)
                         interactions.append({
                             'source_uniprot': source_target.uniprot_id if source_target else None,
                             'target_uniprot': target_target.uniprot_id if target_target else None,

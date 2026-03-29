@@ -84,8 +84,9 @@
     "file": "src/database.py (and others)",
     "description": "Deprecated SQLAlchemy `.get()` API used extensively throughout the codebase. SQLAlchemy 2.0 deprecated `session.query(Model).get(id)` in favor of `session.get(Model, id)`. Found in: src/database.py (~20 occurrences: lines 151, 167, 196, 242, 298, 309, 327, 349, 397, 414, 443, 471, 493, 539, 567, 594, 610, 636); src/multi_target_scheduler.py (lines 151, 202, 450, 552, 558, 813, 833, 858, 920, 955); routes/evaluation.py (lines 730-731). While still functional, this emits deprecation warnings and will break in SQLAlchemy 3.x.",
     "priority": "medium",
-    "status": "pending",
-    "fix": "Global replace: `session.query(Model).get(id)` → `session.get(Model, id)` across all .py files. Use `grep -rn 'query(.*)\\.get(' src/ routes/ tests/` to find all occurrences."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Replaced `session.query(Model).get(id)` with `session.get(Model, id)` across 5 files: routes/evaluation.py (lines 719-720), routes/multi_target_v2.py (lines 1206-1207), src/report_service.py (lines 239-240), src/target_interaction_analyzer.py (line 368), src/multi_target_scheduler.py (lines 438, 821, 841, 866, 928, 963 — additional occurrences beyond S008's scope). src/database.py already uses `filter_by().first()` throughout, not the deprecated API. Verified: grep now returns zero SQLAlchemy query().get() occurrences (only `request.args.get()` dict method remains, a false positive)."
   },
   {
     "id": "S010",

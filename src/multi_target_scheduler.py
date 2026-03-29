@@ -435,7 +435,7 @@ class MultiTargetScheduler:
         except Exception as e:
             logger.error(f"评估靶点 {target_id} 失败: {e}")
             with get_session() as session:
-                target = session.query(Target).get(target_id)
+                target = session.get(Target, target_id)
                 if target:
                     target.status = 'failed'
                     target.error_message = str(e)
@@ -818,7 +818,7 @@ Do not add, omit, or paraphrase any content - translate accurately."""
     def resume_job(self, job_id: int) -> bool:
         """恢复任务"""
         with get_session() as session:
-            job = session.query(MultiTargetJob).get(job_id)
+            job = session.get(MultiTargetJob, job_id)
             if not job:
                 logger.warning(f"任务 {job_id} 不存在，无法恢复")
                 return False
@@ -838,7 +838,7 @@ Do not add, omit, or paraphrase any content - translate accurately."""
     def cancel_job(self, job_id: int) -> bool:
         """取消任务"""
         with get_session() as session:
-            job = session.query(MultiTargetJob).get(job_id)
+            job = session.get(MultiTargetJob, job_id)
             if not job:
                 return False
             
@@ -863,7 +863,7 @@ Do not add, omit, or paraphrase any content - translate accurately."""
             clear_evaluations: 是否清除旧的 evaluation 数据（默认 True）
         """
         with get_session() as session:
-            job = session.query(MultiTargetJob).get(job_id)
+            job = session.get(MultiTargetJob, job_id)
             if not job:
                 logger.warning(f"任务 {job_id} 不存在")
                 return False
@@ -925,7 +925,7 @@ Do not add, omit, or paraphrase any content - translate accurately."""
     def get_job_status(self, job_id: int) -> Optional[Dict[str, Any]]:
         """获取任务状态"""
         with get_session() as session:
-            job = session.query(MultiTargetJob).get(job_id)
+            job = session.get(MultiTargetJob, job_id)
             if not job:
                 return None
             
@@ -960,10 +960,10 @@ Do not add, omit, or paraphrase any content - translate accurately."""
             进度信息字典
         """
         with get_session() as session:
-            job = session.query(MultiTargetJob).get(job_id)
+            job = session.get(MultiTargetJob, job_id)
             if not job:
                 return None
-            
+
             # 获取所有靶点状态
             targets = session.query(Target).filter_by(job_id=job_id).all()
             

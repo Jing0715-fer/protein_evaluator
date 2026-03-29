@@ -1203,8 +1203,8 @@ def get_job_interactions(job_id: int):
 
             interactions = []
             for rel in relationships:
-                source = session.query(Target).get(rel.source_target_id)
-                target = session.query(Target).get(rel.target_target_id)
+                source = session.get(Target, rel.source_target_id)
+                target = session.get(Target, rel.target_target_id)
 
                 # Calculate common PDB structures between source and target
                 source_pdb = target_pdb_map.get(source.uniprot_id, []) if source else []
