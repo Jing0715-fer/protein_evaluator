@@ -868,14 +868,20 @@ def download_report(filename):
         from flask import send_from_directory
         
         # 安全检查：防止目录遍历攻击
-        if '..' in filename or filename.startswith('/'):
+        if '..' in filename:
             return jsonify({'success': False, 'error': '非法文件名'}), 400
-        
+
         reports_dir = os.path.join(os.path.dirname(__file__), '..', 'reports')
-        
-        if not os.path.exists(os.path.join(reports_dir, filename)):
+        reports_dir = os.path.realpath(reports_dir)
+
+        # Canonicalize the resolved path and verify it stays within reports_dir
+        safe_path = os.path.realpath(os.path.join(reports_dir, filename))
+        if not safe_path.startswith(reports_dir + os.sep) and safe_path != reports_dir:
+            return jsonify({'success': False, 'error': '非法文件名'}), 400
+
+        if not os.path.exists(safe_path):
             return jsonify({'success': False, 'error': '文件不存在'}), 404
-        
+
         return send_from_directory(reports_dir, filename, as_attachment=True)
         
     except Exception as e:

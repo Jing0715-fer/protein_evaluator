@@ -64,8 +64,9 @@
     "file": "routes/evaluation.py",
     "description": "Incomplete path traversal protection in `download_report()` (lines 875-894). The check `if '..' in filename or filename.startswith('/')` misses: `~` home directory expansion, Windows absolute paths (`C:\\`), URL-encoded sequences (`%2e%2e`), symlinks that resolve outside the directory, and null bytes. An attacker with control over the filename can read arbitrary files on the server.",
     "priority": "high",
-    "status": "pending",
-    "fix": "Use `os.path.realpath()` to resolve the full canonical path, then verify it starts with the reports directory: `safe_path = os.path.realpath(os.path.join(reports_dir, filename)); if not safe_path.startswith(os.path.realpath(reports_dir) + os.sep): raise 400`."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Replaced naive `'..' in filename or filename.startswith('/')` check with canonical path enforcement: (1) `os.path.realpath()` on both reports_dir and the joined safe_path; (2) explicit prefix check `safe_path.startswith(reports_dir + os.sep) or safe_path == reports_dir`; (3) updated the exists check to use safe_path instead of re-joining. This blocks ~ expansion, Windows absolute paths, and symlink escapes that the original check missed. The `..` substring guard is kept as a fast pre-check."
   },
   {
     "id": "S008",
