@@ -29,8 +29,39 @@ def create_no_proxy_session() -> requests.Session:
     return session
 
 
-# Global HTTP session without proxy
-http_session = create_no_proxy_session()
+# Global HTTP session without proxy — lazily initialized to avoid import-time
+# side-effects (important for pytest test isolation and environments where the
+# session may need to be patched before any module imports it).
+_http: Optional[requests.Session] = None
+
+
+class _LazySessionProxy:
+    """Proxy object that lazily initialises the shared requests.Session on first access.
+
+    Provides backward compatibility: `from utils.api_utils import http_session`
+    still works (the proxy is assigned to `http_session` below), but the actual
+    session is only created when the proxy is first used.
+    """
+
+    __slots__ = ()
+
+    def _get_session(self) -> requests.Session:
+        global _http
+        if _http is None:
+            _http = create_no_proxy_session()
+        return _http
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._get_session(), name)
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        return self._get_session()(*args, **kwargs)
+
+    def __repr__(self) -> str:
+        return repr(self._get_session())
+
+
+http_session: Any = _LazySessionProxy()  # backward-compatible lazy proxy
 
 
 def retry_with_backoff(

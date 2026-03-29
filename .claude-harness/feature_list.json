@@ -135,8 +135,9 @@
     "file": "utils/api_utils.py",
     "description": "Global `http_session = create_no_proxy_session()` at line 33 runs at module import time. In pytest subprocess-isolated mode, this session is created before any test-level environment patching. The session holds no cross-request state, but its creation at import time means it cannot be overridden per-test.",
     "priority": "low",
-    "status": "pending",
-    "fix": "Make it a lazy global: initialize to `None`, then `def get_http_session(): global _http; _http = _http or create_no_proxy_session(); return _http`. Patch `get_http_session` in tests instead."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Replaced the eager module-level `http_session = create_no_proxy_session()` with a `_LazySessionProxy` class. `_http` starts as `None` and is only created the first time the proxy is accessed. The proxy forwards all attribute access and call operations to the real session via `__getattr__` / `__call__`. Assignments like `self.session = http_session` (used in 5 downstream files) still work — method calls go through the proxy transparently. No module-level side-effects occur at import time."
   },
   {
     "id": "S015",
