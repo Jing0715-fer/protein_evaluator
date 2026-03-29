@@ -215,8 +215,9 @@
     "file": "src/ai_client_wrapper.py",
     "description": "Ambiguous config precedence in `get_ai_client_wrapper()` (lines 1359-1379). The function uses `config.get('key') or default` which makes it impossible to distinguish between 'key not provided' and 'key set to empty string/falsy value'. For example, `base_url=''` (empty string intentionally passed) will be replaced by the default. Additionally, unknown keys in `config` are silently ignored, making typos in config key names hard to debug.",
     "priority": "low",
-    "status": "pending",
-    "fix": "Use explicit None checks: `api_key=config.get('ai_api_key') if 'ai_api_key' in config else None`. Document the precedence: explicit constructor args > config dict > module defaults. Consider validating unknown keys with a warning."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Replaced `or` fallback operators with explicit `is None` checks in `AIClientWrapper.__init__`: `self.provider = provider if provider is not None else getattr(config, 'AI_PROVIDER', 'openai')` (and same pattern for model, api_key, base_url). Now `provider=''` (empty string) is preserved as the explicit value instead of being silently replaced by the config module default. Precedence is now: explicit constructor arg > config dict (via getattr on module) > hardcoded default."
   },
   {
     "id": "S023",

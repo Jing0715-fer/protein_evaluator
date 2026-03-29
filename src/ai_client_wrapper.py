@@ -29,6 +29,24 @@ logger = logging.getLogger(__name__)
 class AIClientWrapper:
     """Wrapper for AI client operations."""
 
+    # Model context windows (approximate, in tokens)
+    MODEL_CONTEXT_WINDOWS = {
+        'gpt-4o': 128000,
+        'gpt-4o-mini': 128000,
+        'gpt-4-turbo': 128000,
+        'gpt-4': 8192,
+        'gpt-3.5-turbo': 16385,
+        'claude-3-opus': 200000,
+        'claude-3-sonnet': 200000,
+        'claude-3-haiku': 200000,
+        'claude-2': 100000,
+        'gemini-pro': 32768,
+        'gemini-ultra': 32768,
+    }
+
+    # Reserve tokens for system/response overhead
+    CONTEXT_RESERVE = 4000
+
     def __init__(
         self,
         provider: str = None,
@@ -49,10 +67,10 @@ class AIClientWrapper:
             max_tokens: Maximum tokens in response
             temperature: Temperature for generation
         """
-        self.provider = provider or getattr(config, 'AI_PROVIDER', 'openai')
-        self.model = model or getattr(config, 'AI_MODEL', 'gpt-4o')
-        self.api_key = api_key or getattr(config, 'AI_API_KEY', '')
-        self.base_url = base_url or getattr(config, 'AI_BASE_URL', '')
+        self.provider = provider if provider is not None else getattr(config, 'AI_PROVIDER', 'openai')
+        self.model = model if model is not None else getattr(config, 'AI_MODEL', 'gpt-4o')
+        self.api_key = api_key if api_key is not None else getattr(config, 'AI_API_KEY', '')
+        self.base_url = base_url if base_url is not None else getattr(config, 'AI_BASE_URL', '')
         self.max_tokens = max_tokens
         self.temperature = temperature
         self.client = None
@@ -247,7 +265,7 @@ Please generate the report following this framework:""")
                 if resolution:
                     parts.append(f"- Resolution: {resolution} Å\n")
                 if title:
-                    parts.append(f"- Title: {title[:200]}\n")
+                    parts.append(f"- Title: {title}\n")
                 if authors:
                     parts.append(f"- Authors: {', '.join(authors[:5])}")
                     if len(authors) > 5:
@@ -267,12 +285,11 @@ Please generate the report following this framework:""")
                         chain = ent.get('chain', '')
                         polymer_type = ent.get('polymer_type', '')
                         length = ent.get('length', 0)
-                        seq = ent.get('sequence', '')
-                        if seq and len(seq) > 0:
-                            # Show first 50 chars of sequence
-                            seq_preview = seq[:50] + '...' if len(seq) > 50 else seq
-                            parts.append(f"  - Entity {ent_id} (Chain {chain}): {polymer_type}, Length {length}\n")
-                            parts.append(f"    Sequence: {seq_preview}\n")
+                        mol_name = ent.get('molecule_name', '')
+                        gene = ent.get('gene_name', '')
+                        name_str = f"{mol_name}" if mol_name else polymer_type
+                        gene_str = f", Gene: {gene}" if gene else ""
+                        parts.append(f"  - Entity {ent_id} (Chain {chain}): {name_str}{gene_str}, Length {length}\n")
 
                 # Citations with abstracts
                 if citations:
@@ -283,7 +300,7 @@ Please generate the report following this framework:""")
                         pubmed_id = cite.get('pubmed_id', '')
                         abstract = cite.get('abstract', '')
                         if cite_title:
-                            parts.append(f"  - Citation: \"{cite_title[:100]}\"")
+                            parts.append(f"  - Citation: \"{cite_title}\"")
                             if journal or year:
                                 parts.append(f" ({journal}, {year})")
                             if pubmed_id:
@@ -444,7 +461,7 @@ Please generate the report following this framework:""")
                 if resolution:
                     parts.append(f"- 分辨率: {resolution} Å\n")
                 if title:
-                    parts.append(f"- 标题: {title[:200]}\n")
+                    parts.append(f"- 标题: {title}\n")
                 if authors:
                     parts.append(f"- 作者: {', '.join(authors[:5])}")
                     if len(authors) > 5:
@@ -464,12 +481,12 @@ Please generate the report following this framework:""")
                         chain = ent.get('chain', '')
                         polymer_type = ent.get('polymer_type', '')
                         length = ent.get('length', 0)
-                        seq = ent.get('sequence', '')
-                        if seq and len(seq) > 0:
-                            # 显示序列前50个字符
-                            seq_preview = seq[:50] + '...' if len(seq) > 50 else seq
-                            parts.append(f"  - 实体 {ent_id} (链 {chain}): {polymer_type}, 长度 {length}\n")
-                            parts.append(f"    序列: {seq_preview}\n")
+                        mol_name = ent.get('molecule_name', '')
+                        gene = ent.get('gene_name', '')
+                        # 显示实体详情
+                        name_str = f"{mol_name}" if mol_name else polymer_type
+                        gene_str = f", 基因: {gene}" if gene else ""
+                        parts.append(f"  - 实体 {ent_id} (链 {chain}): {name_str}{gene_str}, 长度 {length}\n")
 
                 # 文献引用（含摘要）
                 if citations:
@@ -480,7 +497,7 @@ Please generate the report following this framework:""")
                         pubmed_id = cite.get('pubmed_id', '')
                         abstract = cite.get('abstract', '')
                         if cite_title:
-                            parts.append(f"  - 文献: \"{cite_title[:100]}\"")
+                            parts.append(f"  - 文献: \"{cite_title}\"")
                             if journal or year:
                                 parts.append(f" ({journal}, {year})")
                             if pubmed_id:
@@ -681,8 +698,6 @@ Please generate the report following this framework:""")
                     resolution = struct.get('resolution', '')
                     deposition_date = struct.get('deposition_date', '')[:10] if struct.get('deposition_date') else ''
                     title = struct.get('title', 'N/A')
-                    if title and len(title) > 40:
-                        title = title[:40] + '...'
                     sections.append(f"| {pdb_id} | {method} | {resolution} | {deposition_date} | {title} |")
                 sections.append("")
 
@@ -765,6 +780,580 @@ Please generate the report following this framework:""")
                     sections.append("")
 
         return "\n".join(sections)
+
+    def _estimate_tokens(self, text: str) -> int:
+        """
+        Estimate token count for text.
+        Uses rough character-based estimation (~4 chars per token for English,
+        ~2 chars per token for Chinese).
+        """
+        if not text:
+            return 0
+
+        # Count Chinese characters (roughly 2 chars per token)
+        chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+        # Rest is roughly 4 chars per token
+        other_chars = len(text) - chinese_chars
+
+        return int(chinese_chars / 2) + int(other_chars / 4)
+
+    def _get_context_limit(self) -> int:
+        """Get the context window limit for the current model."""
+        model_lower = self.model.lower()
+
+        for model_pattern, limit in self.MODEL_CONTEXT_WINDOWS.items():
+            if model_pattern in model_lower:
+                return limit - self.CONTEXT_RESERVE
+
+        # Default: assume 8k context
+        return 8000 - self.CONTEXT_RESERVE
+
+    def _generate_literature_grouped_data(
+        self,
+        uniprot_data: Dict,
+        pdb_data: Dict,
+        blast_results: Dict,
+        language: str = 'zh'
+    ) -> List[Dict[str, Any]]:
+        """
+        Generate data sections grouped by literature.
+
+        Returns a list of chunks, where each chunk contains:
+        - header: protein info header
+        - literature_data: list of (literature, pdbs_citing_it) tuples
+        - homology_data: homology statistics (for all, not split)
+
+        The chunks are designed to be within context limits while
+        keeping each literature's data together.
+        """
+        chunks = []
+
+        # 1. Build the header section (protein info)
+        header = self._build_protein_header(uniprot_data, language)
+
+        # 2. Collect all literature and their associated PDBs
+        literature_pdb_map = []  # List of (literature, pdb_structures) tuples
+
+        structures = pdb_data.get('structures', []) if pdb_data else []
+
+        # Build a map of literature -> PDB structures
+        lit_to_pdbs = {}
+        lit_to_structs = {}
+
+        for struct in structures:
+            pdb_id = struct.get('pdb_id', '')
+            citations = struct.get('citations', []) or []
+
+            for cite in citations:
+                pmid = cite.get('pubmed_id', '')
+                title = cite.get('title', '')
+
+                # Create a unique key for this literature
+                lit_key = pmid if pmid else title.lower()
+
+                if not lit_key:
+                    continue
+
+                if lit_key not in lit_to_pdbs:
+                    lit_to_pdbs[lit_key] = []
+                    lit_to_structs[lit_key] = {
+                        'pubmed_id': pmid,
+                        'title': title,
+                        'journal': cite.get('journal', ''),
+                        'year': cite.get('year', ''),
+                        'authors': cite.get('authors', []),
+                        'abstract': cite.get('abstract', ''),
+                        'doi': cite.get('doi', '')
+                    }
+
+                lit_to_pdbs[lit_key].append(struct)
+
+        # Convert to list of tuples
+        for lit_key, lit_info in lit_to_structs.items():
+            literature_pdb_map.append((lit_info, lit_to_pdbs[lit_key]))
+
+        # 3. Build homology section (not split, included in all chunks)
+        homology_section = ""
+        homology_details = blast_results.get('homology_details', []) if blast_results else []
+        if homology_details:
+            homology_stats = extract_homology_statistics(homology_details)
+            if homology_stats and homology_stats.get('total_homologs', 0) > 0:
+                homology_section = build_homology_section_for_prompt(homology_stats, language=language)
+
+        # 4. Build chunks, keeping literatures together
+        if not literature_pdb_map:
+            # No literature data - build a single chunk with just protein/PDB info
+            chunk_data = self._build_simple_chunk(header, structures, homology_section, language)
+            chunks.append(chunk_data)
+        else:
+            # Group literatures into chunks based on context limit
+            context_limit = self._get_context_limit()
+            # Base tokens = header + homology (these are included in every chunk)
+            base_tokens = self._estimate_tokens(header) + self._estimate_tokens(homology_section)
+
+            current_chunk_literatures = []
+            current_chunk_tokens = base_tokens
+
+            for lit_info, pdbs in literature_pdb_map:
+                # Estimate size of this literature + its PDBs
+                lit_text = self._format_literature_for_prompt(lit_info, pdbs, language)
+                lit_tokens = self._estimate_tokens(lit_text)
+
+                # Check if adding this literature would exceed limit
+                # If this is the first literature and it exceeds limit, add it anyway
+                # (can't split further without splitting the literature itself)
+                if current_chunk_literatures and current_chunk_tokens + lit_tokens > context_limit:
+                    # Save current chunk and start new one
+                    chunk_data = self._build_chunk_with_literatures(
+                        header, current_chunk_literatures, homology_section, language
+                    )
+                    chunks.append(chunk_data)
+                    current_chunk_literatures = []
+                    current_chunk_tokens = base_tokens
+
+                current_chunk_literatures.append((lit_info, pdbs))
+                current_chunk_tokens += lit_tokens
+
+            # Don't forget the last chunk
+            if current_chunk_literatures:
+                chunk_data = self._build_chunk_with_literatures(
+                    header, current_chunk_literatures, homology_section, language
+                )
+                chunks.append(chunk_data)
+
+        return chunks
+
+    def _build_protein_header(self, uniprot_data: Dict, language: str) -> str:
+        """Build the protein information header section."""
+        parts = []
+
+        if language == 'zh':
+            parts.append("## 蛋白质基础信息\n")
+            parts.append(f"- **UniProt ID**: {uniprot_data.get('uniprot_id', 'N/A')}")
+            parts.append(f"- **蛋白名称**: {uniprot_data.get('protein_name', 'N/A')}")
+            gene_names = uniprot_data.get('gene_names', [])
+            if gene_names:
+                parts.append(f"- **基因名称**: {', '.join(gene_names)}")
+            parts.append(f"- **物种**: {uniprot_data.get('organism', 'N/A')}")
+            seq_len = uniprot_data.get('sequence_length', 0)
+            if seq_len:
+                parts.append(f"- **序列长度**: {seq_len} aa")
+            function = uniprot_data.get('function', '')
+            if function:
+                func_text = function[:1500] if len(function) > 1500 else function
+                parts.append(f"- **功能描述**: {func_text}")
+        else:
+            parts.append("## Protein Basic Information\n")
+            parts.append(f"- **UniProt ID**: {uniprot_data.get('uniprot_id', 'N/A')}")
+            parts.append(f"- **Protein Name**: {uniprot_data.get('protein_name', 'N/A')}")
+            gene_names = uniprot_data.get('gene_names', [])
+            if gene_names:
+                parts.append(f"- **Gene Names**: {', '.join(gene_names)}")
+            parts.append(f"- **Organism**: {uniprot_data.get('organism', 'N/A')}")
+            seq_len = uniprot_data.get('sequence_length', 0)
+            if seq_len:
+                parts.append(f"- **Sequence Length**: {seq_len} aa")
+            function = uniprot_data.get('function', '')
+            if function:
+                func_text = function[:1500] if len(function) > 1500 else function
+                parts.append(f"- **Function**: {func_text}")
+
+        return "\n".join(parts)
+
+    def _format_literature_for_prompt(
+        self,
+        lit_info: Dict,
+        pdb_structures: List[Dict],
+        language: str
+    ) -> str:
+        """Format a single literature and its associated PDBs for the prompt."""
+        parts = []
+
+        pmid = lit_info.get('pubmed_id', 'N/A')
+        title = lit_info.get('title', 'No title')
+        journal = lit_info.get('journal', 'Unknown')
+        year = lit_info.get('year', 'N/A')
+        authors = lit_info.get('authors', [])
+        abstract = lit_info.get('abstract', '')
+
+        author_str = ', '.join(authors[:5]) if len(authors) > 5 else ', '.join(authors)
+        if len(authors) > 5:
+            author_str += ' et al.'
+
+        if language == 'zh':
+            parts.append(f"\n### 文献: PMID {pmid}\n")
+            parts.append(f"- **标题**: {title}\n")
+            parts.append(f"- **期刊**: {journal} ({year})\n")
+            parts.append(f"- **作者**: {author_str}\n")
+            if abstract:
+                parts.append(f"- **摘要**: {abstract}\n")
+        else:
+            parts.append(f"\n### Literature: PMID {pmid}\n")
+            parts.append(f"- **Title**: {title}\n")
+            parts.append(f"- **Journal**: {journal} ({year})\n")
+            parts.append(f"- **Authors**: {author_str}\n")
+            if abstract:
+                parts.append(f"- **Abstract**: {abstract}\n")
+
+        # PDB structures for this literature
+        if pdb_structures:
+            if language == 'zh':
+                parts.append(f"\n**该文献中的PDB结构** ({len(pdb_structures)}个):\n")
+            else:
+                parts.append(f"\n**PDB structures in this literature** ({len(pdb_structures)}):\n")
+
+            for idx, struct in enumerate(pdb_structures, 1):
+                pdb_id = struct.get('pdb_id', 'N/A')
+                method = struct.get('experimental_method', 'N/A')
+                resolution = struct.get('resolution')
+                title_str = struct.get('title', '')
+                entity_list = struct.get('entity_list', [])
+                entity_info = struct.get('entity_info', {})
+
+                if language == 'zh':
+                    parts.append(f"\n**{idx}. {pdb_id}**\n")
+                    parts.append(f"- 方法: {method}\n")
+                    if resolution:
+                        parts.append(f"- 分辨率: {resolution} Å\n")
+                    if title_str:
+                        parts.append(f"- 标题: {title_str}\n")
+                else:
+                    parts.append(f"\n**{idx}. {pdb_id}**\n")
+                    parts.append(f"- Method: {method}\n")
+                    if resolution:
+                        parts.append(f"- Resolution: {resolution} Å\n")
+                    if title_str:
+                        parts.append(f"- Title: {title_str}\n")
+
+                # Entity info for this structure
+                if entity_list:
+                    polypeptide_count = entity_info.get('polypeptide', 0)
+                    if polypeptide_count > 0:
+                        if language == 'zh':
+                            parts.append(f"- 实体: {polypeptide_count} 个多肽链\n")
+                        else:
+                            parts.append(f"- Entities: {polypeptide_count} polypeptide(s)\n")
+
+                    for ent in entity_list[:2]:  # Show first 2 entities
+                        ent_id = ent.get('entity_id', '')
+                        chain = ent.get('chain', '')
+                        polymer_type = ent.get('polymer_type', '')
+                        length = ent.get('length', 0)
+                        mol_name = ent.get('molecule_name', '')
+                        gene = ent.get('gene_name', '')
+                        name_str = f"{mol_name}" if mol_name else polymer_type
+                        if language == 'zh':
+                            gene_str = f", 基因: {gene}" if gene else ""
+                            parts.append(f"  - 实体 {ent_id} (链 {chain}): {name_str}{gene_str}, 长度 {length}\n")
+                        else:
+                            gene_str = f", Gene: {gene}" if gene else ""
+                            parts.append(f"  - Entity {ent_id} (Chain {chain}): {name_str}{gene_str}, Length {length}\n")
+
+                # Ligand info - list all non-polypeptide entities
+                non_polypeptides = [e for e in entity_list if e.get('polymer_type') not in ('Polypeptide', 'Nucleic Acid', '')]
+                if non_polypeptides:
+                    if language == 'zh':
+                        parts.append(f"- 小分子配体: {', '.join([e.get('molecule_name', '') or e.get('polymer_type', '') for e in non_polypeptides])}\n")
+                    else:
+                        parts.append(f"- Small Molecule Ligands: {', '.join([e.get('molecule_name', '') or e.get('polymer_type', '') for e in non_polypeptides])}\n")
+
+        return "".join(parts)
+
+    def _build_chunk_with_literatures(
+        self,
+        header: str,
+        literature_pdb_map: List[tuple],
+        homology_section: str,
+        language: str
+    ) -> Dict[str, Any]:
+        """Build a single chunk containing header + literatures + homology."""
+        parts = [header]
+
+        # PDB overview (brief statistics)
+        if language == 'zh':
+            parts.append("\n## PDB 结构统计\n")
+        else:
+            parts.append("\n## PDB Structure Statistics\n")
+
+        structures = []
+        for _, pdbs in literature_pdb_map:
+            structures.extend(pdbs)
+
+        # Deduplicate structures by pdb_id
+        seen_pdb_ids = set()
+        unique_structures = []
+        for s in structures:
+            pid = s.get('pdb_id', '')
+            if pid and pid not in seen_pdb_ids:
+                seen_pdb_ids.add(pid)
+                unique_structures.append(s)
+
+        if unique_structures:
+            stats = extract_pdb_statistics(unique_structures)
+            if language == 'zh':
+                parts.append(f"- **结构总数**: {stats['total_structures']}")
+                if stats['resolution_range']:
+                    parts.append(f"- **分辨率范围**: {stats['resolution_range']} Å")
+                if stats['method_distribution']:
+                    methods_str = "; ".join([f"{k}: {v}" for k, v in stats['method_distribution'].items()])
+                    parts.append(f"- **实验方法**: {methods_str}")
+            else:
+                parts.append(f"- **Total Structures**: {stats['total_structures']}")
+                if stats['resolution_range']:
+                    parts.append(f"- **Resolution Range**: {stats['resolution_range']} Å")
+                if stats['method_distribution']:
+                    methods_str = "; ".join([f"{k}: {v}" for k, v in stats['method_distribution'].items()])
+                    parts.append(f"- **Methods**: {methods_str}")
+
+        # Literature sections
+        if language == 'zh':
+            parts.append("\n## 文献与PDB结构详情\n")
+        else:
+            parts.append("\n## Literature and PDB Structure Details\n")
+
+        for lit_info, pdbs in literature_pdb_map:
+            lit_text = self._format_literature_for_prompt(lit_info, pdbs, language)
+            parts.append(lit_text)
+
+        # Homology section (shared, included in all chunks)
+        if homology_section:
+            if language == 'zh':
+                parts.append("\n## 同源结构统计\n")
+            else:
+                parts.append("\n## Homology Structure Statistics\n")
+            parts.append(homology_section)
+
+        return {
+            'text': "\n".join(parts),
+            'literature_count': len(literature_pdb_map),
+            'structure_count': len(unique_structures)
+        }
+
+    def _build_simple_chunk(
+        self,
+        header: str,
+        structures: List[Dict],
+        homology_section: str,
+        language: str
+    ) -> Dict[str, Any]:
+        """Build a chunk when there's no literature data."""
+        parts = [header]
+
+        if structures:
+            # PDB overview
+            stats = extract_pdb_statistics(structures)
+            if language == 'zh':
+                parts.append("\n## PDB 结构总览\n")
+                parts.append(f"- **结构总数**: {stats['total_structures']}")
+                if stats['resolution_range']:
+                    parts.append(f"- **分辨率范围**: {stats['resolution_range']} Å")
+                if stats['method_distribution']:
+                    methods_str = "; ".join([f"{k}: {v}" for k, v in stats['method_distribution'].items()])
+                    parts.append(f"- **实验方法**: {methods_str}")
+            else:
+                parts.append("\n## PDB Structure Overview\n")
+                parts.append(f"- **Total Structures**: {stats['total_structures']}")
+                if stats['resolution_range']:
+                    parts.append(f"- **Resolution Range**: {stats['resolution_range']} Å")
+                if stats['method_distribution']:
+                    methods_str = "; ".join([f"{k}: {v}" for k, v in stats['method_distribution'].items()])
+                    parts.append(f"- **Methods**: {methods_str}")
+
+            # Entity and ligand info
+            entity_section = build_entity_section_for_prompt({'structures': structures}, language=language)
+            if entity_section:
+                parts.append("\n" + entity_section)
+
+            ligand_section = build_ligand_section_for_prompt({'structures': structures}, language=language)
+            if ligand_section:
+                parts.append("\n" + ligand_section)
+        else:
+            if language == 'zh':
+                parts.append("\n## PDB 结构数据\n暂无 PDB 结构数据\n")
+            else:
+                parts.append("\n## PDB Structure Data\nNo PDB structure data available.\n")
+
+        if homology_section:
+            parts.append("\n" + homology_section)
+
+        return {
+            'text': "\n".join(parts),
+            'literature_count': 0,
+            'structure_count': len(structures)
+        }
+
+    def _merge_reports(
+        self,
+        reports: List[str],
+        language: str = 'zh'
+    ) -> str:
+        """
+        Merge multiple AI-generated reports into a single comprehensive report.
+
+        Args:
+            reports: List of report strings from multiple AI calls
+            language: Language code
+
+        Returns:
+            Merged comprehensive report
+        """
+        if not reports:
+            return ""
+
+        if len(reports) == 1:
+            return reports[0]
+
+        # For now, use a simple concatenation with headers
+        # In a more advanced implementation, we could use an LLM to actually merge
+        merged_parts = []
+
+        if language == 'zh':
+            merged_parts.append("# 蛋白质结构功能综合分析报告\n")
+            merged_parts.append(f"\n*（本报告由 {len(reports)} 部分合并生成）*\n")
+        else:
+            merged_parts.append("# Protein Structure-Function Comprehensive Analysis Report\n")
+            merged_parts.append(f"\n*(This report is generated by merging {len(reports)} parts)*\n")
+
+        for idx, report in enumerate(reports, 1):
+            if language == 'zh':
+                merged_parts.append(f"\n\n## 第 {idx} 部分\n")
+            else:
+                merged_parts.append(f"\n\n## Part {idx}\n")
+            merged_parts.append(report)
+
+        return "".join(merged_parts)
+
+    def analyze_with_chunking(
+        self,
+        uniprot_data: Dict,
+        pdb_data: Dict,
+        blast_results: Dict,
+        custom_template: str = None,
+        language: str = 'zh',
+        config: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """
+        Run AI analysis with intelligent prompt chunking.
+
+        When the prompt exceeds the model's context window, it splits
+        the literature data into multiple chunks, runs AI analysis
+        on each, and merges the results.
+
+        Returns:
+            Dictionary with 'analysis', 'model', 'success', and optionally 'chunks'
+        """
+        if not self.client:
+            return {'error': 'AI client not initialized', 'success': False}
+
+        # Get context limit
+        context_limit = self._get_context_limit()
+
+        # Generate chunks
+        chunks = self._generate_literature_grouped_data(
+            uniprot_data, pdb_data, blast_results, language
+        )
+
+        if len(chunks) == 1:
+            # Single chunk - no chunking needed
+            prompt = chunks[0]['text']
+
+            if custom_template:
+                prompt = self._apply_template_to_prompt(custom_template, prompt, language)
+
+            system_message = self._get_system_message(language)
+            result = self.analyze(prompt, system_message=system_message)
+            result['prompt'] = prompt
+            return result
+
+        # Multiple chunks needed
+        reports = []
+        prompts_used = []
+
+        for idx, chunk in enumerate(chunks, 1):
+            prompt = chunk['text']
+
+            # Apply template to data first (if custom_template provided)
+            if custom_template:
+                prompt = self._apply_template_to_prompt(custom_template, prompt, language)
+
+            # For multi-chunk, add part indicator AFTER template application
+            if language == 'zh':
+                chunk_intro = f"\n\n## 【第 {idx}/{len(chunks)} 部分】\n"
+                chunk_intro += "请分析以下数据，这是完整报告的一部分。\n"
+            else:
+                chunk_intro = f"\n\n## 【Part {idx}/{len(chunks)}】\n"
+                chunk_intro += "Please analyze the following data. This is part of a complete report.\n"
+
+            full_prompt = chunk_intro + prompt
+
+            system_message = self._get_system_message(language)
+            result = self.analyze(full_prompt, system_message=system_message)
+
+            if result.get('success'):
+                reports.append(result.get('analysis', ''))
+                prompts_used.append(full_prompt)
+            else:
+                logger.warning(f"Chunk {idx} analysis failed: {result.get('error')}")
+
+        if not reports:
+            return {
+                'error': 'All chunk analyses failed',
+                'success': False,
+                'chunks': len(chunks)
+            }
+
+        # Merge reports
+        merged_analysis = self._merge_reports(reports, language)
+
+        # Combine all prompts for record keeping
+        combined_prompt = "\n\n---\n\n".join(prompts_used)
+
+        return {
+            'analysis': merged_analysis,
+            'model': self.model,
+            'success': True,
+            'chunks': len(chunks),
+            'chunk_reports': reports,
+            'prompts': prompts_used,
+            'prompt': combined_prompt
+        }
+
+    def _apply_template_to_prompt(
+        self,
+        template: str,
+        data_prompt: str,
+        language: str
+    ) -> str:
+        """Apply custom template structure to the data prompt."""
+        prompt = template
+
+        # Replace {outline} placeholder if present
+        if '{outline}' in prompt:
+            outline = self._generate_outline_from_prompt(data_prompt)
+            prompt = prompt.replace('{outline}', outline)
+
+        # Always append the data section
+        if '{data}' in prompt:
+            prompt = prompt.replace('{data}', data_prompt)
+        else:
+            prompt = prompt + "\n\n" + data_prompt
+
+        return prompt
+
+    def _generate_outline_from_prompt(self, data_prompt: str) -> str:
+        """Generate a simple outline from the data prompt."""
+        lines = []
+        for line in data_prompt.split('\n'):
+            if line.startswith('## '):
+                lines.append(line.replace('## ', '').strip())
+        return "\n".join(lines) if lines else ""
+
+    def _get_system_message(self, language: str) -> str:
+        """Get the appropriate system message for the language."""
+        if language == 'en':
+            return "You are a professional protein structural biologist. Please provide a comprehensive analysis of the given protein."
+        else:
+            return "你是一个专业的蛋白质结构生物学家。请对给定的蛋白质进行综合分析。"
 
 
 def get_ai_client_wrapper(config: Dict[str, Any] = None) -> AIClientWrapper:

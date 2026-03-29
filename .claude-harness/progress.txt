@@ -17,3 +17,4 @@ S018 | security | config.py | SECRET_KEY FLASK_ENV production enforcement | done
 S019 | correctness | src/database.py | _run_migrations() uncaught exceptions + no tracking table | done | pass
 S020 | pytest | tests/conftest.py | os.environ.clear() strips system env vars | done | pass
 S021 | correctness | routes/evaluation.py | N+1 query in generate_multi_target_report_endpoint() | done | pass
+S022 | correctness | src/ai_client_wrapper.py | ambiguous config precedence (or vs is None) | done | pass
