@@ -74,8 +74,9 @@
     "file": "src/multi_target_scheduler.py",
     "description": "`_generate_report()` (line 552) opens a new database session with `with get_session() as session:` while the outer `_execute_job()` at line 150 already has a separate session open in the same thread. SQLAlchemy sessions opened concurrently can lead to stale data visibility issues. Additionally, `session.query(MultiTargetJob).get(job_id)` uses the deprecated `.get()` API — should be `session.get(MultiTargetJob, job_id)` (SQLAlchemy 2.0 deprecation).",
     "priority": "medium",
-    "status": "pending",
-    "fix": "Pass the existing session to `_generate_report()` instead of creating a new one. Replace all `session.query(Model).get(id)` with `session.get(Model, id)`."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Changed `_generate_report(self, job_id)` → `_generate_report(self, job_id, session=None)`. When called from `_execute_job`, passes the live session directly (`self._generate_report(job_id, session=session)`) — no nested session. When called externally with no session argument, opens its own session and closes it in a `finally` block. Replaced three `session.query(Model).get(id)` calls with `session.get(Model, id)` in `_execute_job` (line 151), its exception handler (line 202), and `_update_progress` (line 450). Also fixed `eval_record = session.query(ProteinEvaluation).get(target.evaluation_id)` → `session.get(ProteinEvaluation, ...)` inside `_generate_report`."
   },
   {
     "id": "S009",

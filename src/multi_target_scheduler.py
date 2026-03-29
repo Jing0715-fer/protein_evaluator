@@ -148,7 +148,7 @@ class MultiTargetScheduler:
         """执行任务的主逻辑"""
         try:
             with get_session() as session:
-                job = session.query(MultiTargetJob).get(job_id)
+                job = session.get(MultiTargetJob, job_id)
                 if not job:
                     logger.error(f"任务 {job_id} 不存在")
                     return
@@ -178,7 +178,7 @@ class MultiTargetScheduler:
 
                     # 自动生成报告
                     try:
-                        self._generate_report(job_id)
+                        self._generate_report(job_id, session=session)
                     except Exception as report_err:
                         logger.error(f"生成报告失败: {report_err}")
 
@@ -199,7 +199,7 @@ class MultiTargetScheduler:
         except Exception as e:
             logger.error(f"任务 {job_id} 执行失败: {e}")
             with get_session() as session:
-                job = session.query(MultiTargetJob).get(job_id)
+                job = session.get(MultiTargetJob, job_id)
                 if job:
                     job.status = 'failed'
                     job.completed_at = datetime.now()
@@ -447,7 +447,7 @@ class MultiTargetScheduler:
         """更新进度"""
         # 更新数据库
         with get_session() as session:
-            job = session.query(MultiTargetJob).get(job_id)
+            job = session.get(MultiTargetJob, job_id)
             if job:
                 job.config = {**(job.config or {}), 'progress': progress, 'message': message}
                 session.commit()
@@ -541,16 +541,21 @@ class MultiTargetScheduler:
             import traceback
             traceback.print_exc()
     
-    def _generate_report(self, job_id: int):
+    def _generate_report(self, job_id: int, session=None):
         """自动生成任务报告"""
         try:
             from src.multi_target_report_generator import MultiTargetReportGenerator
             from datetime import datetime
-            
+
             generator = MultiTargetReportGenerator()
-            
-            with get_session() as session:
-                job = session.query(MultiTargetJob).get(job_id)
+
+            close_session = False
+            if session is None:
+                session = get_session()
+                close_session = True
+
+            try:
+                job = session.get(MultiTargetJob, job_id)
                 if not job:
                     logger.warning(f"任务 {job_id} 不存在，无法生成报告")
                     return
@@ -578,7 +583,7 @@ class MultiTargetScheduler:
 
                     # 如果有评估记录，获取完整评估详情
                     if target.evaluation_id:
-                        eval_record = session.query(ProteinEvaluation).get(target.evaluation_id)
+                        eval_record = session.get(ProteinEvaluation, target.evaluation_id)
                         if eval_record:
                             # 使用 eval_record 中的数据覆盖/补充 Target 表数据
                             # 确保 protein_name 和 gene_name 有值
@@ -674,7 +679,10 @@ class MultiTargetScheduler:
                 session.commit()
 
                 logger.info(f"任务 {job_id} 报告已生成，中文长度: {len(report_content)} 字符，英文长度: {len(report_content_en)} 字符")
-        
+            finally:
+                if close_session:
+                    session.close()
+
         except Exception as e:
             logger.error(f"生成报告失败: {e}")
             import traceback

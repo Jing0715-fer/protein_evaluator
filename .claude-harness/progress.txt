@@ -4,3 +4,4 @@ S004 | security | src/database.py | LIKE pattern injection | done | pass
 S005 | correctness | routes/evaluation.py | broken re.sub() save_template | done | pass
 S006 | pytest | tests/test_smoke.py | importlib.reload mutates global module state | done | pass
 S007 | security | routes/evaluation.py | path traversal in download_report() | done | pass
+S008 | correctness | src/multi_target_scheduler.py | nested session + deprecated .get() API | done | pass
