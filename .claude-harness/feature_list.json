@@ -114,8 +114,10 @@
     "file": "src/api_clients.py",
     "description": "Redundant inline `import re` at line 985 inside `search_by_title()`. The `re` module is used at module level elsewhere in this file (e.g., `import re` likely at top). This inline import is unnecessary. The same inline import pattern also exists in `src/prompt_helpers.py`.",
     "priority": "low",
-    "status": "pending",
-    "fix": "Remove inline `import re` from `search_by_title()` and `src/prompt_helpers._clean_abstract()`. Ensure `import re` is at the top of each file."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "DUPLICATE OF S011. Already resolved by commit f44bc81 which removed inline `import re` from `search_by_title()` (src/api_clients.py) and `_clean_abstract()` (src/prompt_helpers.py). Both files have module-level `import re` (line 9 and line 8 respectively). No further action needed.",
+    "note": "Verified: grep finds zero inline `import re` in either file. Module-level `import re` covers all uses."
   },
   {
     "id": "S013",
