@@ -13,3 +13,4 @@ S013 | error_handling | src/api_clients.py | silent exception swallowing in fetc
 S015 | correctness | routes/multi_target_v2.py, src/multi_target_scheduler.py | global _scheduler race condition | done | pass
 S016 | correctness | app.py | redundant inner import config in get_config() | done | pass
 S017 | correctness | src/cache_service.py | __del__ destructor unreliable cleanup | done | pass
+S018 | security | config.py | SECRET_KEY FLASK_ENV production enforcement | done | pass

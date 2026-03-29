@@ -66,11 +66,34 @@ AI_BASE_URL = os.environ.get('AI_BASE_URL', '')
 # Security Configuration
 SECRET_KEY = os.environ.get('SECRET_KEY', '')
 
-# Production check: SECRET_KEY must be set in production
-if os.environ.get('FLASK_ENV') == 'production' and not SECRET_KEY:
+# Production detection: FLASK_ENV was deprecated in Flask 2.3+.
+# Check both the deprecated FLASK_ENV and the modern FLASK_DEBUG=0 signal.
+# FLASK_DEBUG=0 is still supported and is a reliable production indicator.
+_is_production = (
+    os.environ.get('FLASK_ENV') == 'production'
+    or os.environ.get('FLASK_DEBUG') == '0'
+)
+
+# Production check: SECRET_KEY must come from the environment (not the config default).
+# If SECRET_KEY is empty at this point it came from the config default, meaning
+# os.environ.get('SECRET_KEY') returned '' and no environment variable was set.
+# This is a hard error in production.
+if _is_production and not SECRET_KEY:
     raise ValueError(
-        "SECRET_KEY environment variable must be set in production environment. "
-        "Please set a secure random string as SECRET_KEY."
+        "SECRET_KEY environment variable must be set in production. "
+        "An auto-generated key was detected, which is insecure and changes "
+        "on every process restart, invalidating all session cookies. "
+        "Set SECRET_KEY=<random-hex> in your environment or .env file."
+    )
+
+# Warn if a non-persistent SECRET_KEY is used in a non-production environment
+# (this can still happen if FLASK_DEBUG is not set at all).
+if not SECRET_KEY and not _is_production:
+    import logging
+    logging.getLogger(__name__).warning(
+        "SECRET_KEY not set; using auto-generated key. "
+        "Session cookies will be invalidated on every restart. "
+        "Set SECRET_KEY in your environment for persistent sessions."
     )
 
 # Database Configuration

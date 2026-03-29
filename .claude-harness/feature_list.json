@@ -175,8 +175,9 @@
     "file": "config.py + app.py",
     "description": "Production SECRET_KEY enforcement: config.py line 70 checks `if os.environ.get('FLASK_ENV') == 'production'` — `FLASK_ENV` was deprecated in Flask 2.3+. If the env var is misspelled or not set, the check silently passes even in production, allowing the auto-generated `secrets.token_hex(32)` key to be used in production. This key is regenerated on every restart, invalidating any session cookies.",
     "priority": "medium",
-    "status": "pending",
-    "fix": "Use `FLASK_DEBUG=0` (still supported) or check `app.env == 'production'` from Flask. Or check both `SECRET_KEY` env var presence and `FLASK_ENV`. Add a startup warning if a non-environment-variable SECRET_KEY is detected in production."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Replaced the single FLASK_ENV check with a two-signal production detector: `_is_production = os.environ.get('FLASK_ENV') == 'production' or os.environ.get('FLASK_DEBUG') == '0'`. FLASK_DEBUG=0 is still supported in Flask 2.3+ and is a reliable production indicator. If `_is_production` is True AND `SECRET_KEY` is empty (meaning `os.environ.get('SECRET_KEY')` returned the default ''), a `ValueError` is raised hard, blocking startup. A startup warning is also added for non-production deployments with no SECRET_KEY."
   },
   {
     "id": "S019",
