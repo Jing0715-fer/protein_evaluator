@@ -10,3 +10,4 @@ S010 | error_handling | src/service.py | bare except swallows exceptions in _run
 S011 | correctness | src/prompt_helpers.py, src/api_clients.py | inline import re moved to module level | done | pass
 S012 | correctness | src/api_clients.py, src/prompt_helpers.py | inline import re removed (duplicate of S011) | done | pass
 S013 | error_handling | src/api_clients.py | silent exception swallowing in fetch_abstracts_for_structures() | done | pass
+S015 | correctness | routes/multi_target_v2.py, src/multi_target_scheduler.py | global _scheduler race condition | done | pass

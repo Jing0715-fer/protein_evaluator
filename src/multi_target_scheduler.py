@@ -999,16 +999,27 @@ Do not add, omit, or paraphrase any content - translate accurately."""
             return [job.to_dict() for job in jobs]
 
 
-# 全局调度器实例
+# 全局调度器实例（线程安全单例）
+_scheduler_lock = threading.Lock()
 _scheduler: Optional[MultiTargetScheduler] = None
 
 
 def get_scheduler(max_workers: int = 5, config: Dict[str, Any] = None) -> MultiTargetScheduler:
-    """获取全局调度器实例（单例模式）"""
+    """获取全局调度器实例（线程安全单例模式）"""
     global _scheduler
     if _scheduler is None:
-        _scheduler = MultiTargetScheduler(max_workers=max_workers, config=config)
+        with _scheduler_lock:
+            # Double-check inside lock to avoid race on second-plus entrant
+            if _scheduler is None:
+                _scheduler = MultiTargetScheduler(max_workers=max_workers, config=config)
     return _scheduler
+
+
+def reset_scheduler() -> None:
+    """重置调度器（仅用于测试隔离）"""
+    global _scheduler
+    with _scheduler_lock:
+        _scheduler = None
 
 
 def submit_multi_target_job(

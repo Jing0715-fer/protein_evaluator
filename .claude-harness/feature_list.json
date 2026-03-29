@@ -145,8 +145,9 @@
     "file": "routes/multi_target_v2.py",
     "description": "Global mutable singleton `_scheduler = None` at line 37 with `get_scheduler()` factory. In a multi-threaded WSGI server (gunicorn -w N), this is process-global shared state — a race condition exists where two threads simultaneously check `if _scheduler is None` and both create a new instance. The scheduler holds per-job cancel events and callbacks, making concurrent access a correctness issue. Also, `_scheduler` is not reset between tests, causing test isolation failures.",
     "priority": "medium",
-    "status": "pending",
-    "fix": "Move scheduler to Flask app context (`current_app._get_current_object()`) or use a scoped registry. For tests, add `scheduler.reset()` method and call it in conftest teardown. Alternatively, use a `Lock()` around the singleton check."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Added `import threading` to routes/multi_target_v2.py. Replaced unguarded `_scheduler = None` with `_scheduler_lock = threading.Lock()` + double-checked locking pattern in `get_scheduler()`. Added `reset_scheduler()` function for test isolation — tests can call it in teardown. Applied the same fix to `src/multi_target_scheduler.py` which also had an independent `_scheduler` singleton with the same race. Both files now use `threading.Lock()` with double-check idiom. `reset_scheduler()` is importable from both modules."
   },
   {
     "id": "S016",

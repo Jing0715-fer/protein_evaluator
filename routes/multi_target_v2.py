@@ -12,6 +12,7 @@ API 版本: v2
 """
 
 import logging
+import threading
 from flask import Blueprint, jsonify, request, Response
 import json
 import time
@@ -33,16 +34,27 @@ logger = logging.getLogger(__name__)
 # 创建蓝图 - v2 API
 bp = Blueprint('multi_target_v2', __name__, url_prefix='/api/v2/evaluate/multi')
 
-# 全局调度器实例
-_scheduler = None
+# 全局调度器实例（线程安全单例）
+_scheduler_lock = threading.Lock()
+_scheduler: Optional[MultiTargetScheduler] = None
 
 
 def get_scheduler() -> MultiTargetScheduler:
-    """获取调度器单例"""
+    """获取调度器单例（线程安全）"""
     global _scheduler
     if _scheduler is None:
-        _scheduler = MultiTargetScheduler()
+        with _scheduler_lock:
+            # Double-check inside lock to avoid race on second-plus entrant
+            if _scheduler is None:
+                _scheduler = MultiTargetScheduler()
     return _scheduler
+
+
+def reset_scheduler() -> None:
+    """重置调度器（仅用于测试隔离）"""
+    global _scheduler
+    with _scheduler_lock:
+        _scheduler = None
 
 
 # ========== 多靶点任务管理 API ==========
