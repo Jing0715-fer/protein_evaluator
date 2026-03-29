@@ -15,3 +15,4 @@ S016 | correctness | app.py | redundant inner import config in get_config() | do
 S017 | correctness | src/cache_service.py | __del__ destructor unreliable cleanup | done | pass
 S018 | security | config.py | SECRET_KEY FLASK_ENV production enforcement | done | pass
 S019 | correctness | src/database.py | _run_migrations() uncaught exceptions + no tracking table | done | pass
+S020 | pytest | tests/conftest.py | os.environ.clear() strips system env vars | done | pass

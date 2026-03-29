@@ -22,14 +22,17 @@ def temp_db():
 
 
 @pytest.fixture
-def mock_env():
-    """Set up mock environment variables for testing"""
-    old_env = os.environ.copy()
-    os.environ['AI_API_KEY'] = 'test-api-key'
-    os.environ['AI_MODEL'] = 'gpt-4o'
+def mock_env(monkeypatch):
+    """Set up mock environment variables for testing.
+
+    Uses monkeypatch to avoid os.environ.clear() which would strip
+    system paths (PATH, LD_LIBRARY_PATH, etc.) and Python internal
+    variables, potentially affecting other tests in the same process.
+    Variables are automatically restored after the test.
+    """
+    monkeypatch.setenv('AI_API_KEY', 'test-api-key')
+    monkeypatch.setenv('AI_MODEL', 'gpt-4o')
     yield
-    os.environ.clear()
-    os.environ.update(old_env)
 
 
 @pytest.fixture(autouse=True, scope="function")

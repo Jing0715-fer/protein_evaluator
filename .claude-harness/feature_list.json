@@ -195,8 +195,9 @@
     "file": "tests/conftest.py",
     "description": "`mock_env` fixture (lines 25-32) uses `os.environ.clear()` which removes ALL environment variables including system paths (`PATH`), library paths (`LD_LIBRARY_PATH`), and Python internal vars. When `yield` returns, `os.environ.update(old_env)` restores the old environment, but any test that runs after this fixture in the same process may see a temporarily stripped environment. This interacts badly with `clear=False` used elsewhere in the test suite.",
     "priority": "medium",
-    "status": "pending",
-    "fix": "Replace `os.environ.clear()` + `update()` with pytest's `monkeypatch`: `monkeypatch.setenv('KEY', 'value')` to set and `monkeypatch.delenv('KEY', raising=False)` to delete. These are automatically undone after the fixture scope."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Replaced `os.environ.clear()` + `os.environ.update(old_env)` with pytest's `monkeypatch` fixture. The `mock_env(monkeypatch)` fixture now uses `monkeypatch.setenv('AI_API_KEY', 'test-api-key')` and `monkeypatch.setenv('AI_MODEL', 'gpt-4o')`. These are automatically undone after the test completes — no system paths or Python internal vars are touched."
   },
   {
     "id": "S021",
