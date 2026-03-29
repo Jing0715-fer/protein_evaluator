@@ -225,8 +225,9 @@
     "file": "config.py",
     "description": "Race condition in `save_to_env()` (lines 22-55). Two concurrent requests each calling `save_to_env()` for different keys will interleave reads and writes, causing one request's update to overwrite the other's. The function reads the entire `.env`, modifies one key, and writes the whole file back — without file locking. On multi-threaded servers, this will silently lose updates. On NFS-mounted filesystems, the behavior is undefined.",
     "priority": "medium",
-    "status": "pending",
-    "fix": "Add file locking: use `fcntl.flock()` on Unix (wrap in try/except for Windows). Or use a database-backed config store (update a row in the DB instead of writing to file). For quick fix, add a threading.Lock around the read-modify-write in `save_to_env()`."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Added `import threading` at module level. Added `_save_lock = threading.Lock()` at module level (before `_load_env()`). Wrapped the entire read-modify-write body of `save_to_env()` inside `with _save_lock:` — serializing concurrent calls so Thread B waits for Thread A's write to complete before reading the file, preventing silent loss of updates."
   },
   {
     "id": "S024",

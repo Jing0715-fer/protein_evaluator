@@ -3,7 +3,15 @@ Protein Evaluator Configuration
 Simplified configuration for the standalone protein evaluation module
 """
 import os
+import threading
 from pathlib import Path
+
+# Lock to serialize read-modify-write cycles on .env.
+# Without this, two concurrent calls to save_to_env() can interleave:
+# Thread A reads file, Thread B reads file, Thread A writes back,
+# Thread B writes back (clobbering Thread A's update). This silently
+# loses one of the two changes.
+_save_lock = threading.Lock()
 
 # Load .env file if exists
 BASE_DIR = Path(__file__).parent
@@ -30,23 +38,24 @@ def save_to_env(key: str, value: str) -> bool:
         True if saved successfully, False otherwise
     """
     try:
-        # Read existing .env content
-        env_content = {}
-        if ENV_FILE.exists():
-            with open(ENV_FILE) as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith('#') and '=' in line:
-                        k, v = line.split('=', 1)
-                        env_content[k] = v
+        with _save_lock:
+            # Read existing .env content
+            env_content = {}
+            if ENV_FILE.exists():
+                with open(ENV_FILE) as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#') and '=' in line:
+                            k, v = line.split('=', 1)
+                            env_content[k] = v
 
-        # Update the value
-        env_content[key] = value
+            # Update the value
+            env_content[key] = value
 
-        # Write back to .env
-        with open(ENV_FILE, 'w') as f:
-            for k, v in env_content.items():
-                f.write(f"{k}={v}\n")
+            # Write back to .env
+            with open(ENV_FILE, 'w') as f:
+                for k, v in env_content.items():
+                    f.write(f"{k}={v}\n")
 
         return True
     except Exception as e:
