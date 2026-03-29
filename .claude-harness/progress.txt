@@ -19,3 +19,5 @@ S020 | pytest | tests/conftest.py | os.environ.clear() strips system env vars | 
 S021 | correctness | routes/evaluation.py | N+1 query in generate_multi_target_report_endpoint() | done | pass
 S022 | correctness | src/ai_client_wrapper.py | ambiguous config precedence (or vs is None) | done | pass
 S023 | security | config.py | race condition in save_to_env() | done | pass
+S024 | tests | tests/test_multi_target_v2_api.py | Flask test client integration tests already present | done | pass
+S025 | correctness | src/models.py | default=datetime.now -> default=lambda: datetime.now() | done | pass

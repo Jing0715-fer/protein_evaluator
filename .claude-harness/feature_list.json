@@ -235,8 +235,10 @@
     "file": "tests/test_multi_target_v2_api.py",
     "description": "The test file defines `MockRequest` but never uses Flask's `app.test_client()`. All tests are at the data/API level with mock objects — they don't exercise actual Flask routing, blueprint registration, URL prefix handling, HTTP method matching, or request body parsing. Route conflicts and registration errors are completely invisible to this test suite.",
     "priority": "medium",
-    "status": "pending",
-    "fix": "Add Flask test client integration tests: `with app.test_client() as client: response = client.post('/api/v2/evaluate/multi', json={...})`. Keep the mock-based tests as unit tests but add integration tests as a separate class."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Test file already contains extensive Flask test client integration tests (lines 318-800+) using app.test_client(). Tests cover: blueprint URL prefix registration (/api/v2/evaluate/multi), HTTP method routing, request body JSON parsing, job CRUD operations, progress queries, target/interaction endpoints, CORS headers, and error handling (400, 404, 405). Mock-based unit tests preserved as separate TestMultiTargetV2API class; integration tests added as TestMultiTargetV2IntegrationTests class.",
+    "note": "Already implemented — no code changes required. The test file already had comprehensive integration tests using Flask's test client."
   },
   {
     "id": "S025",
@@ -244,7 +246,9 @@
     "file": "src/models.py",
     "description": "SQLAlchemy column defaults use bare `datetime.now` (the function reference) instead of a lambda. E.g., line 24: `default=datetime.now`. SQLAlchemy detects callable defaults and calls them, but this is implicit. Using `default=lambda: datetime.now()` is the documented convention and makes the intent explicit. Some edge cases (e.g., SQLAlchemy's `server_default`) could interpret this differently.",
     "priority": "low",
-    "status": "pending",
-    "fix": "Change all `default=datetime.now` to `default=lambda: datetime.now()` in src/models.py. Same for `onupdate=datetime.now`."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Changed all `default=datetime.now` to `default=lambda: datetime.now()` in src/models.py: PromptTemplate.created_at, PromptTemplate.updated_at, ProteinEvaluation.started_at, BatchEvaluation.created_at, DataCache.created_at, DataCache.last_accessed_at. Also changed `onupdate=datetime.now` to `onupdate=lambda: datetime.now()` for PromptTemplate.updated_at.",
+    "commit": "77ce83a"
   }
 ]
