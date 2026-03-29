@@ -34,8 +34,9 @@
     "file": "src/database.py",
     "description": "SQL injection vulnerability in `search_protein_evaluations()` (lines 189-197). The query uses `like(f'%{query}%')` with the raw user `query` string interpolated directly into the LIKE pattern. A query containing `%`, `_`, or SQL metacharacters will modify the search semantics. While SQLite's `like()` is case-insensitive and not as dangerous as raw `execute()`, this is still a SQL injection risk and violates secure coding standards.",
     "priority": "high",
-    "status": "pending",
-    "fix": "Escape special LIKE characters: `escaped = query.replace('\\\\', '\\\\\\\\').replace('%', '\\\\%').replace('_', '\\\\_')` then use `like(f'%{escaped}%')`. Or use SQLAlchemy's `cast(column, String).contains(query)` which auto-escapes."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Added escaped LIKE pattern: `escaped = query.replace('\\\\', '\\\\\\\\').replace('%', '\\\\%').replace('_', '\\\\_')` then used `escaped` in `like(f'%{escaped}%')`. All three columns now use the escaped value."
   },
   {
     "id": "S005",

@@ -227,10 +227,13 @@ def search_protein_evaluations(query: str) -> List[ProteinEvaluation]:
     """搜索蛋白质评估记录"""
     session = get_session()
     try:
+        # Escape LIKE metacharacters to prevent injection into the LIKE pattern.
+        # % and _ have special meaning in LIKE; backslash escapes them.
+        escaped = query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
         evaluations = session.query(ProteinEvaluation).filter(
-            (ProteinEvaluation.uniprot_id.like(f'%{query}%')) |
-            (ProteinEvaluation.gene_name.like(f'%{query}%')) |
-            (ProteinEvaluation.protein_name.like(f'%{query}%'))
+            (ProteinEvaluation.uniprot_id.like(f'%{escaped}%')) |
+            (ProteinEvaluation.gene_name.like(f'%{escaped}%')) |
+            (ProteinEvaluation.protein_name.like(f'%{escaped}%'))
         ).order_by(ProteinEvaluation.started_at.desc()).all()
         return evaluations
     except Exception as e:
