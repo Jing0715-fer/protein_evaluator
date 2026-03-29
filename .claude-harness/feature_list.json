@@ -125,8 +125,9 @@
     "file": "src/api_clients.py",
     "description": "`PubMedClient.fetch_abstracts_for_structures()` (lines 1095-1156) silently catches all exceptions inside a loop over citations. If one citation fails, the exception is swallowed with just a `logger.warning()` — no tracking of failure count, no summary at the end. A systematic failure (e.g., API rate limiting) produces no visible error beyond a log, making it impossible to know how many abstracts failed.",
     "priority": "medium",
-    "status": "pending",
-    "fix": "Add a `failures = []` list and append failures to it. At the end of the loop, if `failures`, log a summary with count and the failed PMIDs. Consider raising if >50% of abstracts fail."
+    "status": "done",
+    "verdict": "pass",
+    "fix": "Added `failures = []` list tracking (pmid_or_title, reason) tuples. `last_error` captures the exception from the final failed retry so the full error is in the summary. At end of all loops, logs a single warning with count and each failure reason. Raises `RuntimeError` if >50% of citations fail abstract fetch (systematic API failure)."
   },
   {
     "id": "S014",

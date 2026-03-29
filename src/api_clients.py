@@ -1093,14 +1093,19 @@ class PubMedClient:
 
     def fetch_abstracts_for_structures(self, pdb_data: Dict) -> Dict:
         """Fetch PubMed abstracts for all citations in PDB structures with retry logic."""
+        failures = []  # Track (pmid, reason) for summary logging
+        total_citations = 0
+
         for struct in pdb_data.get('structures', []):
             citations = struct.get('citations', [])
             for cit in citations:
                 pubmed_id = cit.get('pubmed_id')
                 title = cit.get('title', '')
+                total_citations += 1
 
                 # If no PMID, try to find it by title search with retries
                 if not pubmed_id and title:
+                    last_error = None
                     for retry in range(3):
                         try:
                             found_pmid = self.search_by_title(title)
@@ -1113,14 +1118,18 @@ class PubMedClient:
                                 logger.info(f"Title search failed, retry {retry + 1}/3...")
                                 time.sleep(1)  # Brief pause before retry
                         except Exception as e:
+                            last_error = e
                             if retry < 2:
                                 logger.warning(f"Title search error, retry {retry + 1}/3: {e}")
                                 time.sleep(1)
                             else:
                                 logger.warning(f"Title search failed after 3 attempts for: {title[:50]}...")
+                    if not pubmed_id:
+                        failures.append((title[:50], f"title search failed after 3 attempts: {last_error}"))
 
                 # Fetch abstract if we have a PMID now
                 if pubmed_id:
+                    last_error = None
                     for retry in range(3):
                         try:
                             abstract = self.get_abstract_simple(str(pubmed_id))
@@ -1134,11 +1143,16 @@ class PubMedClient:
                             else:
                                 logger.warning(f"Failed to get abstract for PMID {pubmed_id} after 3 attempts")
                         except Exception as e:
+                            last_error = e
                             if retry < 2:
                                 logger.warning(f"Abstract fetch error for PMID {pubmed_id}, retry {retry + 1}/3: {e}")
                                 time.sleep(1)
                             else:
                                 logger.warning(f"Abstract fetch failed after 3 attempts for PMID {pubmed_id}: {e}")
+
+                    # Track abstract fetch failure
+                    if not cit.get('abstract'):
+                        failures.append((pubmed_id, f"abstract fetch failed after 3 attempts: {last_error}"))
 
                     # If still no abstract, try CrossRef directly via DOI
                     if not cit.get('abstract'):
@@ -1151,5 +1165,22 @@ class PubMedClient:
                                     logger.info(f"Got abstract from CrossRef for PMID {pubmed_id} via DOI {doi}")
                         except Exception as e:
                             logger.warning(f"CrossRef fallback failed for PMID {pubmed_id}: {e}")
+                            if not cit.get('abstract'):
+                                failures.append((pubmed_id, f"CrossRef fallback failed: {e}"))
+
+        # Summary: log all failures at the end
+        if failures:
+            logger.warning(
+                f"fetch_abstracts_for_structures: {len(failures)}/{total_citations} citations had failures: "
+                + "; ".join(f"[{ref}] {reason}" for ref, reason in failures)
+            )
+            # Raise if >50% of abstracts fail (systematic API failure)
+            abstract_failures = sum(1 for ref, reason in failures if 'abstract' in reason)
+            if total_citations > 0 and abstract_failures / total_citations > 0.5:
+                raise RuntimeError(
+                    f"fetch_abstracts_for_structures: {abstract_failures}/{total_citations} "
+                    f"({abstract_failures*100//total_citations}%) abstract fetches failed. "
+                    f"Possibly systematic API failure. Aborting."
+                )
 
         return pdb_data
