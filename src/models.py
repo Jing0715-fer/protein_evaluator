@@ -21,8 +21,8 @@ class PromptTemplate(Base):
     description = Column(Text)  # 模板描述（中文）
     description_en = Column(Text)  # 模板描述（英文）
     template_type = Column(String(20), default='single')  # 模板类型: single 或 batch
-    created_at = Column(DateTime, default=datetime.now)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    created_at = Column(DateTime, default=lambda: datetime.now())
+    updated_at = Column(DateTime, default=lambda: datetime.now(), onupdate=lambda: datetime.now())
 
     def to_dict(self):
         return {
@@ -79,7 +79,7 @@ class ProteinEvaluation(Base):
     batch_id = Column(Integer, ForeignKey('batch_evaluations.id'), nullable=True)
 
     # 时间戳
-    started_at = Column(DateTime, default=datetime.now)
+    started_at = Column(DateTime, default=lambda: datetime.now())
     completed_at = Column(DateTime)
 
     def to_dict(self):
@@ -132,7 +132,7 @@ class BatchEvaluation(Base):
     config = Column(JSON)
 
     # 时间戳
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=lambda: datetime.now())
     completed_at = Column(DateTime)
 
     def to_dict(self):
@@ -200,9 +200,9 @@ class DataCache(Base):
     api_version = Column(String(20))  # API 版本 (用于版本控制)
     
     # 过期控制
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=lambda: datetime.now())
     expires_at = Column(DateTime, nullable=False)  # 过期时间
-    last_accessed_at = Column(DateTime, default=datetime.now)  # 最后访问时间
+    last_accessed_at = Column(DateTime, default=lambda: datetime.now())  # 最后访问时间
     access_count = Column(Integer, default=1)  # 访问次数
     
     # 状态

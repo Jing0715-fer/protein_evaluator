@@ -109,8 +109,41 @@ class ReportGenerator:
                     lines.append(f"- **沉积日期**: {basic.get('deposition_date')}\n")
 
                 if basic.get('title'):
-                    title = basic.get('title', '')[:200]
+                    title = basic.get('title', '')
                     lines.append(f"- **标题**: {title}\n")
+
+                # Entity list (macromolecules)
+                entity_list = struct.get('entity_list', [])
+                if entity_list:
+                    # Filter macromolecules (polypeptides and nucleic acids)
+                    macromolecules = [e for e in entity_list if e.get('polymer_type') in ('Polypeptide', 'Nucleic Acid')]
+                    # Filter ligands (non-polymers)
+                    ligands = [e for e in entity_list if e.get('polymer_type') not in ('Polypeptide', 'Nucleic Acid', '')]
+
+                    if macromolecules:
+                        lines.append(f"- **大分子实体**: {len(macromolecules)} 个多肽链\n")
+                        for ent in macromolecules:
+                            chain = ent.get('chain', '')
+                            mol_name = ent.get('molecule_name', '')
+                            gene = ent.get('gene_name', '')
+                            length = ent.get('length', '')
+                            lines.append(f"  - 链 {chain}: {mol_name or 'N/A'}")
+                            if gene:
+                                lines.append(f" (基因: {gene})")
+                            if length:
+                                lines.append(f", 长度: {length} aa")
+                            lines.append("\n")
+
+                    if ligands:
+                        lines.append(f"- **小分子配体**: {len(ligands)} 个\n")
+                        for lig in ligands:
+                            chain = lig.get('chain', '')
+                            mol_name = lig.get('molecule_name', '')
+                            length = lig.get('length', '')
+                            lines.append(f"  - 链 {chain or 'N/A'}: {mol_name or 'N/A'}")
+                            if length:
+                                lines.append(f", 长度: {length}")
+                            lines.append("\n")
 
                 citations = struct.get('citations', [])
                 if citations:

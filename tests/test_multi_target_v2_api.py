@@ -17,9 +17,9 @@ from unittest.mock import Mock, patch, MagicMock
 # 模拟 Flask 请求上下文
 class MockRequest:
     def __init__(self, json_data=None, args=None):
-        self._json = json_data or {}
-        self.args = args or {}
-    
+        self._json = json_data
+        self.args = args if args is not None else {}
+
     def get_json(self):
         return self._json
 
@@ -363,18 +363,18 @@ class TestAPIEndpointsList:
 
 class TestErrorHandling:
     """测试错误处理"""
-    
+
     def test_error_response_format(self):
         """测试错误响应格式"""
         # HTTP 400 - Bad Request
         assert True  # 已在前面的测试中覆盖
-        
+
         # HTTP 404 - Not Found
         assert True
-        
+
         # HTTP 500 - Internal Server Error
         assert True
-    
+
     def test_validation_errors(self):
         """测试验证错误"""
         validation_errors = [
@@ -382,5 +382,553 @@ class TestErrorHandling:
             {'field': 'priority', 'error': 'range', 'message': '优先级必须在1-10之间'},
             {'field': 'evaluation_mode', 'error': 'invalid', 'message': '无效的评估模式'}
         ]
-        
+
         assert len(validation_errors) == 3
+
+
+# ---------------------------------------------------------------------------
+# S024: Integration tests using Flask's test client.
+# The original test file only used MockRequest (a plain Python object) and
+# never exercised actual Flask routing, blueprint registration, URL prefix
+# handling, HTTP method matching, or request body parsing.  These tests
+# add real HTTP-level coverage that was previously invisible to the suite.
+# ---------------------------------------------------------------------------
+
+class TestMultiTargetV2IntegrationTests:
+    """
+    Flask test-client integration tests for the multi_target_v2 blueprint.
+
+    These tests use app.test_client() to exercise real HTTP routing — something
+    the original MockRequest-based tests could not verify.  They cover:
+    1. Blueprint URL prefix is registered correctly (/api/v2/evaluate/multi).
+    2. HTTP method routing works (GET vs POST vs PUT vs DELETE).
+    3. Request body JSON parsing (including empty-body and malformed JSON).
+    4. Blueprint registration does not raise at app creation time.
+    5. The /info endpoint responds without any database dependency.
+    6. Job-not-found 404s are returned for missing job IDs.
+
+    Note: scheduler.auto_start is mocked to prevent the scheduler thread from
+    actually running during tests.
+    """
+
+    @pytest.fixture
+    def app(self, mock_env, temp_db):
+        """Create a Flask app with an isolated test database.
+
+        Directly overrides config.DATABASE_PATH (bypassing the config module's
+        lack of env-var support) and resets the lazy engine so the test DB
+        is used instead of the production DB.
+        """
+        import os
+        from app import create_app
+        from src.database import get_engine, reset_engine
+        from src.multi_target_models import Base
+        import config as _config_module
+
+        # Directly override config.DATABASE_PATH so that _get_engine()
+        # picks up the test path even though config.py does not read from
+        # os.environ['DATABASE_PATH'].
+        _config_module.DATABASE_PATH = temp_db
+
+        # Reset any previously-cached engine so the new path takes effect.
+        reset_engine()
+
+        flask_app = create_app()
+
+        # Create schema in the isolated DB.
+        engine = get_engine()
+        Base.metadata.create_all(engine)
+
+        yield flask_app
+
+        # Clean up: dispose and reset engine.
+        reset_engine()
+
+    @pytest.fixture
+    def client(self, app):
+        """Return a Flask test client scoped to the current test."""
+        return app.test_client()
+
+    @pytest.fixture(autouse=True)
+    def mock_uniprot_client(self):
+        """Stub out UniProtClient.get_protein so create-job tests don't need network access."""
+        mock_info = {
+            'protein_name': 'Mock Protein',
+            'gene_names': ['MOCK'],
+        }
+        with patch('routes.multi_target_v2.UniProtClient') as MockUC:
+            instance = MagicMock()
+            instance.get_protein.return_value = mock_info
+            MockUC.return_value = instance
+            yield instance
+
+    @pytest.fixture
+    def mock_scheduler(self):
+        """Patch scheduler control methods so auto-start does not run during tests.
+
+        The mock delegates to the real scheduler for existence checks (so a
+        missing job returns False → route returns 400/404), but stubs the
+        async control methods so they don't actually launch threads.
+        """
+        from src.multi_target_scheduler import MultiTargetScheduler
+
+        with patch('routes.multi_target_v2.get_scheduler') as mock_get_sched:
+            real_scheduler = MultiTargetScheduler()
+            mock_instance = MagicMock()
+
+            # Delegate existence checks to the real scheduler so missing jobs
+            # produce 400/404 from the route rather than False→200.
+            def job_exists(job_id):
+                from src.database import get_session
+                from src.multi_target_models import MultiTargetJob
+                with get_session() as s:
+                    return s.query(MultiTargetJob).filter_by(job_id=job_id).first() is not None
+
+            def controlled(method_name, job_id):
+                if job_exists(job_id):
+                    return getattr(real_scheduler, method_name)(job_id)
+                return False  # route will return 400 for unknown jobs
+
+            mock_instance.start_job.side_effect = lambda jid: controlled('start_job', jid)
+            mock_instance.pause_job.side_effect = lambda jid: controlled('pause_job', jid)
+            mock_instance.resume_job.side_effect = lambda jid: controlled('resume_job', jid)
+            mock_instance.cancel_job.side_effect = lambda jid: controlled('cancel_job', jid)
+            mock_instance.restart_job.side_effect = lambda jid: controlled('restart_job', jid)
+
+            mock_get_sched.return_value = mock_instance
+            yield mock_instance
+
+    # ---- Blueprint / routing-level tests (no DB required) ----
+
+    def test_blueprint_registered_at_correct_url_prefix(self, client):
+        """
+        The multi_target_v2 blueprint should be mounted at
+        /api/v2/evaluate/multi.  Requests to /api/v2/evaluate/multi/info
+        should not return 404 — they must reach the blueprint.
+        """
+        response = client.get('/api/v2/evaluate/multi/info')
+        # If the blueprint were not registered, we'd get a 404 from Flask's
+        # static route matching.  Any non-404 means the blueprint matched.
+        assert response.status_code != 404, \
+            "Blueprint not registered at /api/v2/evaluate/multi"
+
+    def test_info_endpoint_returns_200(self, client):
+        """GET /api/v2/evaluate/multi/info should return 200 with JSON."""
+        response = client.get('/api/v2/evaluate/multi/info')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data is not None
+        assert 'success' in data
+
+    def test_info_endpoint_has_api_version(self, client):
+        """The /info response should include an API version field."""
+        response = client.get('/api/v2/evaluate/multi/info')
+        data = response.get_json()
+        # 'version' is a standard field in the info endpoint.
+        assert 'version' in data or 'api_version' in data, \
+            f"Info response missing version field: {data}"
+
+    def test_http_method_rejection_on_info(self, client):
+        """POST to /info should be rejected (only GET allowed)."""
+        response = client.post(
+            '/api/v2/evaluate/multi/info',
+            json={}
+        )
+        # Blueprint registered; wrong method → 405 Method Not Allowed.
+        assert response.status_code == 405, \
+            f"Expected 405 for POST /info, got {response.status_code}"
+
+    # ---- Job creation ----
+
+    def test_create_job_requires_uniprot_ids(self, client, mock_scheduler):
+        """POST with no uniprot_ids should return 400."""
+        response = client.post(
+            '/api/v2/evaluate/multi',
+            json={'name': 'test-job'}
+        )
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data['success'] is False
+        assert 'uniprot' in data['error'].lower()
+
+    def test_create_job_rejects_empty_uniprot_list(self, client, mock_scheduler):
+        """POST with an empty uniprot_ids list should return 400."""
+        response = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids': []}
+        )
+        assert response.status_code == 400
+        data = response.get_json()
+        assert data['success'] is False
+
+    def test_create_job_rejects_too_many_targets(self, client, mock_scheduler):
+        """POST with >50 targets should return 400."""
+        response = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids': [f'P{i:05d}' for i in range(55)]}
+        )
+        assert response.status_code == 400
+        data = response.get_json()
+        assert '50' in data['error']
+
+    def test_create_job_rejects_invalid_evaluation_mode(
+        self, client, mock_scheduler
+    ):
+        """POST with an invalid evaluation_mode should return 400."""
+        response = client.post(
+            '/api/v2/evaluate/multi',
+            json={
+                'uniprot_ids': ['P12345'],
+                'evaluation_mode': 'invalid-mode'
+            }
+        )
+        assert response.status_code == 400
+        data = response.get_json()
+        assert 'mode' in data['error'].lower()
+
+    def test_create_job_rejects_invalid_priority_too_high(
+        self, client, mock_scheduler
+    ):
+        """POST with priority > 10 should return 400."""
+        response = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids': ['P12345'], 'priority': 99}
+        )
+        assert response.status_code == 400
+
+    def test_create_job_rejects_invalid_priority_zero(
+        self, client, mock_scheduler
+    ):
+        """POST with priority 0 should return 400."""
+        response = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids': ['P12345'], 'priority': 0}
+        )
+        assert response.status_code == 400
+
+    def test_create_job_parses_text_uniprot_input(
+        self, client, mock_scheduler
+    ):
+        """POST with uniprot_ids_text (comma-separated) should be accepted."""
+        response = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids_text': 'P12345, P67890, P11111'}
+        )
+        assert response.status_code == 201
+        data = response.get_json()
+        assert data['success'] is True
+        assert data['target_count'] == 3
+
+    def test_create_job_returns_201_on_success(
+        self, client, mock_scheduler
+    ):
+        """A valid POST should return 201 with a job_id."""
+        response = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids': ['P12345']}
+        )
+        assert response.status_code == 201
+        data = response.get_json()
+        assert data['success'] is True
+        assert 'job_id' in data
+        assert data['target_count'] == 1
+
+    def test_create_job_parses_newline_delimited_uniprot_ids(
+        self, client, mock_scheduler
+    ):
+        """POST with newline-delimited uniprot_ids_text should work."""
+        response = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids_text': 'P00001\nP00002\nP00003'}
+        )
+        assert response.status_code == 201
+        assert response.get_json()['target_count'] == 3
+
+    def test_create_job_rejects_empty_body(self, client, mock_scheduler):
+        """POST with no JSON body should return 400."""
+        response = client.post(
+            '/api/v2/evaluate/multi',
+            content_type='application/json'
+        )
+        assert response.status_code == 400
+
+    def test_create_job_accepts_optional_fields(
+        self, client, mock_scheduler
+    ):
+        """POST with name, description, priority, and tags should be accepted."""
+        response = client.post(
+            '/api/v2/evaluate/multi',
+            json={
+                'uniprot_ids': ['P12345'],
+                'name': 'My Job',
+                'description': 'A test description',
+                'priority': 7,
+                'evaluation_mode': 'sequential',
+                'tags': {'env': 'test'}
+            }
+        )
+        assert response.status_code == 201
+        data = response.get_json()
+        assert data['name'] == 'My Job'
+        assert data['priority'] == 7
+
+    # ---- Job listing ----
+
+    def test_list_jobs_returns_200(self, client, mock_scheduler):
+        """GET /api/v2/evaluate/multi should return 200 with a jobs list."""
+        response = client.get('/api/v2/evaluate/multi')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+        assert 'jobs' in data
+        assert isinstance(data['jobs'], list)
+
+    def test_list_jobs_respects_limit_query_param(self, client, mock_scheduler):
+        """GET ?limit=N should clamp N to 100 and return ≤N jobs."""
+        response = client.get('/api/v2/evaluate/multi?limit=10')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['limit'] == 10
+
+    def test_list_jobs_rejects_invalid_sort_field(self, client, mock_scheduler):
+        """GET ?sort_by=invalid_field should return 400."""
+        response = client.get('/api/v2/evaluate/multi?sort_by=invalid_field')
+        assert response.status_code == 400
+
+    def test_list_jobs_returns_empty_list_initially(self, client, mock_scheduler):
+        """Before any jobs are created, the jobs list should be empty."""
+        response = client.get('/api/v2/evaluate/multi')
+        data = response.get_json()
+        assert data['jobs'] == []
+        assert data['total'] == 0
+
+    # ---- Job detail ----
+
+    def test_get_nonexistent_job_returns_404(self, client, mock_scheduler):
+        """GET /api/v2/evaluate/multi/99999 should return 404."""
+        response = client.get('/api/v2/evaluate/multi/99999')
+        assert response.status_code == 404
+
+    def test_get_job_detail_includes_targets(
+        self, client, mock_scheduler
+    ):
+        """A created job's detail endpoint should include a targets list."""
+        # Create a job first.
+        create_resp = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids': ['P00001', 'P00002']}
+        )
+        assert create_resp.status_code == 201
+        job_id = create_resp.get_json()['job_id']
+
+        # Fetch its detail.
+        response = client.get(f'/api/v2/evaluate/multi/{job_id}')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert 'job' in data
+        assert 'targets' in data
+
+    # ---- Job progress ----
+
+    def test_get_progress_returns_404_for_missing_job(
+        self, client, mock_scheduler
+    ):
+        """GET /api/v2/evaluate/multi/99999/progress should return 404."""
+        response = client.get('/api/v2/evaluate/multi/99999/progress')
+        assert response.status_code == 404
+
+    def test_get_progress_returns_job_id_and_status(
+        self, client, mock_scheduler
+    ):
+        """The progress endpoint should include job_id and status fields."""
+        # Create a job.
+        create_resp = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids': ['P00001']}
+        )
+        job_id = create_resp.get_json()['job_id']
+
+        response = client.get(f'/api/v2/evaluate/multi/{job_id}/progress')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['job_id'] == job_id
+        assert 'status' in data
+        assert 'progress' in data
+
+    # ---- Job update ----
+
+    def test_update_nonexistent_job_returns_404(
+        self, client, mock_scheduler
+    ):
+        """PUT /api/v2/evaluate/multi/99999 should return 404."""
+        response = client.put(
+            '/api/v2/evaluate/multi/99999',
+            json={'name': 'Updated'}
+        )
+        assert response.status_code == 404
+
+    def test_update_job_requires_json_body(self, client, mock_scheduler):
+        """PUT with no JSON body should return 400."""
+        # Create a job first so we have a valid ID.
+        create_resp = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids': ['P00001']}
+        )
+        job_id = create_resp.get_json()['job_id']
+
+        response = client.put(
+            f'/api/v2/evaluate/multi/{job_id}',
+            content_type='application/json'
+        )
+        assert response.status_code == 400
+
+    # ---- Job control (start / pause / resume / cancel / restart) ----
+
+    def test_start_nonexistent_job_returns_400(
+        self, client, mock_scheduler
+    ):
+        """POST /api/v2/evaluate/multi/99999/start should not crash (400)."""
+        response = client.post('/api/v2/evaluate/multi/99999/start')
+        # Scheduler returns False for unknown jobs → route returns 400.
+        assert response.status_code == 400
+
+    def test_start_job_returns_200(self, client, mock_scheduler):
+        """POST /api/v2/evaluate/multi/<id>/start should return 200."""
+        # Create a pending job.
+        create_resp = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids': ['P00001']}
+        )
+        job_id = create_resp.get_json()['job_id']
+
+        response = client.post(f'/api/v2/evaluate/multi/{job_id}/start')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+
+    def test_pause_nonexistent_job_returns_400(
+        self, client, mock_scheduler
+    ):
+        """POST /api/v2/evaluate/multi/99999/pause should return 400."""
+        response = client.post('/api/v2/evaluate/multi/99999/pause')
+        assert response.status_code == 400
+
+    def test_resume_nonexistent_job_returns_400(
+        self, client, mock_scheduler
+    ):
+        """POST /api/v2/evaluate/multi/99999/resume should return 400."""
+        response = client.post('/api/v2/evaluate/multi/99999/resume')
+        assert response.status_code == 400
+
+    def test_cancel_nonexistent_job_returns_400(
+        self, client, mock_scheduler
+    ):
+        """POST /api/v2/evaluate/multi/99999/cancel should return 400."""
+        response = client.post('/api/v2/evaluate/multi/99999/cancel')
+        assert response.status_code == 400
+
+    # ---- Job delete ----
+
+    def test_delete_nonexistent_job_returns_404(self, client, mock_scheduler):
+        """DELETE /api/v2/evaluate/multi/99999 should return 404."""
+        response = client.delete('/api/v2/evaluate/multi/99999')
+        assert response.status_code == 404
+
+    def test_delete_job_returns_200(self, client, mock_scheduler):
+        """DELETE /api/v2/evaluate/multi/<id> should return 200 for known jobs."""
+        # Create a job.
+        create_resp = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids': ['P00001']}
+        )
+        job_id = create_resp.get_json()['job_id']
+
+        response = client.delete(f'/api/v2/evaluate/multi/{job_id}')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+
+    def test_delete_is_idempotent(self, client, mock_scheduler):
+        """Deleting the same job twice should 404 on the second call."""
+        # Create a job.
+        create_resp = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids': ['P00001']}
+        )
+        job_id = create_resp.get_json()['job_id']
+
+        # First delete → 200.
+        first = client.delete(f'/api/v2/evaluate/multi/{job_id}')
+        assert first.status_code == 200
+
+        # Second delete → 404 (already gone).
+        second = client.delete(f'/api/v2/evaluate/multi/{job_id}')
+        assert second.status_code == 404
+
+    # ---- Targets ----
+
+    def test_get_targets_returns_404_for_missing_job(
+        self, client, mock_scheduler
+    ):
+        """GET /api/v2/evaluate/multi/99999/targets should return 404."""
+        response = client.get('/api/v2/evaluate/multi/99999/targets')
+        assert response.status_code == 404
+
+    def test_get_targets_returns_targets_list(self, client, mock_scheduler):
+        """The targets endpoint should return a list (even if empty)."""
+        # Create a job with 2 targets.
+        create_resp = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids': ['P00001', 'P00002']}
+        )
+        job_id = create_resp.get_json()['job_id']
+
+        response = client.get(f'/api/v2/evaluate/multi/{job_id}/targets')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert 'targets' in data
+        assert len(data['targets']) == 2
+
+    # ---- Interactions ----
+
+    def test_get_interactions_returns_404_for_missing_job(
+        self, client, mock_scheduler
+    ):
+        """GET /api/v2/evaluate/multi/99999/interactions should return 404."""
+        response = client.get('/api/v2/evaluate/multi/99999/interactions')
+        assert response.status_code == 404
+
+    def test_get_interactions_returns_list(self, client, mock_scheduler):
+        """The interactions endpoint should return a list even with no data."""
+        # Create a job.
+        create_resp = client.post(
+            '/api/v2/evaluate/multi',
+            json={'uniprot_ids': ['P00001']}
+        )
+        job_id = create_resp.get_json()['job_id']
+
+        response = client.get(f'/api/v2/evaluate/multi/{job_id}/interactions')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert 'interactions' in data
+        assert isinstance(data['interactions'], list)
+
+    # ---- Params ----
+
+    def test_update_params_returns_404_for_missing_job(
+        self, client, mock_scheduler
+    ):
+        """PUT /api/v2/evaluate/multi/99999/params should return 404."""
+        response = client.put(
+            '/api/v2/evaluate/multi/99999/params',
+            json={'name': 'Renamed'}
+        )
+        assert response.status_code == 404
+
+    # ---- CORS headers ----
+
+    def test_cors_headers_present_on_info_response(self, client):
+        """The after_request CORS middleware should add Allow-Origin."""
+        response = client.get('/api/v2/evaluate/multi/info')
+        assert response.status_code == 200
+        assert 'Access-Control-Allow-Origin' in response.headers

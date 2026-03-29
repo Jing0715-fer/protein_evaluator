@@ -20,6 +20,13 @@ logger = logging.getLogger(__name__)
 
 def reset_engine():
     """Reset the cached engine. Call this in tests before patching DATABASE_PATH."""
+    # Dispose the old engine to release any open SQLite connections / file locks
+    # before clearing the cache so the next _get_engine() call gets a fresh engine.
+    try:
+        old_engine = _get_engine()
+        old_engine.dispose()
+    except Exception:
+        pass  # No engine created yet
     _get_engine.cache_clear()
 
 

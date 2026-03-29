@@ -202,25 +202,23 @@ class EvaluationWorker:
         language: str = 'zh',
         custom_template: str = None
     ) -> Dict[str, Any]:
-        """Run AI analysis in specified language."""
+        """Run AI analysis in specified language with intelligent chunking."""
         try:
             ai_wrapper = get_ai_client_wrapper(self.config)
 
             if not ai_wrapper.is_available():
                 return {'error': 'AI client not available'}
 
-            prompt = ai_wrapper.build_analysis_prompt(
-                uniprot_data, pdb_data, blast_results, custom_template=custom_template, language=language, config=self.config
+            # Use the new chunking-aware analysis method
+            result = ai_wrapper.analyze_with_chunking(
+                uniprot_data=uniprot_data,
+                pdb_data=pdb_data,
+                blast_results=blast_results,
+                custom_template=custom_template,
+                language=language,
+                config=self.config
             )
 
-            if language == 'en':
-                system_message = "You are a professional protein structural biologist. Please provide a comprehensive analysis of the given protein."
-            else:
-                system_message = "你是一个专业的蛋白质结构生物学家。请对给定的蛋白质进行综合分析。"
-
-            result = ai_wrapper.analyze(prompt, system_message=system_message)
-            # Include the prompt in the result for saving
-            result['prompt'] = prompt
             return result
 
         except Exception as e:
