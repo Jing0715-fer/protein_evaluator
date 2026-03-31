@@ -215,6 +215,7 @@ export interface PromptTemplate {
   description_en?: string;
   is_default: boolean;
   template_type: 'single' | 'batch';
+  experimental_method?: string;  // xray, cryoem, nmr, alphafold, or undefined for all
   created_at: string;
   updated_at?: string;
 }
@@ -239,6 +240,7 @@ export interface CreateTemplateRequest {
   description?: string;
   description_en?: string;
   is_default?: boolean;
+  experimental_method?: string;
 }
 
 export interface UpdateTemplateRequest {
@@ -249,6 +251,7 @@ export interface UpdateTemplateRequest {
   description?: string;
   description_en?: string;
   is_default?: boolean;
+  experimental_method?: string;
 }
 
 // AI Configuration Types

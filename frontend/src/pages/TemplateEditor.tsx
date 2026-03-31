@@ -192,6 +192,7 @@ export const TemplateEditor: React.FC = () => {
     description_en: '',
     is_default: false,
     template_type: templateType,
+    experimental_method: undefined,
   });
   const [isLoading, setIsLoading] = useState(isNew ? false : true);
   const [isSaving, setIsSaving] = useState(false);
@@ -249,6 +250,7 @@ export const TemplateEditor: React.FC = () => {
           description: template.description,
           description_en: template.description_en,
           is_default: template.is_default,
+          experimental_method: template.experimental_method,
         });
         if (result.success) {
           setSuccessMessage(language === 'zh' ? '模板创建成功' : 'Template created successfully');
@@ -266,6 +268,7 @@ export const TemplateEditor: React.FC = () => {
           description: template.description,
           description_en: template.description_en,
           is_default: template.is_default,
+          experimental_method: template.experimental_method,
         });
         if (result.success) {
           setSuccessMessage(language === 'zh' ? '模板更新成功' : 'Template updated successfully');
@@ -542,6 +545,30 @@ export const TemplateEditor: React.FC = () => {
                   <label htmlFor="is-default" className="text-sm text-gray-700">
                     {t('templates.setDefault')}
                   </label>
+                </div>
+
+                {/* Experimental Method Selector */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {language === 'zh' ? '适用实验方法' : 'Applicable Experimental Method'}
+                  </label>
+                  <select
+                    id="experimental-method"
+                    value={template.experimental_method || ''}
+                    onChange={(e) => setTemplate({ ...template, experimental_method: e.target.value || undefined })}
+                    className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  >
+                    <option value="">{language === 'zh' ? '所有方法（通用默认）' : 'All Methods (General Default)'}</option>
+                    <option value="xray">{language === 'zh' ? 'X射线晶体学' : 'X-ray Crystallography'}</option>
+                    <option value="cryoem">{language === 'zh' ? '冷冻电镜 (Cryo-EM)' : 'Cryo-EM'}</option>
+                    <option value="nmr">{language === 'zh' ? '核磁共振 (NMR)' : 'Nuclear Magnetic Resonance'}</option>
+                    <option value="alphafold">{language === 'zh' ? 'AlphaFold 预测' : 'AlphaFold Prediction'}</option>
+                  </select>
+                  <p className="mt-1 text-xs text-gray-500">
+                    {language === 'zh'
+                      ? '选择此模板适用的实验方法。留空则作为通用默认模板。'
+                      : 'Select the experimental method this template applies to. Leave empty for general default.'}
+                  </p>
                 </div>
               </CardContent>
             </Card>

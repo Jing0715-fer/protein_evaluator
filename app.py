@@ -169,6 +169,13 @@ def _init_default_templates():
         finally:
             session.close()
 
+    # Sync templates with files for GitHub versioning
+    try:
+        from src.template_manager import initialize_templates_on_startup
+        initialize_templates_on_startup()
+    except Exception as e:
+        logger.warning(f"模板文件同步失败: {e}")
+
 
 # Lazy app instance - only created when accessed (not at import time)
 _app_instance = None

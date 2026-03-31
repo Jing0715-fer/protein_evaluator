@@ -169,29 +169,379 @@ class AIClientWrapper:
         blast_results: Dict,
         custom_template: str = None,
         language: str = 'zh',
-        config: Dict[str, Any] = None
+        config: Dict[str, Any] = None,
+        experimental_method: str = None
     ) -> str:
         """
-        Build analysis prompt from protein data.
+        Build analysis prompt from protein data using n8n-style 3-part structure.
+
+        Part 1: Variable-built prompt (instructions based on homology detection and mode)
+        Part 2: Current data section (protein, PDB, literature, entity info)
+        Part 3: Report template (output format instructions)
 
         Args:
             uniprot_data: UniProt protein data
             pdb_data: PDB structure data
             blast_results: BLAST search results
-            custom_template: Custom prompt template
+            custom_template: Custom prompt template (used as Part 3)
             language: Language code ('zh' for Chinese, 'en' for English)
             config: Configuration dictionary
+            experimental_method: Experimental method for template selection
 
         Returns:
             Formatted prompt string
         """
-        if custom_template:
-            return self._apply_template(custom_template, uniprot_data, pdb_data, blast_results)
+        # Detect homology mode first
+        homology_info = self._detect_homology_mode(uniprot_data, pdb_data, blast_results)
 
-        if language == 'en':
-            return self._build_english_prompt(uniprot_data, pdb_data, blast_results, config)
+        # Part 1: Variable-built prompt (instructions based on mode and data)
+        variable_prompt = self._build_variable_prompt(
+            uniprot_data, pdb_data, blast_results, homology_info, language
+        )
+
+        # Part 2: Current data section
+        data_section = self._generate_data_section(
+            uniprot_data, pdb_data, blast_results, homology_info, language
+        )
+
+        # Part 3: Report template
+        if custom_template:
+            template_section = self._apply_template_variables(
+                custom_template, uniprot_data, pdb_data, blast_results, homology_info, language
+            )
         else:
-            return self._build_chinese_prompt(uniprot_data, pdb_data, blast_results, config)
+            template_section = self._get_default_report_template(language)
+
+        return f"{variable_prompt}\n\n{data_section}\n\n{template_section}"
+
+    def _detect_homology_mode(
+        self,
+        uniprot_data: Dict,
+        pdb_data: Dict,
+        blast_results: Dict
+    ) -> Dict[str, Any]:
+        """
+        Detect homology mode and extract relevant information.
+
+        Returns a dict with:
+        - is_homolog_mode: bool
+        - homolog_uniprot_id: str or None
+        - homology_details: list
+        - homology_stats: dict or None
+        """
+        from src.prompt_helpers import extract_homology_statistics
+
+        result = {
+            'is_homolog_mode': False,
+            'homolog_uniprot_id': None,
+            'homology_details': [],
+            'homology_stats': None
+        }
+
+        # Check for homolog_uniprotid in blast_results
+        if blast_results:
+            homolog_uniprot_id = blast_results.get('homolog_uniprotid')
+            if not homolog_uniprot_id:
+                homolog_uniprot_id = blast_results.get('sourceUniProtId')
+
+            if homolog_uniprot_id and homolog_uniprot_id.strip():
+                result['is_homolog_mode'] = True
+                result['homolog_uniprot_id'] = homolog_uniprot_id.strip()
+                logger.info(f"Detected homolog mode: {homolog_uniprot_id}")
+
+        # Extract homology_details
+        if blast_results:
+            homology_details = blast_results.get('homology_details', [])
+            if homology_details:
+                result['homology_details'] = homology_details
+                result['homology_stats'] = extract_homology_statistics(homology_details)
+
+        return result
+
+    def _build_variable_prompt(
+        self,
+        uniprot_data: Dict,
+        pdb_data: Dict,
+        blast_results: Dict,
+        homology_info: Dict[str, Any],
+        language: str = 'zh'
+    ) -> str:
+        """
+        Build Part 1: Variable-built prompt with instructions based on mode and data.
+
+        This contains:
+        - Expert role definition
+        - Report requirements
+        - Mode-specific instructions (homolog vs direct)
+        - Data availability notes
+        """
+        if language == 'zh':
+            return self._build_variable_prompt_chinese(uniprot_data, pdb_data, blast_results, homology_info)
+        else:
+            return self._build_variable_prompt_english(uniprot_data, pdb_data, blast_results, homology_info)
+
+    def _build_variable_prompt_chinese(
+        self,
+        uniprot_data: Dict,
+        pdb_data: Dict,
+        blast_results: Dict,
+        homology_info: Dict[str, Any]
+    ) -> str:
+        """Build Chinese variable prompt (Part 1)."""
+        parts = []
+
+        # Expert role
+        parts.append("""# 结构生物学研究可行性分析提示
+
+## 专家角色
+你是一位资深的**结构生物学家**和**药物发现研究员**，在蛋白质结构解析、功能研究和药物靶点开发方面拥有15年以上的经验。请基于以下提供的蛋白质信息、现有结构数据和相关文献，撰写一份详细的**综合分析报告**。""")
+
+        # Mode-specific introduction
+        is_homolog = homology_info.get('is_homolog_mode', False)
+        homolog_uniprot_id = homology_info.get('homolog_uniprot_id')
+
+        protein_name = uniprot_data.get('protein_name', '目标蛋白质') if uniprot_data else '目标蛋白质'
+
+        if is_homolog and homolog_uniprot_id:
+            parts.append(f"""
+**注意**：以下分析基于**同源蛋白质{homolog_uniprot_id}**的PDB结构，用于推断**{protein_name}**的结构研究可行性。这些结构虽然不是{pdb_data.get('structures', [{}])[0].get('pdb_id', '直接结构')}的直接结构，但提供了重要的同源结构信息。
+""")
+        else:
+            parts.append(f"""
+**分析目标**：蛋白质{protein_name}的结构生物学研究可行性分析。
+""")
+
+        # Report requirements
+        parts.append("""
+## 报告要求：
+1. **专业性**：使用结构生物学和生物化学的专业术语，体现领域专业知识
+2. **全面性**：涵盖技术可行性、科学价值、实验策略、风险分析等所有关键方面
+3. **实用性**：提供具体的实验建议和可操作的备选方案
+4. **结构清晰**：按照学术报告的格式组织内容，逻辑严谨
+5. **数据驱动**：基于提供的数据进行分析，避免主观臆断
+""")
+
+        # Data availability notes
+        structures = pdb_data.get('structures', []) if pdb_data else []
+        has_pdb_structures = len(structures) > 0
+        has_homology = len(homology_info.get('homology_details', [])) > 0
+
+        parts.append(f"""
+## 数据可用性说明：
+- **直接PDB结构**: {'有' if has_pdb_structures else '无'} ({len(structures)}个)
+- **同源结构信息**: {'有' if has_homology else '无'}
+""")
+
+        if is_homolog and homology_info.get('homology_stats'):
+            stats = homology_info['homology_stats']
+            parts.append(f"""
+**同源结构统计**：
+- 总同源结构数: {stats.get('total_homologs', 0)}
+- 不同PDB结构数: {stats.get('unique_pdb_count', 0)}
+- 最佳序列一致性: {stats.get('best_identity', 0)}% (PDB: {stats.get('best_pdb', 'N/A')})
+- 最佳覆盖率: {stats.get('best_coverage', 0)}%
+""")
+
+        return "".join(parts)
+
+    def _build_variable_prompt_english(
+        self,
+        uniprot_data: Dict,
+        pdb_data: Dict,
+        blast_results: Dict,
+        homology_info: Dict[str, Any]
+    ) -> str:
+        """Build English variable prompt (Part 1)."""
+        parts = []
+
+        protein_name = uniprot_data.get('protein_name', 'Target Protein') if uniprot_data else 'Target Protein'
+        is_homolog = homology_info.get('is_homolog_mode', False)
+        homolog_uniprot_id = homology_info.get('homolog_uniprot_id')
+
+        parts.append(f"""# Structural Biology Research Feasibility Analysis Prompt
+
+## Expert Role
+You are a senior **structural biologist** and **drug discovery researcher** with over 15 years of experience in protein structure determination, functional research, and drug target development. Please generate a comprehensive analysis report based on the provided protein information, existing structural data, and relevant literature.
+
+## Analysis Target: {protein_name}
+""")
+
+        if is_homolog and homolog_uniprot_id:
+            parts.append(f"""
+**Note**: This analysis is based on PDB structures of **homologous protein {homolog_uniprot_id}** to infer the structural research feasibility of **{protein_name}**. These structures are not direct structures of {protein_name} but provide important homologous structural information.
+""")
+
+        parts.append("""
+## Report Requirements:
+1. **Professionalism**: Use structural biology and biochemistry terminology
+2. **Comprehensiveness**: Cover technical feasibility, scientific value, experimental strategies, and risk analysis
+3. **Practicality**: Provide specific experimental recommendations and actionable alternatives
+4. **Clarity**: Organize content in academic report format with rigorous logic
+5. **Data-driven**: Base analysis on provided data, avoid speculation
+""")
+
+        return "".join(parts)
+
+    def _apply_template_variables(
+        self,
+        template: str,
+        uniprot_data: Dict,
+        pdb_data: Dict,
+        blast_results: Dict,
+        homology_info: Dict[str, Any],
+        language: str = 'zh'
+    ) -> str:
+        """
+        Apply template with variable substitution.
+
+        Replaces bracket-style variables like [PDB_ENTITIES], [HOMOLOGY_STATS], etc.
+        with actual data.
+        """
+        prompt = template
+
+        # Replace simple variables
+        simple_vars = {
+            '[蛋白质名称]': uniprot_data.get('protein_name', 'N/A') if uniprot_data else 'N/A',
+            '[Protein Name]': uniprot_data.get('protein_name', 'N/A') if uniprot_data else 'N/A',
+            '[UniProt ID]': uniprot_data.get('uniprot_id', 'N/A') if uniprot_data else 'N/A',
+            '[基因名称]': ', '.join(uniprot_data.get('gene_names', [])) if uniprot_data else 'N/A',
+            '[Gene Name]': ', '.join(uniprot_data.get('gene_names', [])) if uniprot_data else 'N/A',
+            '[物种名称]': uniprot_data.get('organism', 'N/A') if uniprot_data else 'N/A',
+            '[Organism]': uniprot_data.get('organism', 'N/A') if uniprot_data else 'N/A',
+            '[序列长度]': str(uniprot_data.get('sequence_length', 'N/A')) if uniprot_data else 'N/A',
+            '[Sequence Length]': str(uniprot_data.get('sequence_length', 'N/A')) if uniprot_data else 'N/A',
+            '[PDB结构总数]': str(len(pdb_data.get('structures', []))) if pdb_data else '0',
+            '[Total PDB Structures]': str(len(pdb_data.get('structures', []))) if pdb_data else '0',
+        }
+
+        for var, value in simple_vars.items():
+            prompt = prompt.replace(var, value)
+
+        # Replace complex section variables
+        if '[PDB_ENTITIES]' in prompt or '[PDB_LIGANDS]' in prompt:
+            if language == 'zh':
+                entity_section = build_entity_section_for_prompt(pdb_data, 'zh') if pdb_data else ''
+                ligand_section = build_ligand_section_for_prompt(pdb_data, 'zh') if pdb_data else ''
+            else:
+                entity_section = build_entity_section_for_prompt(pdb_data, 'en') if pdb_data else ''
+                ligand_section = build_ligand_section_for_prompt(pdb_data, 'en') if pdb_data else ''
+
+            prompt = prompt.replace('[PDB_ENTITIES]', entity_section)
+            prompt = prompt.replace('[PDB_LIGANDS]', ligand_section)
+
+        if '[PDB_STATISTICS]' in prompt:
+            structures = pdb_data.get('structures', []) if pdb_data else []
+            if language == 'zh':
+                stats_section = build_pdb_statistics_section(structures, 'zh')
+            else:
+                stats_section = build_pdb_statistics_section(structures, 'en')
+            prompt = prompt.replace('[PDB_STATISTICS]', stats_section)
+
+        if '[HOMOLOGY_STATS]' in prompt:
+            homology_stats = homology_info.get('homology_stats')
+            if homology_stats:
+                if language == 'zh':
+                    homology_section = build_homology_section_for_prompt(homology_stats, 'zh')
+                else:
+                    homology_section = build_homology_section_for_prompt(homology_stats, 'en')
+                prompt = prompt.replace('[HOMOLOGY_STATS]', homology_section)
+            else:
+                prompt = prompt.replace('[HOMOLOGY_STATS]', '暂无同源结构统计信息')
+
+        if '[LITERATURE_STATS]' in prompt or '[LITERATURE_FOR_AI]' in prompt:
+            # Extract literature from PDB citations
+            literature = []
+            if pdb_data:
+                for struct in pdb_data.get('structures', []):
+                    citations = struct.get('citations', []) or []
+                    for cite in citations:
+                        if cite.get('pubmed_id') or cite.get('title'):
+                            literature.append(cite)
+                literature = extract_literature_for_ai(literature)
+
+            if language == 'zh':
+                lit_section = build_literature_section_for_prompt(literature, 'zh')
+            else:
+                lit_section = build_literature_section_for_prompt(literature, 'en')
+
+            prompt = prompt.replace('[LITERATURE_STATS]', f"共{len(literature)}篇相关文献")
+            prompt = prompt.replace('[LITERATURE_FOR_AI]', lit_section)
+
+        # Handle {outline} placeholder (legacy compatibility)
+        if '{outline}' in prompt:
+            outline = self._generate_outline(uniprot_data, pdb_data, blast_results)
+            prompt = prompt.replace('{outline}', outline)
+
+        return prompt
+
+    def _get_default_report_template(self, language: str = 'zh') -> str:
+        """
+        Get the default report template (Part 3).
+
+        This is the output format instructions that tell the AI how to structure the report.
+        """
+        if language == 'zh':
+            return """---
+
+## 报告结构要求
+
+请按以下结构生成报告：
+
+### 摘要
+（基于提供的数据，简要概述：蛋白质身份、关键结构特征，主要研究发现。200字左右）
+
+### 第一部分：蛋白质基础信息
+- 基本属性（名称、基因、物种、序列长度）
+- 功能描述
+- 结构域组成
+
+### 第二部分：PDB结构数据总览
+- 结构可用性概述
+- 实验方法统计
+- 分辨率范围
+
+### 第三部分：PDB结构综合分析
+- 直接结构分析（如有）
+- 同源结构分析（如有同源结构）
+
+### 第四部分：实验可行性评估
+- 技术路线建议
+- 风险与备选方案
+
+### 第五部分：结论与建议
+- 总结研究发现
+- 提出后续建议"""
+        else:
+            return """---
+
+## Report Structure Requirements
+
+Please generate the report following this structure:
+
+### Abstract
+(Based on provided data, briefly summarize: protein identity, key structural features, main findings. ~200 words)
+
+### Part 1: Protein Basic Information
+- Basic attributes (name, gene, organism, sequence length)
+- Functional description
+- Domain composition
+
+### Part 2: PDB Structure Overview
+- Structure availability overview
+- Experimental method statistics
+- Resolution range
+
+### Part 3: Comprehensive PDB Structure Analysis
+- Direct structure analysis (if available)
+- Homologous structure analysis (if homology data exists)
+
+### Part 4: Experimental Feasibility Assessment
+- Technical approach recommendations
+- Risks and alternatives
+
+### Part 5: Conclusions and Recommendations
+- Summary of research findings
+- Recommendations for follow-up"""
 
     def _build_english_prompt(
         self,
@@ -593,24 +943,32 @@ Please generate the report following this framework:""")
         pdb_data: Dict,
         blast_results: Dict
     ) -> str:
-        """Apply data to custom template.
+        """Apply data to custom template (legacy method).
 
-        The template is used as the base prompt structure/instructions,
-        and the actual protein data is appended for the AI to analyze.
+        Now uses 3-part structure:
+        1. Variable-built prompt
+        2. Data section
+        3. Template
         """
-        # First, do any placeholder replacement if needed
-        prompt = template
-        if '{outline}' in prompt:
-            outline = self._generate_outline(uniprot_data, pdb_data, blast_results)
-            prompt = prompt.replace('{outline}', outline)
+        # Detect homology mode
+        homology_info = self._detect_homology_mode(uniprot_data, pdb_data, blast_results)
 
-        # Always append the actual protein data for AI to analyze
-        # The template provides the report structure, but the data tells AI what to analyze
-        data_section = self._generate_data_section(uniprot_data, pdb_data, blast_results)
-        if data_section:
-            prompt = prompt + "\n\n" + data_section
+        # Part 1: Variable-built prompt
+        variable_prompt = self._build_variable_prompt(
+            uniprot_data, pdb_data, blast_results, homology_info, language='zh'
+        )
 
-        return prompt
+        # Part 2: Data section
+        data_section = self._generate_data_section(
+            uniprot_data, pdb_data, blast_results, homology_info, language='zh'
+        )
+
+        # Part 3: Template (with variable substitution)
+        template_section = self._apply_template_variables(
+            template, uniprot_data, pdb_data, blast_results, homology_info, language='zh'
+        )
+
+        return f"{variable_prompt}\n\n{data_section}\n\n{template_section}"
 
     def _generate_outline(
         self,
@@ -639,9 +997,11 @@ Please generate the report following this framework:""")
         self,
         uniprot_data: Dict,
         pdb_data: Dict,
-        blast_results: Dict
+        blast_results: Dict,
+        homology_info: Dict[str, Any] = None,
+        language: str = 'zh'
     ) -> str:
-        """Generate the actual protein data section for AI analysis.
+        """Generate the actual protein data section for AI analysis (Part 2).
 
         数据结构（避免重复，节省 token）：
         1. 蛋白质基础信息
@@ -651,7 +1011,12 @@ Please generate the report following this framework:""")
         5. 文献列表与摘要（统一在最后）
         6. BLAST 同源结构统计
         """
+        if homology_info is None:
+            homology_info = {}
+
         sections = []
+        is_homolog_mode = homology_info.get('is_homolog_mode', False)
+        homolog_uniprot_id = homology_info.get('homolog_uniprot_id')
 
         # ==================== 1. 蛋白质基础信息 ====================
         if uniprot_data:
@@ -757,15 +1122,22 @@ Please generate the report following this framework:""")
                 sections.append("## PDB 结构数据\n暂无 PDB 结构数据\n")
 
         # ==================== 6. BLAST 同源结构统计 ====================
-        homology_details = blast_results.get('homology_details', []) if blast_results else []
+        # Use homology_info if available (from _detect_homology_mode), otherwise extract from blast_results
+        homology_details = homology_info.get('homology_details', [])
+        if not homology_details and blast_results:
+            homology_details = blast_results.get('homology_details', [])
+
         if homology_details:
-            homology_stats = extract_homology_statistics(homology_details)
+            homology_stats = homology_info.get('homology_stats')
+            if not homology_stats:
+                homology_stats = extract_homology_statistics(homology_details)
+
             if homology_stats and homology_stats.get('total_homologs', 0) > 0:
-                homology_section = build_homology_section_for_prompt(homology_stats, language='zh')
+                homology_section = build_homology_section_for_prompt(homology_stats, language=language)
                 sections.append(homology_section)
 
                 # 简洁的 BLAST 结果列表
-                results = blast_results.get('results', []) or []
+                results = blast_results.get('results', []) if blast_results else []
                 if results:
                     sections.append("### BLAST 搜索结果（Top 10）\n")
                     sections.append("| 排名 | PDB ID | 相似度 | 方法 | 分辨率 | 来源 |")

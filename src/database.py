@@ -298,13 +298,30 @@ def search_protein_evaluations(query: str) -> List[ProteinEvaluation]:
 
 # ========== Prompt Template CRUD ==========
 
-def create_prompt_template(name: str, content: str, description: str = '', description_en: str = '', is_default: bool = False, content_en: str = '', name_en: str = '') -> Optional[PromptTemplate]:
-    """创建提示模板"""
+def create_prompt_template(
+    name: str,
+    content: str,
+    description: str = '',
+    description_en: str = '',
+    is_default: bool = False,
+    content_en: str = '',
+    name_en: str = '',
+    experimental_method: str = None
+) -> Optional[PromptTemplate]:
+    """创建提示模板
+
+    Args:
+        experimental_method: 实验方法类型 (xray, cryoem, nmr, alphafold) 或 None 表示通用默认
+    """
     session = get_session()
     try:
-        # 如果设为默认模板，先取消其他默认
+        # 如果设为默认模板，先取消其他同类型默认
         if is_default:
-            session.query(PromptTemplate).filter_by(is_default=True).update({'is_default': False})
+            session.query(PromptTemplate).filter(
+                PromptTemplate.is_default == True,
+                PromptTemplate.template_type == 'single',
+                PromptTemplate.experimental_method == experimental_method
+            ).update({'is_default': False})
 
         template = PromptTemplate(
             name=name,
@@ -313,12 +330,13 @@ def create_prompt_template(name: str, content: str, description: str = '', descr
             content_en=content_en,
             description=description,
             description_en=description_en,
-            is_default=is_default
+            is_default=is_default,
+            experimental_method=experimental_method
         )
         session.add(template)
         session.commit()
         session.refresh(template)
-        logger.info(f"创建提示模板成功: ID={template.id}, name={name}")
+        logger.info(f"创建提示模板成功: ID={template.id}, name={name}, method={experimental_method}")
         return template
     except Exception as e:
         logger.error(f"创建提示模板失败: {e}")
@@ -433,18 +451,23 @@ def delete_prompt_template(template_id: int) -> bool:
 
 
 def set_default_prompt_template(template_id: int) -> bool:
-    """设置默认模板"""
+    """设置默认模板（只取消同类型模板的默认状态）"""
     session = get_session()
     try:
-        # 先取消所有默认
-        session.query(PromptTemplate).filter_by(is_default=True).update({'is_default': False})
-        # 设置新的默认
         template = session.query(PromptTemplate).filter_by(id=template_id).first()
         if not template:
             return False
+
+        # 只取消同类型、同实验方法的默认
+        session.query(PromptTemplate).filter(
+            PromptTemplate.is_default == True,
+            PromptTemplate.template_type == template.template_type,
+            PromptTemplate.experimental_method == template.experimental_method
+        ).update({'is_default': False})
+
         template.is_default = True
         session.commit()
-        logger.info(f"设置默认提示模板成功: ID={template_id}")
+        logger.info(f"设置默认提示模板成功: ID={template_id}, method={template.experimental_method}")
         return True
     except Exception as e:
         logger.error(f"设置默认提示模板失败: {e}")

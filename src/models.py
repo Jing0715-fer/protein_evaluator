@@ -21,6 +21,7 @@ class PromptTemplate(Base):
     description = Column(Text)  # 模板描述（中文）
     description_en = Column(Text)  # 模板描述（英文）
     template_type = Column(String(20), default='single')  # 模板类型: single 或 batch
+    experimental_method = Column(String(50), nullable=True)  # 实验方法: xray, cryoem, nmr, alphafold, 或 NULL 表示通用默认
     created_at = Column(DateTime, default=lambda: datetime.now())
     updated_at = Column(DateTime, default=lambda: datetime.now(), onupdate=lambda: datetime.now())
 
@@ -35,6 +36,7 @@ class PromptTemplate(Base):
             'description': self.description,
             'description_en': self.description_en,
             'template_type': self.template_type,
+            'experimental_method': self.experimental_method,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

@@ -275,12 +275,19 @@ def create_template():
     description = data.get('description', '')
     description_en = data.get('description_en', '')
     is_default = data.get('is_default', False)
+    experimental_method = data.get('experimental_method', None)
 
     if not name or not content:
         return jsonify({'success': False, 'message': '模板名称和内容不能为空'}), 400
 
-    template = create_prompt_template(name, content, description, description_en, is_default, content_en, name_en)
+    template = create_prompt_template(
+        name, content, description, description_en, is_default, content_en, name_en, experimental_method
+    )
     if template:
+        # Export to file for GitHub versioning
+        from src.template_manager import export_template_to_file
+        method_key = experimental_method if experimental_method else 'default'
+        export_template_to_file(template, method_key)
         return jsonify({'success': True, 'template': template.to_dict()})
     return jsonify({'success': False, 'message': '创建模板失败'}), 500
 
@@ -299,7 +306,7 @@ def get_template(template_id):
 @bp.route('/templates/<int:template_id>', methods=['PUT'])
 def update_template(template_id):
     """更新模板"""
-    from src.database import update_prompt_template
+    from src.database import update_prompt_template, get_prompt_template
 
     data = request.get_json()
     updates = {}
@@ -318,11 +325,19 @@ def update_template(template_id):
         updates['description_en'] = data['description_en']
     if 'is_default' in data:
         updates['is_default'] = data['is_default']
+    if 'experimental_method' in data:
+        updates['experimental_method'] = data['experimental_method']
 
     if not updates:
         return jsonify({'success': False, 'message': '没有要更新的内容'}), 400
 
     if update_prompt_template(template_id, updates):
+        # Export to file for GitHub versioning
+        from src.template_manager import export_template_to_file
+        template = get_prompt_template(template_id)
+        if template:
+            method_key = template.experimental_method if template.experimental_method else 'default'
+            export_template_to_file(template, method_key)
         return jsonify({'success': True, 'message': '模板已更新'})
     return jsonify({'success': False, 'message': '更新失败'}), 500
 
@@ -356,6 +371,41 @@ def use_template(template_id):
     if template:
         return jsonify({'success': True, 'content': template.content})
     return jsonify({'success': False, 'message': '模板不存在'}), 404
+
+
+@bp.route('/templates/by-method', methods=['GET'])
+def get_template_by_method():
+    """根据实验方法自动选择模板
+
+    Query params:
+        method: 实验方法名称 (x-ray, cryo-em, nmr, alphafold)
+        pdb_data: JSON格式的PDB数据（用于自动判断主导方法）
+    """
+    from src.template_manager import get_template_for_method
+
+    method = request.args.get('method')
+    pdb_data_str = request.args.get('pdb_data')
+
+    pdb_data = None
+    if pdb_data_str:
+        import json
+        try:
+            pdb_data = json.loads(pdb_data_str)
+        except:
+            pass
+
+    template = get_template_for_method(
+        experimental_method=method,
+        pdb_data=pdb_data
+    )
+
+    if template:
+        return jsonify({
+            'success': True,
+            'template': template.to_dict(),
+            'content': template.content
+        })
+    return jsonify({'success': False, 'message': '未找到合适的模板'}), 404
 
 
 # ========== Batch Template Management ==========
