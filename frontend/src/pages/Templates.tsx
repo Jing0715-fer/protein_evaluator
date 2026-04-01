@@ -176,7 +176,6 @@ export const Templates: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<PromptTemplate | null>(null);
-  const [methodFilter, setMethodFilter] = useState<string | null>(null);
 
   // Fetch templates function
   const fetchTemplates = useCallback(async () => {
@@ -317,30 +316,6 @@ export const Templates: React.FC = () => {
             </nav>
           </div>
 
-          {/* Method Filter Tabs (only for single templates) */}
-          {activeTab === 'single' && (
-            <nav className="flex gap-1 mt-2 -mb-px">
-              {[
-                { key: 'all', label: language === 'zh' ? '全部' : 'All' },
-                { key: 'xray', label: 'X-ray' },
-                { key: 'cryoem', label: 'Cryo-EM' },
-                { key: 'nmr', label: 'NMR' },
-                { key: 'alphafold', label: 'AlphaFold' },
-              ].map((method) => (
-                <button
-                  key={method.key}
-                  onClick={() => setMethodFilter(method.key === 'all' ? null : method.key)}
-                  className={`py-2 px-4 border-b font-medium text-xs transition-colors ${
-                    (method.key === 'all' && !methodFilter) || methodFilter === method.key
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  {method.label}
-                </button>
-              ))}
-            </nav>
-          )}
         </div>
 
         {/* Error Alert */}
@@ -383,9 +358,7 @@ export const Templates: React.FC = () => {
           </Card>
         ) : (
           <div className="space-y-4">
-            {templates
-              .filter((t) => !methodFilter || t.experimental_method === methodFilter)
-              .map((template) => (
+            {templates.map((template) => (
               <Card key={template.id} className="relative">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
@@ -398,14 +371,6 @@ export const Templates: React.FC = () => {
                           <Badge variant="success">
                             <Star className="w-3 h-3 mr-1" />
                             {t('templates.default')}
-                          </Badge>
-                        )}
-                        {template.experimental_method && (
-                          <Badge variant="info">
-                            {template.experimental_method === 'xray' && 'X-ray'}
-                            {template.experimental_method === 'cryoem' && 'Cryo-EM'}
-                            {template.experimental_method === 'nmr' && 'NMR'}
-                            {template.experimental_method === 'alphafold' && 'AlphaFold'}
                           </Badge>
                         )}
                       </div>
