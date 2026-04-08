@@ -185,6 +185,24 @@ class ProteinEvaluationService:
             'evaluation': evaluation.to_dict()
         }
 
+    def get_evaluation_latest_log(self, evaluation_id: int) -> Dict[str, Any]:
+        """获取评估的最新一条日志（用于实时显示进度）"""
+        evaluation = get_protein_evaluation(evaluation_id)
+        if not evaluation:
+            return {'success': False, 'error': '评估记录不存在'}
+
+        logs = evaluation.logs or []
+        latest_log = logs[-1] if logs else None
+
+        return {
+            'success': True,
+            'evaluation_id': evaluation_id,
+            'status': evaluation.evaluation_status,
+            'progress': evaluation.progress,
+            'current_step': evaluation.current_step,
+            'latest_log': latest_log
+        }
+
     def get_evaluation_detail(self, evaluation_id: int) -> Dict[str, Any]:
         """获取评估详情"""
         evaluation = get_protein_evaluation(evaluation_id)

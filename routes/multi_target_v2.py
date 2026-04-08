@@ -131,10 +131,25 @@ def create_multi_target_job():
         # 标签和配置
         tags = data.get('tags', {})
         config = data.get('config', {})
-        
+
+        # 先获取所有 UniProt 信息（事务外）
+        uniprot_client = UniProtClient()
+        uniprot_info_list = []
+        for uniprot_id in uniprot_ids:
+            protein_name = None
+            gene_name = None
+            try:
+                protein_info = uniprot_client.get_protein(uniprot_id)
+                if protein_info:
+                    protein_name = protein_info.get('protein_name')
+                    gene_name = protein_info.get('gene_names', [None])[0] if protein_info.get('gene_names') else None
+            except Exception as e:
+                logger.warning(f"Failed to fetch UniProt info for {uniprot_id}: {e}")
+            uniprot_info_list.append({'protein_name': protein_name, 'gene_name': gene_name})
+
         # 创建任务 - 直接使用数据库模型
         from src.database import get_session, MultiTargetJob, Target
-        
+
         with get_session() as session:
             # 创建任务
             job = MultiTargetJob(
@@ -150,33 +165,21 @@ def create_multi_target_job():
             session.add(job)
             session.flush()
             job_id = job.job_id
-            
-            # 创建靶点记录，同时获取 UniProt 信息
-            uniprot_client = UniProtClient()
+
+            # 创建靶点记录
             for idx, uniprot_id in enumerate(uniprot_ids):
-                # 尝试获取 UniProt 信息
-                protein_name = None
-                gene_name = None
-                try:
-                    protein_info = uniprot_client.get_protein(uniprot_id)
-                    if protein_info:
-                        protein_name = protein_info.get('protein_name')
-                        gene_name = protein_info.get('gene_names', [None])[0] if protein_info.get('gene_names') else None
-                except Exception as e:
-                    logger.warning(f"Failed to fetch UniProt info for {uniprot_id}: {e}")
-                
                 target = Target(
                     job_id=job_id,
                     target_index=idx,
                     uniprot_id=uniprot_id,
-                    protein_name=protein_name,
-                    gene_name=gene_name,
+                    protein_name=uniprot_info_list[idx]['protein_name'],
+                    gene_name=uniprot_info_list[idx]['gene_name'],
                     status='pending'
                 )
                 session.add(target)
-            
+
             session.commit()
-            
+
             # 获取完整的 job 对象（已提交到数据库）
             job_data = {
                 'job_id': job_id,
@@ -186,7 +189,7 @@ def create_multi_target_job():
                 'evaluation_mode': mode_str,
                 'priority': priority,
             }
-        
+
         logger.info(f"创建多靶点任务: job_id={job_data['job_id']}, name={name}, targets={len(uniprot_ids)}")
         
         # 自动启动任务
@@ -2174,19 +2177,19 @@ def get_job_logs(job_id: int):
                                 'message': f"   序列覆盖率: {coverage}%"
                             })
 
-                    # 添加评估过程日志 (evaluation.logs) - 在PDB数据块之外
-                    if eval_record.logs:
-                        logs.append({
-                            'timestamp': eval_time,
-                            'level': 'info',
-                            'message': f"========== 评估过程日志 =========="
-                        })
-                        for eval_log in eval_record.logs:
+                        # 添加评估过程日志 (evaluation.logs) - 在PDB数据块之外
+                        if eval_record.logs:
                             logs.append({
-                                'timestamp': eval_log.get('timestamp', eval_time),
-                                'level': eval_log.get('level', 'info'),
-                                'message': f"   {eval_log.get('message', '')}"
+                                'timestamp': eval_time,
+                                'level': 'info',
+                                'message': f"========== 评估过程日志 =========="
                             })
+                            for eval_log in eval_record.logs:
+                                logs.append({
+                                    'timestamp': eval_log.get('timestamp', eval_time),
+                                    'level': eval_log.get('level', 'info'),
+                                    'message': f"   {eval_log.get('message', '')}"
+                                })
 
                 if target.error_message:
                     logs.append({

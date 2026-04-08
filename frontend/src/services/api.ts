@@ -216,8 +216,11 @@ export const jobControlApi = {
 
   // Get job logs
   getJobLogs: async (jobId: string): Promise<{ success: boolean; logs?: Array<{ timestamp: string; level: string; message: string }>; error?: string }> => {
-    const result = await fetchApi(`/api/v2/evaluate/multi/${jobId}/logs`);
-    return result as { success: boolean; logs?: Array<{ timestamp: string; level: string; message: string }>; error?: string };
+    const result = await fetchApi<{ logs?: Array<{ timestamp: string; level: string; message: string }>; success?: boolean }>(`/api/v2/evaluate/multi/${jobId}/logs`);
+    if (result.success && result.data) {
+      return result.data as { success: boolean; logs?: Array<{ timestamp: string; level: string; message: string }>; error?: string };
+    }
+    return { success: false, error: result.error || 'Failed to fetch logs' };
   },
 };
 

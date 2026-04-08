@@ -121,13 +121,15 @@ class MultiTargetScheduler:
         """
         # 检查是否已有相同任务在运行
         with self._jobs_lock:
+            logger.info(f"尝试启动任务 {job_id}, 当前活动任务: {list(self._active_jobs.keys())}")
             if job_id in self._active_jobs:
                 logger.warning(f"任务 {job_id} 已在运行中")
                 return False
-            
+
             # 注册取消事件和回调
             cancel_event = threading.Event()
             self._active_jobs[job_id] = cancel_event
+            logger.info(f"任务 {job_id} 已注册到活动任务列表")
         
         if progress_callback:
             with self._callbacks_lock:

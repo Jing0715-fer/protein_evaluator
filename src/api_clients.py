@@ -483,13 +483,14 @@ class PDBClient:
 
         return citations
 
-    def get_structures_batch(self, pdb_ids: List[str], max_structures: int = None) -> Dict[str, Any]:
+    def get_structures_batch(self, pdb_ids: List[str], max_structures: int = None, evaluation_id: int = None) -> Dict[str, Any]:
         """
         Get multiple PDB structures.
 
         Args:
             pdb_ids: List of PDB IDs
             max_structures: Maximum number of structures to fetch (None means no limit)
+            evaluation_id: Optional evaluation ID for logging progress
 
         Returns:
             Dictionary with structures list
@@ -503,11 +504,16 @@ class PDBClient:
             pdb_ids_to_fetch = pdb_ids
             logger.info(f"Fetching all {len(pdb_ids_to_fetch)} PDB structures (no limit)")
 
+        total = len(pdb_ids_to_fetch)
         for idx, pdb_id in enumerate(pdb_ids_to_fetch):
             try:
                 structure = self.get_structure(pdb_id)
                 if structure:
                     structures.append(structure)
+                # Log progress every 5 structures or at the end
+                if evaluation_id and (idx % 5 == 0 or idx == total - 1):
+                    from src.database_service import add_log
+                    add_log(evaluation_id, f"[步骤2/6] → 获取PDB结构 ({idx + 1}/{total}): {pdb_id}")
             except Exception as e:
                 logger.warning(f"Failed to fetch PDB {pdb_id}: {e}")
 

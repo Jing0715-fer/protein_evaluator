@@ -20,8 +20,9 @@ class PromptTemplate(Base):
     is_default = Column(Boolean, default=False)  # 是否为默认模板
     description = Column(Text)  # 模板描述（中文）
     description_en = Column(Text)  # 模板描述（英文）
-    template_type = Column(String(20), default='single')  # 模板类型: single 或 batch
-    experimental_method = Column(String(50), nullable=True)  # 实验方法: xray, cryoem, nmr, alphafold, 或 NULL 表示通用默认
+    template_type = Column(String(20), default='report')  # 模板类型: report 或 prompt
+    # report = 报告模板，定义输出格式
+    # prompt = Prompt模板，用于生成统计摘要
     created_at = Column(DateTime, default=lambda: datetime.now())
     updated_at = Column(DateTime, default=lambda: datetime.now(), onupdate=lambda: datetime.now())
 
@@ -36,7 +37,6 @@ class PromptTemplate(Base):
             'description': self.description,
             'description_en': self.description_en,
             'template_type': self.template_type,
-            'experimental_method': self.experimental_method,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

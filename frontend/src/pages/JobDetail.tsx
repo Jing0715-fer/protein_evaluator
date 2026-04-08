@@ -732,6 +732,13 @@ export const JobDetail: React.FC = () => {
     return () => clearInterval(interval);
   }, [jobId, selectedJob?.job.status]);
 
+  // Clear latestLog when job status changes to pending (after restart)
+  useEffect(() => {
+    if (selectedJob?.job.status === 'pending') {
+      setLatestLog('');
+    }
+  }, [selectedJob?.job.status]);
+
   // All hooks must be defined before any early returns or conditional logic
   // Memoize statusConfig to prevent recreation on every render
   const statusConfig = useMemo<Record<JobStatus, { label: string; color: string; icon: React.ReactNode }>>(() => ({

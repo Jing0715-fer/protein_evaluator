@@ -125,16 +125,6 @@ class EvaluationWorker:
                 custom_template=custom_template
             )
 
-            if ai_analysis_zh.get('error'):
-                self._log(evaluation_id, f"AI中文分析警告: {ai_analysis_zh['error']}", level='warning')
-            else:
-                self._log(evaluation_id, "AI中文分析完成")
-
-            if ai_analysis_en.get('error'):
-                self._log(evaluation_id, f"AI英文分析警告: {ai_analysis_en['error']}", level='warning')
-            else:
-                self._log(evaluation_id, "AI英文分析完成")
-
             if progress_callback:
                 progress_callback(90)
 
@@ -170,7 +160,7 @@ class EvaluationWorker:
     def _fetch_pdb(self, pdb_ids: list, evaluation_id: int = None) -> Dict[str, Any]:
         """Fetch PDB data."""
         max_pdb = self.config.get('max_pdb', None)  # None means no limit
-        return self.pdb_client.get_structures_batch(pdb_ids, max_structures=max_pdb)
+        return self.pdb_client.get_structures_batch(pdb_ids, max_structures=max_pdb, evaluation_id=evaluation_id)
 
     def _run_blast(
         self,
@@ -202,15 +192,15 @@ class EvaluationWorker:
         language: str = 'zh',
         custom_template: str = None
     ) -> Dict[str, Any]:
-        """Run AI analysis in specified language with intelligent chunking."""
+        """Run AI analysis in specified language using two-stage generation."""
         try:
             ai_wrapper = get_ai_client_wrapper(self.config)
 
             if not ai_wrapper.is_available():
                 return {'error': 'AI client not available'}
 
-            # Use the new chunking-aware analysis method
-            result = ai_wrapper.analyze_with_chunking(
+            # Use two-stage analysis (Stage 1: statistical summary, Stage 2: full report)
+            result = ai_wrapper.analyze_two_stage(
                 uniprot_data=uniprot_data,
                 pdb_data=pdb_data,
                 blast_results=blast_results,
@@ -235,15 +225,33 @@ class EvaluationWorker:
     ) -> tuple:
         """Run AI analysis in both Chinese and English."""
         # Run Chinese analysis
+        if evaluation_id:
+            self._log(evaluation_id, "[步骤5/6] → 开始中文AI分析...")
+            self._log(evaluation_id, "[步骤5/6]   [Stage 1/2] 生成统计摘要...")
         ai_analysis_zh = self._run_ai_analysis(
             uniprot_data, pdb_data, blast_results, evaluation_id, language='zh',
             custom_template=custom_template
         )
+        if evaluation_id:
+            if ai_analysis_zh.get('error'):
+                self._log(evaluation_id, f"[步骤5/6]   [Stage 1/2] 失败: {ai_analysis_zh.get('error')}", level='warning')
+            else:
+                self._log(evaluation_id, "[步骤5/6]   [Stage 2/2] 生成最终报告...")
+
         # Run English analysis
+        if evaluation_id:
+            self._log(evaluation_id, "[步骤5/6] → 开始英文AI分析...")
+            self._log(evaluation_id, "[步骤5/6]   [Stage 1/2] 生成统计摘要...")
         ai_analysis_en = self._run_ai_analysis(
             uniprot_data, pdb_data, blast_results, evaluation_id, language='en',
             custom_template=custom_template
         )
+        if evaluation_id:
+            if ai_analysis_en.get('error'):
+                self._log(evaluation_id, f"[步骤5/6]   [Stage 1/2] 失败: {ai_analysis_en.get('error')}", level='warning')
+            else:
+                self._log(evaluation_id, "[步骤5/6]   [Stage 2/2] 生成最终报告...")
+
         return ai_analysis_zh, ai_analysis_en
 
     def _log(self, evaluation_id: int, message: str, level: str = 'info'):

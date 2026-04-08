@@ -22,6 +22,7 @@ from src.prompt_helpers import (
     build_homology_section_for_prompt,
     extract_homology_statistics
 )
+from src.database import get_default_report_template, get_default_prompt_template
 
 logger = logging.getLogger(__name__)
 
@@ -173,11 +174,14 @@ class AIClientWrapper:
         experimental_method: str = None
     ) -> str:
         """
-        Build analysis prompt from protein data using n8n-style 3-part structure.
+        Build analysis prompt from protein data using two-stage generation.
 
-        Part 1: Variable-built prompt (instructions based on homology detection and mode)
-        Part 2: Current data section (protein, PDB, literature, entity info)
-        Part 3: Report template (output format instructions)
+        Stage 1: Generate statistical summary using prompt template
+        Stage 2: Assemble final prompt (statistical summary + data + report template)
+
+        This replaces the previous 3-part structure (variable_prompt + data + template)
+        with a two-stage approach that first generates a summary, then uses it
+        in the final report generation.
 
         Args:
             uniprot_data: UniProt protein data
@@ -186,17 +190,69 @@ class AIClientWrapper:
             custom_template: Custom prompt template (used as Part 3)
             language: Language code ('zh' for Chinese, 'en' for English)
             config: Configuration dictionary
-            experimental_method: Experimental method for template selection
+            experimental_method: Experimental method for template selection (deprecated)
 
         Returns:
-            Formatted prompt string
+            Formatted prompt string for final report generation
         """
         # Detect homology mode first
         homology_info = self._detect_homology_mode(uniprot_data, pdb_data, blast_results)
 
-        # Part 1: Variable-built prompt (instructions based on mode and data)
+        # Stage 1: Variable-built prompt with instructions
         variable_prompt = self._build_variable_prompt(
             uniprot_data, pdb_data, blast_results, homology_info, language
+        )
+
+        # Stage 2: Data section (includes PDB overview, entities, ligands, literature)
+        data_section = self._generate_data_section(
+            uniprot_data, pdb_data, blast_results, homology_info, language
+        )
+
+        # Stage 3: Report template (output format)
+        if custom_template:
+            template_section = self._apply_template_variables(
+                custom_template, uniprot_data, pdb_data, blast_results, homology_info, language
+            )
+        else:
+            template_section = self._get_default_report_template(language)
+
+        # Assemble: variable_prompt + data + template (Stage 2 uses statistical summary)
+        return f"{variable_prompt}\n\n{data_section}\n\n{template_section}"
+
+    def build_analysis_prompt_with_summary(
+        self,
+        uniprot_data: Dict,
+        pdb_data: Dict,
+        blast_results: Dict,
+        statistical_summary: str,
+        custom_template: str = None,
+        language: str = 'zh',
+        config: Dict[str, Any] = None
+    ) -> str:
+        """
+        Build analysis prompt with pre-generated statistical summary (two-stage).
+
+        Stage 1 (already done): Generate statistical summary
+        Stage 2: Assemble final prompt using the summary
+
+        Args:
+            uniprot_data: UniProt protein data
+            pdb_data: PDB structure data
+            blast_results: BLAST search results
+            statistical_summary: Pre-generated statistical summary from Stage 1
+            custom_template: Custom report template
+            language: Language code
+            config: Configuration dictionary
+
+        Returns:
+            Formatted prompt string for final report generation
+        """
+        # Detect homology mode
+        homology_info = self._detect_homology_mode(uniprot_data, pdb_data, blast_results)
+
+        # Part 1: Variable-built prompt with summary included
+        variable_prompt = self._build_variable_prompt_with_summary(
+            uniprot_data, pdb_data, blast_results, homology_info, statistical_summary, language
         )
 
         # Part 2: Current data section
@@ -213,6 +269,151 @@ class AIClientWrapper:
             template_section = self._get_default_report_template(language)
 
         return f"{variable_prompt}\n\n{data_section}\n\n{template_section}"
+
+    def _build_variable_prompt_with_summary(
+        self,
+        uniprot_data: Dict,
+        pdb_data: Dict,
+        blast_results: Dict,
+        homology_info: Dict[str, Any],
+        statistical_summary: str,
+        language: str = 'zh'
+    ) -> str:
+        """
+        Build Part 1 with pre-generated statistical summary included.
+
+        This includes the summary from Stage 1 in the prompt for Stage 2.
+        """
+        if language == 'zh':
+            return self._build_variable_prompt_chinese_with_summary(
+                uniprot_data, pdb_data, blast_results, homology_info, statistical_summary
+            )
+        else:
+            return self._build_variable_prompt_english_with_summary(
+                uniprot_data, pdb_data, blast_results, homology_info, statistical_summary
+            )
+
+    def _build_variable_prompt_chinese_with_summary(
+        self,
+        uniprot_data: Dict,
+        pdb_data: Dict,
+        blast_results: Dict,
+        homology_info: Dict[str, Any],
+        statistical_summary: str
+    ) -> str:
+        """Build Chinese variable prompt with statistical summary."""
+        parts = []
+
+        # Expert role
+        parts.append("""# 结构生物学研究可行性分析提示
+
+## 专家角色
+你是一位资深的**结构生物学家**和**药物发现研究员**，在蛋白质结构解析、功能研究和药物靶点开发方面拥有15年以上的经验。请基于以下提供的蛋白质信息、现有结构数据和相关文献，撰写一份详细的**综合分析报告**。""")
+
+        # Mode-specific introduction
+        is_homolog = homology_info.get('is_homolog_mode', False)
+        homolog_uniprot_id = homology_info.get('homolog_uniprot_id')
+
+        protein_name = uniprot_data.get('protein_name', '目标蛋白质') if uniprot_data else '目标蛋白质'
+
+        if is_homolog and homolog_uniprot_id:
+            parts.append(f"""
+**注意**：以下分析基于**同源蛋白质{homolog_uniprot_id}**的PDB结构，用于推断**{protein_name}**的结构研究可行性。这些结构虽然不是{pdb_data.get('structures', [{}])[0].get('pdb_id', '直接结构')}的直接结构，但提供了重要的同源结构信息。
+""")
+        else:
+            parts.append(f"""
+**分析目标**：蛋白质{protein_name}的结构生物学研究可行性分析。
+""")
+
+        # Report requirements
+        parts.append("""
+## 报告要求：
+1. **专业性**：使用结构生物学和生物化学的专业术语，体现领域专业知识
+2. **全面性**：涵盖技术可行性、科学价值、实验策略、风险分析等所有关键方面
+3. **实用性**：提供具体的实验建议和可操作的备选方案
+4. **结构清晰**：按照学术报告的格式组织内容，逻辑严谨
+5. **数据驱动**：基于提供的数据进行分析，避免主观臆断
+6. **完整性**：生成完整的报告，不要分段或省略
+""")
+
+        # Data availability notes
+        structures = pdb_data.get('structures', []) if pdb_data else []
+        has_pdb_structures = len(structures) > 0
+        has_homology = len(homology_info.get('homology_details', [])) > 0
+
+        parts.append(f"""
+## 数据可用性说明：
+- **直接PDB结构**: {'有' if has_pdb_structures else '无'} ({len(structures)}个)
+- **同源结构信息**: {'有' if has_homology else '无'}
+""")
+
+        if is_homolog and homology_info.get('homology_stats'):
+            stats = homology_info['homology_stats']
+            parts.append(f"""
+**同源结构统计**：
+- 总同源结构数: {stats.get('total_homologs', 0)}
+- 不同PDB结构数: {stats.get('unique_pdb_count', 0)}
+- 最佳序列一致性: {stats.get('best_identity', 0)}% (PDB: {stats.get('best_pdb', 'N/A')})
+- 最佳覆盖率: {stats.get('best_coverage', 0)}%
+""")
+
+        # Include statistical summary from Stage 1
+        if statistical_summary:
+            parts.append(f"""
+## 统计摘要（第一阶段生成）
+
+{statistical_summary}
+""")
+
+        return "".join(parts)
+
+    def _build_variable_prompt_english_with_summary(
+        self,
+        uniprot_data: Dict,
+        pdb_data: Dict,
+        blast_results: Dict,
+        homology_info: Dict[str, Any],
+        statistical_summary: str
+    ) -> str:
+        """Build English variable prompt with statistical summary."""
+        parts = []
+
+        protein_name = uniprot_data.get('protein_name', 'Target Protein') if uniprot_data else 'Target Protein'
+        is_homolog = homology_info.get('is_homolog_mode', False)
+        homolog_uniprot_id = homology_info.get('homolog_uniprot_id')
+
+        parts.append(f"""# Structural Biology Research Feasibility Analysis Prompt
+
+## Expert Role
+You are a senior **structural biologist** and **drug discovery researcher** with over 15 years of experience in protein structure determination, functional research, and drug target development. Please generate a comprehensive analysis report based on the provided protein information, existing structural data, and relevant literature.
+
+## Analysis Target: {protein_name}
+""")
+
+        if is_homolog and homolog_uniprot_id:
+            parts.append(f"""
+**Note**: This analysis is based on PDB structures of **homologous protein {homolog_uniprot_id}** to infer the structural research feasibility of **{protein_name}**. These structures are not direct structures of {protein_name} but provide important homologous structural information.
+""")
+
+        parts.append("""
+## Report Requirements:
+1. **Professionalism**: Use structural biology and biochemistry terminology
+2. **Comprehensiveness**: Cover technical feasibility, scientific value, experimental strategies, and risk analysis
+3. **Practicality**: Provide specific experimental recommendations and actionable alternatives
+4. **Clarity**: Organize content in academic report format with rigorous logic
+5. **Data-driven**: Base analysis on provided data, avoid speculation
+6. **Completeness**: Generate a complete report without truncation or omission
+""")
+
+        # Include statistical summary from Stage 1
+        if statistical_summary:
+            parts.append(f"""
+## Statistical Summary (Generated in Stage 1)
+
+{statistical_summary}
+""")
+
+        return "".join(parts)
 
     def _detect_homology_mode(
         self,
@@ -467,6 +668,11 @@ You are a senior **structural biologist** and **drug discovery researcher** with
             prompt = prompt.replace('[LITERATURE_STATS]', f"共{len(literature)}篇相关文献")
             prompt = prompt.replace('[LITERATURE_FOR_AI]', lit_section)
 
+        # Replace literature-centric PDB data [LITERATURE_PDB_GROUPED]
+        if '[LITERATURE_PDB_GROUPED]' in prompt:
+            grouped_section = self._build_literature_pdb_grouped_section(pdb_data, language)
+            prompt = prompt.replace('[LITERATURE_PDB_GROUPED]', grouped_section)
+
         # Handle {outline} placeholder (legacy compatibility)
         if '{outline}' in prompt:
             outline = self._generate_outline(uniprot_data, pdb_data, blast_results)
@@ -474,12 +680,192 @@ You are a senior **structural biologist** and **drug discovery researcher** with
 
         return prompt
 
+    def _build_literature_pdb_grouped_section(
+        self,
+        pdb_data: Dict,
+        language: str = 'zh'
+    ) -> str:
+        """
+        Build literature-centric section with PDB structures grouped by literature.
+
+        Each literature entry includes:
+        - Literature info (title, authors, journal, year, abstract)
+        - Associated PDB structures
+
+        Args:
+            pdb_data: PDB data dict with 'structures' list
+            language: Language code
+
+        Returns:
+            Formatted string with literature and their PDB structures
+        """
+        if not pdb_data:
+            return "暂无PDB结构数据"
+
+        structures = pdb_data.get('structures', [])
+        if not structures:
+            return "暂无PDB结构数据"
+
+        # Group PDB structures by literature (using pdb_id as grouping key initially,
+        # but we'll restructure to group by literature)
+        literature_pdb_map = self._group_pdbs_by_literature(structures)
+
+        if not literature_pdb_map:
+            return "暂无文献关联的PDB结构数据"
+
+        sections = []
+        if language == 'zh':
+            sections.append("## 文献-PDB结构关联数据\n")
+            sections.append(f"共 {len(literature_pdb_map)} 篇文献涉及PDB结构解析\n")
+        else:
+            sections.append("## Literature-PDB Structure Association Data\n")
+            sections.append(f"Total of {len(literature_pdb_map)} literature entries with PDB structures\n")
+
+        for idx, (lit_info, pdbs) in enumerate(literature_pdb_map, 1):
+            # Literature header
+            pmid = lit_info.get('pubmed_id', 'N/A')
+            title = lit_info.get('title', '无标题')
+            journal = lit_info.get('journal', '未知期刊')
+            year = lit_info.get('year', 'N/A')
+            abstract = lit_info.get('abstract', '')
+            authors = lit_info.get('authors', [])
+
+            author_str = ', '.join(authors[:5]) if len(authors) > 5 else ', '.join(authors)
+            if len(authors) > 5:
+                author_str += ' et al.'
+
+            if language == 'zh':
+                sections.append(f"\n### 文献 {idx}: PMID {pmid}\n")
+                sections.append(f"**标题**: {title}\n")
+                sections.append(f"**期刊**: {journal} ({year})\n")
+                sections.append(f"**作者**: {author_str}\n")
+                if abstract:
+                    abstract_clean = abstract.replace('\n', ' ').strip()
+                    sections.append(f"**摘要**: {abstract_clean}\n")
+            else:
+                sections.append(f"\n### Literature {idx}: PMID {pmid}\n")
+                sections.append(f"**Title**: {title}\n")
+                sections.append(f"**Journal**: {journal} ({year})\n")
+                sections.append(f"**Authors**: {author_str}\n")
+                if abstract:
+                    abstract_clean = abstract.replace('\n', ' ').strip()
+                    sections.append(f"**Abstract**: {abstract_clean}\n")
+
+            # Associated PDB structures
+            sections.append(f"\n**该文献解析的PDB结构** ({len(pdbs)}个):\n")
+            sections.append("| PDB ID | 方法 | 分辨率(Å) | 沉积日期 | 标题 |")
+            sections.append("|--------|------|------------|----------|------|")
+            for struct in pdbs:
+                pdb_id = struct.get('pdb_id', 'N/A')
+                method = struct.get('experimental_method', 'N/A')[:20]
+                resolution = struct.get('resolution', '')
+                deposition_date = struct.get('deposition_date', '')[:10] if struct.get('deposition_date') else ''
+                title_str = struct.get('title', 'N/A')[:40]
+                sections.append(f"| {pdb_id} | {method} | {resolution} | {deposition_date} | {title_str} |")
+
+            # Entity details for this structure
+            for struct in pdbs:
+                pdb_id = struct.get('pdb_id', 'N/A')
+                entity_list = struct.get('entity_list', [])
+                if entity_list:
+                    if language == 'zh':
+                        sections.append(f"\n**{pdb_id} 实体详情**:\n")
+                    else:
+                        sections.append(f"\n**{pdb_id} Entity Details**:\n")
+                    for ent in entity_list[:3]:  # Show first 3 entities
+                        ent_id = ent.get('entity_id', '')
+                        chain = ent.get('chain', '')
+                        polymer_type = ent.get('polymer_type', '')
+                        length = ent.get('length', 0)
+                        mol_name = ent.get('molecule_name', '')
+                        gene = ent.get('gene_name', '')
+                        name_str = f"{mol_name}" if mol_name else polymer_type
+                        if language == 'zh':
+                            gene_str = f", 基因: {gene}" if gene else ""
+                            sections.append(f"- 实体 {ent_id} (链 {chain}): {name_str}{gene_str}, 长度 {length}\n")
+                        else:
+                            gene_str = f", Gene: {gene}" if gene else ""
+                            sections.append(f"- Entity {ent_id} (Chain {chain}): {name_str}{gene_str}, Length {length}\n")
+
+        return "".join(sections)
+
+    def _group_pdbs_by_literature(self, structures: List[Dict]) -> Dict[Dict, List[Dict]]:
+        """
+        Group PDB structures by literature.
+
+        Returns a dict mapping literature info -> list of PDB structures.
+
+        Args:
+            structures: List of PDB structure dicts
+
+        Returns:
+            Dict mapping lit_info dict -> list of PDB structures
+        """
+        from src.prompt_helpers import extract_literature_for_ai
+
+        lit_to_pdbs = {}
+
+        for struct in structures:
+            pdb_id = struct.get('pdb_id', '')
+            citations = struct.get('citations', []) or []
+
+            if not citations:
+                # Structure with no literature - create a placeholder with string key
+                lit_key = f'no_literature_{pdb_id}'
+                lit_info = {'pubmed_id': '', 'title': f'无文献 - {pdb_id}', 'journal': '', 'year': '', 'authors': [], 'abstract': ''}
+                if lit_key not in lit_to_pdbs:
+                    lit_to_pdbs[lit_key] = {'lit_info': lit_info, 'pdbs': []}
+                lit_to_pdbs[lit_key]['pdbs'].append(struct)
+                continue
+
+            for cite in citations:
+                pmid = cite.get('pubmed_id', '')
+                title = cite.get('title', '')
+
+                # Skip if neither pmid nor title
+                if not pmid and not title:
+                    continue
+
+                # Create a key for this literature
+                lit_info = {
+                    'pubmed_id': pmid or '',
+                    'title': title or '无标题',
+                    'journal': cite.get('journal', ''),
+                    'year': cite.get('year', ''),
+                    'authors': cite.get('authors', []),
+                    'abstract': cite.get('abstract', '')
+                }
+
+                # Use pmid as key if available, otherwise use title
+                key = pmid if pmid else title.lower()
+
+                if key not in lit_to_pdbs:
+                    lit_to_pdbs[key] = {'lit_info': lit_info, 'pdbs': []}
+
+                lit_to_pdbs[key]['pdbs'].append(struct)
+
+        # Convert to list of tuples (lit_info, pdbs)
+        result = []
+        for key, data in lit_to_pdbs.items():
+            result.append((data['lit_info'], data['pdbs']))
+
+        return result
+
     def _get_default_report_template(self, language: str = 'zh') -> str:
         """
         Get the default report template (Part 3).
 
-        This is the output format instructions that tell the AI how to structure the report.
+        First tries to fetch from database, falls back to hardcoded content.
         """
+        # Try to get from database
+        db_template = get_default_report_template()
+        if db_template:
+            if language == 'zh':
+                return db_template.content
+            else:
+                return db_template.content_en or db_template.content
+
+        # Fallback to hardcoded content
         if language == 'zh':
             return """---
 
@@ -542,6 +928,207 @@ Please generate the report following this structure:
 ### Part 5: Conclusions and Recommendations
 - Summary of research findings
 - Recommendations for follow-up"""
+
+    def _get_default_prompt_template(self, language: str = 'zh') -> str:
+        """
+        Get the default prompt template for generating statistical summary (Stage 1).
+
+        Returns the prompt template used to generate a statistical summary of the protein data.
+        """
+        # Try to get from database
+        db_template = get_default_prompt_template()
+        if db_template:
+            if language == 'zh':
+                return db_template.content
+            else:
+                return db_template.content_en or db_template.content
+
+        # Fallback to hardcoded content
+        if language == 'zh':
+            return """# 蛋白质数据结构摘要生成器
+
+你是一个专业的蛋白质结构生物信息学专家。请根据以下数据生成一份结构化的统计摘要。
+
+## 蛋白质信息
+- 名称: {protein_name}
+- UniProt: {uniprot_id}
+- 基因: {gene_name}
+- 物种: {organism}
+- 序列长度: {length} aa
+
+## PDB结构统计
+{total_structures} 个结构
+分辨率范围: {resolution_range}
+实验方法分布: {method_distribution}
+
+## 同源结构统计（如有）
+{homology_stats}
+
+## 文献统计
+{literature_count} 篇相关文献
+
+请生成简洁的统计摘要（300-500字），包含：
+1. 蛋白质关键特征概述
+2. PDB结构质量评估
+3. 同源结构覆盖情况（如有）
+4. 主要研究发现"""
+        else:
+            return """# Protein Data Summary Generator
+
+You are a professional structural bioinformatics expert. Generate a structured statistical summary based on the following data.
+
+## Protein Information
+- Name: {protein_name}
+- UniProt: {uniprot_id}
+- Gene: {gene_name}
+- Organism: {organism}
+- Sequence Length: {length} aa
+
+## PDB Structure Statistics
+{total_structures} structures
+Resolution Range: {resolution_range}
+Experimental Method Distribution: {method_distribution}
+
+## Homology Structure Statistics (if available)
+{homology_stats}
+
+## Literature Statistics
+{literature_count} related papers
+
+Please generate a concise statistical summary (300-500 words), containing:
+1. Key protein characteristics overview
+2. PDB structure quality assessment
+3. Homology structure coverage (if available)
+4. Main research findings"""
+
+    def _format_prompt_template(self, template: str, uniprot_data: Dict, pdb_data: Dict,
+                                 blast_results: Dict, homology_info: Dict[str, Any],
+                                 language: str = 'zh') -> str:
+        """
+        Format the prompt template with actual data values.
+
+        Replaces {variable} placeholders in the template with actual data.
+        """
+        prompt = template
+
+        # Extract statistics for substitution
+        structures = pdb_data.get('structures', []) if pdb_data else []
+        stats = extract_pdb_statistics(structures) if structures else {}
+
+        homology_stats = homology_info.get('homology_stats') if homology_info else None
+
+        # Count literature
+        literature_count = 0
+        if pdb_data:
+            for struct in pdb_data.get('structures', []):
+                citations = struct.get('citations', []) or []
+                literature_count += len([c for c in citations if c.get('pubmed_id') or c.get('title')])
+
+        # Simple string substitutions
+        replacements = {
+            '{protein_name}': uniprot_data.get('protein_name', 'N/A') if uniprot_data else 'N/A',
+            '{uniprot_id}': uniprot_data.get('uniprot_id', 'N/A') if uniprot_data else 'N/A',
+            '{gene_name}': ', '.join(uniprot_data.get('gene_names', [])) if uniprot_data else 'N/A',
+            '{organism}': uniprot_data.get('organism', 'N/A') if uniprot_data else 'N/A',
+            '{length}': str(uniprot_data.get('sequence_length', 'N/A')) if uniprot_data else 'N/A',
+            '{total_structures}': str(stats.get('total_structures', 0)),
+            '{resolution_range}': stats.get('resolution_range', 'N/A'),
+            '{method_distribution}': '; '.join([f"{k}: {v}" for k, v in stats.get('method_distribution', {}).items()]) if stats.get('method_distribution') else 'N/A',
+            '{homology_stats}': self._format_homology_stats(homology_stats, language) if homology_stats else '暂无同源结构信息',
+            '{literature_count}': str(literature_count),
+        }
+
+        for var, value in replacements.items():
+            prompt = prompt.replace(var, value)
+
+        # Replace [LITERATURE_PDB_GROUPED] placeholder with literature-centric PDB data
+        if '[LITERATURE_PDB_GROUPED]' in prompt:
+            grouped_section = self._build_literature_pdb_grouped_section(pdb_data, language)
+            prompt = prompt.replace('[LITERATURE_PDB_GROUPED]', grouped_section)
+
+        return prompt
+
+    def _format_homology_stats(self, homology_stats: Dict, language: str = 'zh') -> str:
+        """Format homology statistics for template substitution."""
+        if not homology_stats:
+            return '暂无同源结构信息'
+
+        lines = []
+        if language == 'zh':
+            lines.append(f"总同源结构数: {homology_stats.get('total_homologs', 0)}")
+            lines.append(f"不同PDB结构数: {homology_stats.get('unique_pdb_count', 0)}")
+            best_identity = homology_stats.get('best_identity', 0)
+            best_pdb = homology_stats.get('best_pdb', 'N/A')
+            best_coverage = homology_stats.get('best_coverage', 0)
+            if best_identity:
+                lines.append(f"最佳序列一致性: {best_identity}% (PDB: {best_pdb})")
+            if best_coverage:
+                lines.append(f"最佳覆盖率: {best_coverage}%")
+        else:
+            lines.append(f"Total homologs: {homology_stats.get('total_homologs', 0)}")
+            lines.append(f"Unique PDB structures: {homology_stats.get('unique_pdb_count', 0)}")
+            best_identity = homology_stats.get('best_identity', 0)
+            best_pdb = homology_stats.get('best_pdb', 'N/A')
+            best_coverage = homology_stats.get('best_coverage', 0)
+            if best_identity:
+                lines.append(f"Best sequence identity: {best_identity}% (PDB: {best_pdb})")
+            if best_coverage:
+                lines.append(f"Best coverage: {best_coverage}%")
+
+        return '\n'.join(lines)
+
+    def generate_statistical_summary(
+        self,
+        uniprot_data: Dict,
+        pdb_data: Dict,
+        blast_results: Dict,
+        language: str = 'zh'
+    ) -> Dict[str, Any]:
+        """
+        Stage 1: Generate statistical summary using the prompt template.
+
+        This generates a concise statistical summary of the protein data,
+        which is then used in Stage 2 to generate the final report.
+
+        Returns:
+            Dictionary with 'summary', 'model', 'success', and optionally 'error'
+        """
+        if not self.client:
+            return {'error': 'AI client not initialized', 'success': False}
+
+        # Detect homology mode
+        homology_info = self._detect_homology_mode(uniprot_data, pdb_data, blast_results)
+
+        # Get prompt template
+        prompt_template = self._get_default_prompt_template(language)
+
+        # Format template with actual data
+        prompt = self._format_prompt_template(
+            prompt_template, uniprot_data, pdb_data, blast_results, homology_info, language
+        )
+
+        # Add system message
+        if language == 'zh':
+            system_message = "你是一个专业的蛋白质结构生物信息学专家。请根据提供的数据生成准确的统计摘要。"
+        else:
+            system_message = "You are a professional structural bioinformatics expert. Generate an accurate statistical summary based on the provided data."
+
+        # Run AI analysis
+        result = self.analyze(prompt, system_message=system_message, max_tokens=2000)
+
+        if result.get('success'):
+            return {
+                'summary': result.get('analysis', ''),
+                'model': result.get('model', self.model),
+                'success': True,
+                'prompt': prompt
+            }
+        else:
+            return {
+                'error': result.get('error', 'Failed to generate statistical summary'),
+                'success': False,
+                'prompt': prompt
+            }
 
     def _build_english_prompt(
         self,
@@ -1053,71 +1640,83 @@ Please generate the report following this framework:""")
                     sections.append(f"- **实验方法**: {methods_str}")
                 sections.append("")
 
-                # PDB 列表（简洁版，不重复详情）
-                sections.append("### PDB 结构列表\n")
-                sections.append("| PDB ID | 方法 | 分辨率(Å) | 沉积日期 | 标题 |")
-                sections.append("|--------|------|------------|----------|------|")
-                for struct in structures[:15]:  # 最多15个
-                    pdb_id = struct.get('pdb_id', 'N/A')
-                    method = struct.get('experimental_method', 'N/A')[:20]
-                    resolution = struct.get('resolution', '')
-                    deposition_date = struct.get('deposition_date', '')[:10] if struct.get('deposition_date') else ''
-                    title = struct.get('title', 'N/A')
-                    sections.append(f"| {pdb_id} | {method} | {resolution} | {deposition_date} | {title} |")
-                sections.append("")
+                # ==================== 以文献为中心的数据结构 ====================
+                # 每个文献条目包含：文献信息 + 该文献的PDB结构 + 实体详情
+                literature_pdb_map = self._group_pdbs_by_literature(structures)
 
-                # ==================== 3. 实体信息汇总 ====================
-                entity_section = build_entity_section_for_prompt(pdb_data, language='zh')
-                if entity_section and "暂无" not in entity_section:
-                    sections.append(entity_section)
+                if literature_pdb_map:
+                    if language == 'zh':
+                        sections.append("## 文献-PDB结构关联数据\n")
+                        sections.append(f"共 {len(literature_pdb_map)} 篇文献涉及PDB结构解析\n\n")
+                    else:
+                        sections.append("## Literature-PDB Structure Association Data\n")
+                        sections.append(f"Total of {len(literature_pdb_map)} literature entries with PDB structures\n\n")
 
-                # ==================== 4. 配体/药物信息汇总 ====================
-                ligand_section = build_ligand_section_for_prompt(pdb_data, language='zh')
-                if ligand_section and "暂无" not in ligand_section:
-                    sections.append(ligand_section)
+                    for idx, (lit_info, pdbs) in enumerate(literature_pdb_map, 1):
+                        # 文献信息
+                        pmid = lit_info.get('pubmed_id', 'N/A')
+                        title = lit_info.get('title', '无标题')
+                        journal = lit_info.get('journal', '未知期刊')
+                        year = lit_info.get('year', 'N/A')
+                        abstract = lit_info.get('abstract', '')
+                        authors = lit_info.get('authors', [])
 
-                # ==================== 5. 文献列表与摘要 ====================
-                all_articles = []
-                pdb_with_articles = {}  # 用于显示 PDB 与文献的关联
-                for struct in structures:
-                    pdb_id = struct.get('pdb_id', '')
-                    citations = struct.get('citations', []) or []
-                    for cite in citations:
-                        # Include citations with PMID, OR with title (even without PMID)
-                        if cite.get('pubmed_id') or cite.get('title'):
-                            article = {
-                                'pubmed_id': cite.get('pubmed_id') or '',
-                                'title': cite.get('title', ''),
-                                'journal': cite.get('journal', ''),
-                                'year': cite.get('year', ''),
-                                'authors': cite.get('authors', []),
-                                'abstract': cite.get('abstract', ''),
-                                'doi': cite.get('doi', ''),
-                                'pdb_id': pdb_id  # 关联 PDB
-                            }
-                            all_articles.append(article)
-                            if pdb_id not in pdb_with_articles:
-                                pdb_with_articles[pdb_id] = []
-                            pdb_with_articles[pdb_id].append(cite.get('pubmed_id') or cite.get('title', '')[:50])
+                        author_str = ', '.join(authors[:5]) if len(authors) > 5 else ', '.join(authors)
+                        if len(authors) > 5:
+                            author_str += ' et al.'
 
-                if all_articles:
-                    sections.append("## 文献列表与摘要\n")
-                    sections.append(f"共 **{len(all_articles)}** 篇关联文献。\n")
+                        if language == 'zh':
+                            sections.append(f"### 文献 {idx}: PMID {pmid}\n")
+                            sections.append(f"**标题**: {title}\n")
+                            sections.append(f"**期刊**: {journal} ({year})\n")
+                            sections.append(f"**作者**: {author_str}\n")
+                            if abstract:
+                                abstract_clean = abstract.replace('\n', ' ').strip()
+                                sections.append(f"**摘要**: {abstract_clean[:500]}...\n" if len(abstract) > 500 else f"**摘要**: {abstract_clean}\n")
+                        else:
+                            sections.append(f"### Literature {idx}: PMID {pmid}\n")
+                            sections.append(f"**Title**: {title}\n")
+                            sections.append(f"**Journal**: {journal} ({year})\n")
+                            sections.append(f"**Authors**: {author_str}\n")
+                            if abstract:
+                                abstract_clean = abstract.replace('\n', ' ').strip()
+                                sections.append(f"**Abstract**: {abstract_clean[:500]}...\n" if len(abstract) > 500 else f"**Abstract**: {abstract_clean}\n")
 
-                    # 按 PDB 分组显示文献关联（简洁列表）
-                    if pdb_with_articles:
-                        sections.append("### 文献-PDB 关联\n")
-                        for pdb_id, pmids in list(pdb_with_articles.items())[:5]:
-                            pmid_str = ", ".join([f"[{p}](https://pubmed.ncbi.nlm.nih.gov/{p}/)" for p in pmids[:3]])
-                            if len(pmids) > 3:
-                                pmid_str += f" 等{len(pmids)}篇"
-                            sections.append(f"- **{pdb_id}**: {pmid_str}")
+                        # 该文献的PDB结构
+                        sections.append(f"\n**该文献解析的PDB结构** ({len(pdbs)}个):\n")
+                        sections.append("| PDB ID | 方法 | 分辨率(Å) | 标题 |")
+                        sections.append("|--------|------|------------|------|")
+                        for struct in pdbs:
+                            pdb_id = struct.get('pdb_id', 'N/A')
+                            method = struct.get('experimental_method', 'N/A')[:20]
+                            resolution = struct.get('resolution', '')
+                            title_str = struct.get('title', 'N/A')[:40]
+                            sections.append(f"| {pdb_id} | {method} | {resolution} | {title_str} |")
+
+                        # 实体详情
+                        for struct in pdbs:
+                            pdb_id = struct.get('pdb_id', 'N/A')
+                            entity_list = struct.get('entity_list', [])
+                            if entity_list:
+                                if language == 'zh':
+                                    sections.append(f"\n**{pdb_id} 实体详情**:\n")
+                                else:
+                                    sections.append(f"\n**{pdb_id} Entity Details**:\n")
+                                for ent in entity_list[:2]:  # 每个结构最多2个实体
+                                    ent_id = ent.get('entity_id', '')
+                                    chain = ent.get('chain', '')
+                                    polymer_type = ent.get('polymer_type', '')
+                                    length = ent.get('length', 0)
+                                    mol_name = ent.get('molecule_name', '')
+                                    gene = ent.get('gene_name', '')
+                                    name_str = f"{mol_name}" if mol_name else polymer_type
+                                    if language == 'zh':
+                                        gene_str = f", 基因: {gene}" if gene else ""
+                                        sections.append(f"- 实体 {ent_id} (链 {chain}): {name_str}{gene_str}, 长度 {length}\n")
+                                    else:
+                                        gene_str = f", Gene: {gene}" if gene else ""
+                                        sections.append(f"- Entity {ent_id} (Chain {chain}): {name_str}{gene_str}, Length {length}\n")
                         sections.append("")
-
-                    # 完整文献摘要（给 AI 分析用，不要复制）
-                    literature_for_ai = extract_literature_for_ai(all_articles)
-                    literature_section = build_literature_section_for_prompt(literature_for_ai, language='zh')
-                    sections.append(literature_section)
             else:
                 sections.append("## PDB 结构数据\n暂无 PDB 结构数据\n")
 
@@ -1689,6 +2288,81 @@ Please generate the report following this framework:""")
             'prompts': prompts_used,
             'prompt': combined_prompt
         }
+
+    def analyze_two_stage(
+        self,
+        uniprot_data: Dict,
+        pdb_data: Dict,
+        blast_results: Dict,
+        custom_template: str = None,
+        language: str = 'zh',
+        config: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """
+        Run AI analysis using two-stage generation.
+
+        Stage 1: Generate a short statistical summary using the prompt template
+        Stage 2: Generate the full report using the summary + data + report template
+
+        This approach avoids the need for chunking because:
+        1. The statistical summary is short (300-500 words)
+        2. The final report is generated in one pass
+
+        Returns:
+            Dictionary with 'analysis', 'model', 'success', and optionally 'error'
+        """
+        if not self.client:
+            return {'error': 'AI client not initialized', 'success': False}
+
+        try:
+            # Stage 1: Generate statistical summary
+            summary_result = self.generate_statistical_summary(
+                uniprot_data, pdb_data, blast_results, language
+            )
+
+            if not summary_result.get('success'):
+                return {
+                    'error': f"Stage 1 failed: {summary_result.get('error', 'Unknown error')}",
+                    'success': False,
+                    'stage': 1
+                }
+
+            statistical_summary = summary_result.get('summary', '')
+
+            # Stage 2: Build final prompt and run analysis
+            prompt = self.build_analysis_prompt_with_summary(
+                uniprot_data=uniprot_data,
+                pdb_data=pdb_data,
+                blast_results=blast_results,
+                statistical_summary=statistical_summary,
+                custom_template=custom_template,
+                language=language,
+                config=config
+            )
+
+            system_message = self._get_system_message(language)
+            result = self.analyze(prompt, system_message=system_message)
+
+            if result.get('success'):
+                return {
+                    'analysis': result.get('analysis', ''),
+                    'model': result.get('model', self.model),
+                    'success': True,
+                    'stage1_summary': statistical_summary,
+                    'prompt': prompt
+                }
+            else:
+                return {
+                    'error': f"Stage 2 failed: {result.get('error', 'Unknown error')}",
+                    'success': False,
+                    'stage': 2,
+                    'stage1_summary': statistical_summary,
+                    'prompt': prompt
+                }
+
+        except Exception as e:
+            logger.error(f"Two-stage analysis failed: {e}")
+            return {'error': str(e), 'success': False}
 
     def _apply_template_to_prompt(
         self,

@@ -29,6 +29,10 @@ def create_app(debug=None):
         debug: Optional bool to override DEBUG setting. If None, reads
                from os.environ['DEBUG'] (consistent with config.DEBUG behaviour).
     """
+    # Reset database engine to ensure fresh connections
+    from src.database import reset_engine
+    reset_engine()
+
     app = Flask(__name__)
 
     # Load config
@@ -288,5 +292,7 @@ if __name__ == '__main__':
     app.run(
         host=config.HOST,
         port=config.PORT,
-        debug=config.DEBUG
+        debug=config.DEBUG,
+        threaded=False,
+        processes=1
     )

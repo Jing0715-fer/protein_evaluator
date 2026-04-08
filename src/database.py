@@ -9,7 +9,7 @@ from datetime import datetime
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import StaticPool
 
 from .models import Base, ProteinEvaluation, PromptTemplate, BatchEvaluation, ProteinInteraction
 from .multi_target_models import MultiTargetJob, Target, TargetRelationship
@@ -50,8 +50,8 @@ def _get_engine():
     engine = create_engine(
         f'sqlite:///{DATABASE_PATH}',
         echo=False,
-        poolclass=NullPool,
-        connect_args={'check_same_thread': False}
+        poolclass=StaticPool,
+        connect_args={'check_same_thread': False, 'timeout': 30}
     )
 
     # Create tables
@@ -154,7 +154,9 @@ def _run_migrations(engine):
 
 
 # Create session factory — bind=engine is a _EngineProxy that defers to _get_engine()
-Session = sessionmaker(bind=engine)
+# expire_on_commit=False prevents SQLAlchemy from closing connections on commit,
+# which works better with NullPool for SQLite
+Session = sessionmaker(bind=engine, expire_on_commit=False)
 
 
 def get_session():
@@ -306,12 +308,12 @@ def create_prompt_template(
     is_default: bool = False,
     content_en: str = '',
     name_en: str = '',
-    experimental_method: str = None
+    template_type: str = 'report'
 ) -> Optional[PromptTemplate]:
     """创建提示模板
 
     Args:
-        experimental_method: 实验方法类型 (xray, cryoem, nmr, alphafold) 或 None 表示通用默认
+        template_type: 模板类型 ('report' 或 'prompt')
     """
     session = get_session()
     try:
@@ -319,8 +321,7 @@ def create_prompt_template(
         if is_default:
             session.query(PromptTemplate).filter(
                 PromptTemplate.is_default == True,
-                PromptTemplate.template_type == 'single',
-                PromptTemplate.experimental_method == experimental_method
+                PromptTemplate.template_type == template_type
             ).update({'is_default': False})
 
         template = PromptTemplate(
@@ -331,12 +332,12 @@ def create_prompt_template(
             description=description,
             description_en=description_en,
             is_default=is_default,
-            experimental_method=experimental_method
+            template_type=template_type
         )
         session.add(template)
         session.commit()
         session.refresh(template)
-        logger.info(f"创建提示模板成功: ID={template.id}, name={name}, method={experimental_method}")
+        logger.info(f"创建提示模板成功: ID={template.id}, name={name}, type={template_type}")
         return template
     except Exception as e:
         logger.error(f"创建提示模板失败: {e}")
@@ -547,6 +548,72 @@ def get_default_batch_template() -> Optional[PromptTemplate]:
         return template
     except Exception as e:
         logger.error(f"获取默认批量模板失败: {e}")
+        return None
+    finally:
+        session.close()
+
+
+def get_report_templates() -> List[PromptTemplate]:
+    """获取所有报告模板 (template_type='report')"""
+    session = get_session()
+    try:
+        templates = session.query(PromptTemplate).filter(
+            PromptTemplate.template_type == 'report'
+        ).order_by(PromptTemplate.is_default.desc(), PromptTemplate.name).all()
+        return templates
+    except Exception as e:
+        logger.error(f"获取报告模板列表失败: {e}")
+        return []
+    finally:
+        session.close()
+
+
+def get_default_report_template() -> Optional[PromptTemplate]:
+    """获取默认报告模板 (template_type='report')"""
+    session = get_session()
+    try:
+        template = session.query(PromptTemplate).filter_by(
+            is_default=True, template_type='report'
+        ).first()
+        # 如果没有默认模板，返回第一个报告模板
+        if not template:
+            template = session.query(PromptTemplate).filter_by(template_type='report').first()
+        return template
+    except Exception as e:
+        logger.error(f"获取默认报告模板失败: {e}")
+        return None
+    finally:
+        session.close()
+
+
+def get_prompt_templates() -> List[PromptTemplate]:
+    """获取所有Prompt模板 (template_type='prompt')"""
+    session = get_session()
+    try:
+        templates = session.query(PromptTemplate).filter(
+            PromptTemplate.template_type == 'prompt'
+        ).order_by(PromptTemplate.is_default.desc(), PromptTemplate.name).all()
+        return templates
+    except Exception as e:
+        logger.error(f"获取Prompt模板列表失败: {e}")
+        return []
+    finally:
+        session.close()
+
+
+def get_default_prompt_template() -> Optional[PromptTemplate]:
+    """获取默认Prompt模板 (template_type='prompt')"""
+    session = get_session()
+    try:
+        template = session.query(PromptTemplate).filter_by(
+            is_default=True, template_type='prompt'
+        ).first()
+        # 如果没有默认模板，返回第一个prompt模板
+        if not template:
+            template = session.query(PromptTemplate).filter_by(template_type='prompt').first()
+        return template
+    except Exception as e:
+        logger.error(f"获取默认Prompt模板失败: {e}")
         return None
     finally:
         session.close()

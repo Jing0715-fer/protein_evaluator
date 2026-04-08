@@ -110,6 +110,18 @@ def get_evaluation_status(evaluation_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@bp.route('/<int:evaluation_id>/latest-log', methods=['GET'])
+def get_evaluation_latest_log(evaluation_id):
+    """获取评估的最新一条日志（用于实时显示进度）"""
+    try:
+        service = get_evaluation_service()
+        result = service.get_evaluation_latest_log(evaluation_id)
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"获取最新日志失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @bp.route('/<int:evaluation_id>/prompt', methods=['GET'])
 def get_evaluation_prompt(evaluation_id):
     """获取评估的AI prompt"""
@@ -195,23 +207,24 @@ def get_settings():
 
 @bp.route('/templates', methods=['GET'])
 def get_templates():
-    """获取单个蛋白评估模板"""
-    from src.database import get_single_templates, create_prompt_template, update_prompt_template
+    """获取报告模板 (template_type='report')"""
+    import config
+    from src.database import get_report_templates, create_prompt_template, update_prompt_template
 
     # Import the filtered function
     from src.database import get_session, PromptTemplate
     session = None
     try:
         session = get_session()
-        # Get only single templates
+        # Get only report templates
         templates = session.query(PromptTemplate).filter(
-            PromptTemplate.template_type == 'single'
+            PromptTemplate.template_type == 'report'
         ).order_by(PromptTemplate.is_default.desc(), PromptTemplate.name).all()
 
-        # Get default (only single templates)
+        # Get default (only report templates)
         default_template = session.query(PromptTemplate).filter(
             PromptTemplate.is_default == True,
-            PromptTemplate.template_type == 'single'
+            PromptTemplate.template_type == 'report'
         ).first()
 
     except Exception as e:
@@ -250,7 +263,7 @@ def get_templates():
                         'description_en': template.description_en or "System default protein analysis report template",
                         'name_en': template.name_en or "Default Template"
                     })
-                    logger.info(f"Added English content to single template {template.id}")
+                    logger.info(f"Added English content to report template {template.id}")
         except Exception as e:
             logger.error(f"Update template English content failed: {e}")
 
