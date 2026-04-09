@@ -31,6 +31,31 @@ import { TargetCard } from '../components/TargetCard';
 import { PdbDetailPanel } from '../components/PdbDetailPanel';
 import type { JobStatus, PdbStructure } from '../types';
 
+// Generate HTML for popup window with markdown rendering
+function generatePopupHtml(title: string, content: string): string {
+  // Simple markdown to HTML (no HTML escaping - for document.write)
+  const htmlContent = content
+    .replace(/```([\s\S]*?)```/g, '<pre style="background:#1f2937;color:#f9fafb;padding:1rem;border-radius:0.5rem;overflow-x:auto;margin:1rem 0;"><code>$1</code></pre>')
+    .replace(/`([^`]+)`/g, '<code style="background:#f3f4f6;padding:0.125rem 0.375rem;border-radius:0.25rem;font-size:0.875rem;">$1</code>')
+    .replace(/^### (.+)$/gm, '<h3 style="font-size:1.1rem;font-weight:600;margin:1.25rem 0 0.5rem 0;color:#4b5563;">$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2 style="font-size:1.25rem;font-weight:600;margin:1.5rem 0 0.75rem 0;color:#374151;">$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1 style="font-size:1.5rem;font-weight:700;margin:0 0 1rem 0;color:#111827;">$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight:600;color:#111827;">$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/\n\n/g, '</p><p style="margin:0 0 0.75rem 0;color:#374151;">')
+    .replace(/\n/g, '<br>');
+
+  const safeTitle = title.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${safeTitle} - Prompt</title><style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; background: #f9fafb; line-height: 1.6; }
+    .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .container p { margin: 0 0 0.75rem 0; color: #374151; }
+    .container ul, .container ol { margin: 0 0 0.75rem 1.5rem; color: #374151; }
+    .container li { margin-bottom: 0.25rem; }
+    .container hr { border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0; }
+  </style></head><body><div class="container"><p style="margin:0 0 0.75rem 0;color:#374151;">${htmlContent}</p></div></body></html>`;
+}
+
 // UniProt metadata detail panel component
 interface UniProtDetailPanelProps {
   target: any;
@@ -1490,15 +1515,7 @@ export const JobDetail: React.FC = () => {
                               if (prompt && prompt.trim()) {
                                 const promptWindow = window.open('', '_blank');
                                 if (promptWindow) {
-                                  // Escape HTML special characters to prevent XSS
-                                  const escapedPrompt = prompt
-                                    .replace(/&/g, '&amp;')
-                                    .replace(/</g, '&lt;')
-                                    .replace(/>/g, '&gt;')
-                                    .replace(/"/g, '&quot;')
-                                    .replace(/'/g, '&#039;');
-                                  const escapedTitle = (job.name || 'Interaction').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                                  promptWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapedTitle} - Prompt</title><style>body{font-family:monospace;padding:20px;white-space:pre-wrap;word-wrap:break-word;background:#f5f5f5;line-height:1.6}</style></head><body>${escapedPrompt}</body></html>`);
+                                  promptWindow.document.write(generatePopupHtml(job.name || 'Interaction', prompt));
                                   promptWindow.document.close();
                                 }
                               } else {
@@ -2006,15 +2023,7 @@ export const JobDetail: React.FC = () => {
                                           if (prompt && prompt.trim()) {
                                             const promptWindow = window.open('', '_blank');
                                             if (promptWindow) {
-                                              // Escape HTML special characters to prevent XSS
-                                              const escapedPrompt = prompt
-                                                .replace(/&/g, '&amp;')
-                                                .replace(/</g, '&lt;')
-                                                .replace(/>/g, '&gt;')
-                                                .replace(/"/g, '&quot;')
-                                                .replace(/'/g, '&#039;');
-                                              const escapedTitle = target.uniprot_id.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                                              promptWindow.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapedTitle} - Prompt</title><style>body{font-family:monospace;padding:20px;white-space:pre-wrap;word-wrap:break-word;background:#f5f5f5;line-height:1.6}</style></head><body>${escapedPrompt}</body></html>`);
+                                              promptWindow.document.write(generatePopupHtml(target.uniprot_id, prompt));
                                               promptWindow.document.close();
                                             }
                                           } else {

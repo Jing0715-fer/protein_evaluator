@@ -7,7 +7,6 @@ import {
   RefreshCw,
   AlertCircle,
   FileText,
-  X,
 } from 'lucide-react';
 import { Button } from '../components/Button';
 import { Card, CardContent, CardHeader } from '../components/Card';
@@ -197,7 +196,7 @@ export const TemplateEditor: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'edit' | 'preview'>('edit');
 
   // Fetch template if editing
   useEffect(() => {
@@ -381,10 +380,30 @@ export const TemplateEditor: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" onClick={() => setShowPreviewModal(true)}>
-                <Eye className="w-4 h-4 mr-2" />
-                {t('app.preview')}
-              </Button>
+              <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setActiveTab('edit')}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${
+                    activeTab === 'edit'
+                      ? 'bg-blue-50 text-blue-600 border-r border-gray-300'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <Edit2Icon className="w-4 h-4 inline mr-1" />
+                  {t('editor.edit') || '编辑'}
+                </button>
+                <button
+                  onClick={() => setActiveTab('preview')}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${
+                    activeTab === 'preview'
+                      ? 'bg-blue-50 text-blue-600'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <Eye className="w-4 h-4 inline mr-1" />
+                  {t('app.preview')}
+                </button>
+              </div>
               <Button variant="outline" onClick={handleReset} disabled={isLoading}>
                 <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
                 {t('app.reset')}
@@ -437,7 +456,9 @@ export const TemplateEditor: React.FC = () => {
           </div>
         ) : (
           <div className="max-w-4xl mx-auto">
-            {/* Editor */}
+            {/* Tab Content */}
+            {activeTab === 'edit' ? (
+            /* Editor */
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
@@ -546,48 +567,30 @@ export const TemplateEditor: React.FC = () => {
 
               </CardContent>
             </Card>
-
-          </div>
-        )}
-
-        {/* Preview Modal */}
-        {showPreviewModal && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-            onClick={() => setShowPreviewModal(false)}
-          >
-            <div
-              className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            ) : (
+            <Card>
+              <CardHeader>
                 <div className="flex items-center gap-2">
                   <Eye className="w-5 h-5 text-blue-600" />
                   <h2 className="text-lg font-semibold text-gray-900">
                     {template.name || t('editor.untitled')}
                   </h2>
                 </div>
-                <button
-                  onClick={() => setShowPreviewModal(false)}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Modal Content */}
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
-                <div className="prose prose-sm max-w-none">
-                  <div
-                    className="markdown-preview"
-                    dangerouslySetInnerHTML={{
-                      __html: parseMarkdown(template.content || ''),
-                    }}
-                  />
+              </CardHeader>
+              <CardContent>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 min-h-[400px]">
+                  <div className="prose prose-sm max-w-none">
+                    <div
+                      className="markdown-preview"
+                      dangerouslySetInnerHTML={{
+                        __html: parseMarkdown(template.content || ''),
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
+            )}
           </div>
         )}
 
