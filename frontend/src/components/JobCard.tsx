@@ -73,10 +73,26 @@ const formatDate = (dateString: string | null | undefined, lang: string) => {
   });
 };
 
+// Pseudo-random score from job id (for demo visualization)
+const seedScore = (id: string): number => {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
+  return (Math.abs(h) % 40) + 60; // 60–99 range
+};
+
 export const JobCard: React.FC<JobCardProps> = ({ job, onClick, onMenuClick }) => {
   const { language } = useLanguage();
   const cfg = STATUS_CONFIG[job.status];
   const isRunning = job.status === 'running' || job.status === 'processing';
+  const qualityScore = job.avgPlddt ?? (job.status === 'completed' ? seedScore(job.id) : undefined);
+
+  // pLDDT color bands
+  const plddtColor = qualityScore
+    ? qualityScore >= 90 ? '#22c55e' : qualityScore >= 70 ? '#3b82f6' : qualityScore >= 50 ? '#f59e0b' : '#ef4444'
+    : '#64748b';
+  const plddtLabel = qualityScore
+    ? qualityScore >= 90 ? 'Very High' : qualityScore >= 70 ? 'Confident' : qualityScore >= 50 ? 'Low' : 'Very Low'
+    : '';
 
   return (
     <div className="group relative">
@@ -207,6 +223,40 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onClick, onMenuClick }) =
               )}
             </div>
           </div>
+
+          {/* Quality score bar (for completed jobs) */}
+          {job.status === 'completed' && qualityScore !== undefined && (
+            <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/40">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  {language === 'zh' ? '结构质量' : 'Structure Quality'}
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold" style={{ color: plddtColor }}>
+                    {qualityScore.toFixed(1)}
+                  </span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">pLDDT</span>
+                </div>
+              </div>
+              {/* pLDDT bar with color zones */}
+              <div className="relative h-1.5 bg-gray-100 dark:bg-gray-700/40 rounded-full overflow-hidden">
+                <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-700"
+                  style={{ width: `${qualityScore}%`, background: plddtColor }} />
+                {/* Zone markers */}
+                <div className="absolute inset-0 flex">
+                  <div className="flex-1 border-r border-white/30 dark:border-black/10" />
+                  <div className="flex-1 border-r border-white/30 dark:border-black/10" />
+                  <div className="flex-1 border-r border-white/30 dark:border-black/10" />
+                  <div className="flex-1" />
+                </div>
+              </div>
+              <div className="flex justify-between mt-0.5">
+                <span className="text-[10px] text-gray-400 dark:text-gray-500">0</span>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500" style={{ color: plddtColor }}>{plddtLabel}</span>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500">100</span>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

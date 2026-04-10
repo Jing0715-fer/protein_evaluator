@@ -17,6 +17,11 @@ export interface Job {
   priority: number;
   evaluation_mode: EvaluationMode;
   tags?: Record<string, string>;
+  // Evaluation metrics (populated from job results)
+  avgPlddt?: number;
+  maxPlddt?: number;
+  tmScore?: number;
+  interfaceCount?: number;
 }
 
 // API-facing Job type (snake_case) - matches backend response
