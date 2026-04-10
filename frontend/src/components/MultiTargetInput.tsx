@@ -299,11 +299,16 @@ export const MultiTargetInput: React.FC<MultiTargetInputProps> = ({
               onChange={(e) => setSingleTemplate(e.target.value)}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 bg-white transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             >
-              {singleTemplates.map((tmpl) => (
-                <option key={tmpl.id} value={tmpl.name}>
-                  {language === 'zh' ? tmpl.name : (tmpl.name_en || tmpl.name)}
-                </option>
-              ))}
+              {singleTemplates.map((tmpl) => {
+                const zhName = (tmpl as any).name_zh ||
+                  { 'All Methods Analysis Template': '全方法分析模板', '默认模板': '默认模板' }[tmpl.name] ||
+                  tmpl.name;
+                return (
+                  <option key={tmpl.id} value={tmpl.name}>
+                    {language === 'zh' ? zhName : (tmpl.name_en || tmpl.name)}
+                  </option>
+                );
+              })}
             </select>
             <p className="text-xs text-gray-500 mt-1">
               {language === 'zh' ? '用于生成单个靶点的分析报告' : 'Template for individual protein evaluation reports'}
@@ -320,11 +325,16 @@ export const MultiTargetInput: React.FC<MultiTargetInputProps> = ({
               onChange={(e) => setBatchTemplate(e.target.value)}
               className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-gray-900 bg-white transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
             >
-              {batchTemplates.map((tmpl) => (
-                <option key={tmpl.id} value={tmpl.name}>
-                  {language === 'zh' ? tmpl.name : (tmpl.name_en || tmpl.name)}
-                </option>
-              ))}
+              {batchTemplates.map((tmpl) => {
+                const zhName = (tmpl as any).name_zh ||
+                  { '默认批量分析模板': '默认批量分析模板', '默认批量': '默认批量分析模板' }[tmpl.name] ||
+                  tmpl.name;
+                return (
+                  <option key={tmpl.id} value={tmpl.name}>
+                    {language === 'zh' ? zhName : (tmpl.name_en || tmpl.name)}
+                  </option>
+                );
+              })}
             </select>
             <p className="text-xs text-gray-500 mt-1">
               {language === 'zh' ? '用于生成多靶点互作分析报告' : 'Template for multi-target interaction analysis reports'}

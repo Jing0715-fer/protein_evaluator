@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, RefreshCw, Filter, Search, Activity, Settings, FileText, Sun, Moon } from 'lucide-react';
+import { Plus, RefreshCw, Filter, Search, Settings, FileText, Sun, Moon, LayoutGrid, List } from 'lucide-react';
 import { useJobs } from '../contexts/JobContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { JobCard, type Job } from '../components/JobCard';
+import { JobRow } from '../components/JobRow';
+import { Sparkline } from '../components/Sparkline';
 import { Button } from '../components/Button';
 import { Card, CardContent } from '../components/Card';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
@@ -24,7 +26,8 @@ export const Dashboard: React.FC = () => {
   } = useJobs();
 
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Fetch jobs on mount
   useEffect(() => {
@@ -49,6 +52,28 @@ export const Dashboard: React.FC = () => {
     },
     {} as Record<string, number>
   );
+
+  // Compute 7-day sparkline data per status
+  const sparklineData = useMemo(() => {
+    const days = 7;
+    const now = new Date();
+    const buckets: { completed: number[]; running: number[]; total: number[] } = {
+      completed: Array(days).fill(0),
+      running: Array(days).fill(0),
+      total: Array(days).fill(0),
+    };
+    jobs.forEach((job) => {
+      if (!job.createdAt) return;
+      const d = new Date(job.createdAt);
+      const diff = Math.floor((now.getTime() - d.getTime()) / 86400000);
+      if (diff < 0 || diff >= days) return;
+      const idx = days - 1 - diff;
+      buckets.total[idx]++;
+      if (job.status === 'completed') buckets.completed[idx]++;
+      if (job.status === 'running' || job.status === 'processing') buckets.running[idx]++;
+    });
+    return buckets;
+  }, [jobs]);
 
   const handleRefresh = () => {
     fetchJobs({ status: statusFilter || undefined, sort_by: 'created_at', sort_order: 'desc' });
@@ -83,8 +108,15 @@ export const Dashboard: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-500 dark:bg-amber-600 rounded-lg">
-                <Activity className="w-6 h-6 text-white" />
+              <div className="p-2 bg-amber-500 dark:bg-amber-600 rounded-lg flex items-center justify-center">
+                {/* Protein Helix SVG Logo */}
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M12 3 C 7 3, 4 6.5, 4 12 C 4 17.5, 7 21, 12 21 C 17 21, 20 17.5, 20 12 C 20 6.5, 17 3, 12 3Z" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M8 8 Q 12 10.5, 16 8" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                  <path d="M16 12 Q 12 14.5, 8 12" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                  <path d="M8 16 Q 12 18.5, 16 16" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                  <circle cx="12" cy="12" r="1.5" fill="white"/>
+                </svg>
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">{t('app.title')}</h1>
@@ -124,41 +156,59 @@ export const Dashboard: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
+        {/* Stats Cards with Sparklines */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{totalJobs}</div>
+          <Card className="border-l-4 border-l-gray-500 dark:border-l-gray-500">
+            <CardContent className="p-4 flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{totalJobs}</div>
+                <Sparkline data={sparklineData.total} color="#64748b" width={56} height={24} />
+              </div>
               <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.total')}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-blue-500 dark:text-blue-400">{statusCounts.processing || 0}</div>
+          <Card className="border-l-4 border-l-blue-500 dark:border-l-blue-500">
+            <CardContent className="p-4 flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold text-blue-500 dark:text-blue-400">{statusCounts.processing || 0}</div>
+                <Sparkline data={sparklineData.running} color="#3b82f6" width={56} height={24} />
+              </div>
               <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.running')}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-yellow-500 dark:text-yellow-400">{statusCounts.pending || 0}</div>
+          <Card className="border-l-4 border-l-yellow-500 dark:border-l-yellow-500">
+            <CardContent className="p-4 flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold text-yellow-500 dark:text-yellow-400">{statusCounts.pending || 0}</div>
+                <Sparkline data={[0,0,0,0,0,0,statusCounts.pending||0]} color="#f59e0b" width={56} height={24} />
+              </div>
               <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.pending')}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-green-500 dark:text-green-400">{statusCounts.completed || 0}</div>
+          <Card className="border-l-4 border-l-green-500 dark:border-l-green-500">
+            <CardContent className="p-4 flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold text-green-500 dark:text-green-400">{statusCounts.completed || 0}</div>
+                <Sparkline data={sparklineData.completed} color="#22c55e" width={56} height={24} />
+              </div>
               <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.completed')}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-red-500 dark:text-red-400">{statusCounts.failed || 0}</div>
+          <Card className="border-l-4 border-l-red-500 dark:border-l-red-500">
+            <CardContent className="p-4 flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold text-red-500 dark:text-red-400">{statusCounts.failed || 0}</div>
+                <Sparkline data={[0,0,0,0,0,0,statusCounts.failed||0]} color="#ef4444" width={56} height={24} />
+              </div>
               <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.failed')}</div>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-gray-500 dark:text-gray-300">{statusCounts.paused || 0}</div>
+          <Card className="border-l-4 border-l-gray-400 dark:border-l-gray-500">
+            <CardContent className="p-4 flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold text-gray-500 dark:text-gray-300">{statusCounts.paused || 0}</div>
+                <Sparkline data={[0,0,0,0,0,0,statusCounts.paused||0]} color="#9ca3af" width={56} height={24} />
+              </div>
               <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.paused')}</div>
             </CardContent>
           </Card>
@@ -212,6 +262,32 @@ export const Dashboard: React.FC = () => {
               />
             </div>
           </div>
+
+          {/* View Mode Toggle */}
+          <div className="flex items-center bg-gray-200 dark:bg-gray-800 rounded-lg p-0.5 border border-gray-300 dark:border-gray-600">
+            <button
+              onClick={() => setViewMode('grid')}
+              title="Grid view"
+              className={`p-1.5 rounded-md transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-white dark:bg-gray-700 shadow-sm text-amber-600 dark:text-amber-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              title="List view"
+              className={`p-1.5 rounded-md transition-all ${
+                viewMode === 'list'
+                  ? 'bg-white dark:bg-gray-700 shadow-sm text-amber-600 dark:text-amber-400'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Job Grid */}
@@ -225,7 +301,13 @@ export const Dashboard: React.FC = () => {
         ) : filteredJobs.length === 0 ? (
           <div className="text-center py-12">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-800 mb-4">
-              <Activity className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+              <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M12 3 C 7 3, 4 6.5, 4 12 C 4 17.5, 7 21, 12 21 C 17 21, 20 17.5, 20 12 C 20 6.5, 17 3, 12 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M8 8 Q 12 10.5, 16 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                <path d="M16 12 Q 12 14.5, 8 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                <path d="M8 16 Q 12 18.5, 16 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+              </svg>
             </div>
             <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100 mb-2">{t('dashboard.noJobs')}</h3>
             <p className="text-gray-500 dark:text-gray-300 mb-6">{t('dashboard.noTasksDescription')}</p>
@@ -235,24 +317,48 @@ export const Dashboard: React.FC = () => {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredJobs.map((job) => (
-              <JobCard
-                key={job.id}
-                job={job}
-                onClick={handleJobClick}
-                onMenuClick={(job) => {
-                  const confirmMsg = language === 'zh'
-                    ? `删除任务 "${job.title}"?`
-                    : `Delete task "${job.title}"?`;
-                  const action = window.confirm(confirmMsg);
-                  if (action) {
-                    handleDeleteJob(job);
-                  }
-                }}
-              />
-            ))}
-          </div>
+          viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredJobs.map((job) => (
+                <JobCard
+                  key={job.id}
+                  job={job}
+                  onClick={handleJobClick}
+                  onMenuClick={(job) => {
+                    const confirmMsg = language === 'zh'
+                      ? `删除任务 "${job.title}"?`
+                      : `Delete task "${job.title}"?`;
+                    if (window.confirm(confirmMsg)) handleDeleteJob(job);
+                  }}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
+              {/* List header */}
+              <div className="flex items-center gap-4 px-4 py-2.5 border-b border-gray-100 dark:border-gray-700/60 bg-gray-50 dark:bg-gray-800/80 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                <div className="w-8 flex-shrink-0" />
+                <div className="flex-1 min-w-0">{language === 'zh' ? '任务名称' : 'Task'}</div>
+                <div className="hidden sm:block w-24 text-center">{language === 'zh' ? '进度' : 'Progress'}</div>
+                <div className="hidden md:flex w-24">{language === 'zh' ? '靶点数' : 'Targets'}</div>
+                <div className="hidden sm:flex w-28">{language === 'zh' ? '创建时间' : 'Created'}</div>
+                <div className="w-8 flex-shrink-0" />
+              </div>
+              {filteredJobs.map((job) => (
+                <JobRow
+                  key={job.id}
+                  job={job}
+                  onClick={handleJobClick}
+                  onMenuClick={(job) => {
+                    const confirmMsg = language === 'zh'
+                      ? `删除任务 "${job.title}"?`
+                      : `Delete task "${job.title}"?`;
+                    if (window.confirm(confirmMsg)) handleDeleteJob(job);
+                  }}
+                />
+              ))}
+            </div>
+          )
         )}
 
         {/* Show filtered count */}

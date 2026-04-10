@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Activity } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useJobs } from '../contexts/JobContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { MultiTargetInput, type MultiTargetFormData } from '../components/MultiTargetInput';
@@ -80,8 +80,14 @@ export const CreateJob: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-600 rounded-lg">
-                <Activity className="w-6 h-6 text-white" />
+              <div className="p-2 bg-amber-500 dark:bg-amber-600 rounded-lg flex items-center justify-center">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M12 3 C 7 3, 4 6.5, 4 12 C 4 17.5, 7 21, 12 21 C 17 21, 20 17.5, 20 12 C 20 6.5, 17 3, 12 3Z" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+                  <path d="M8 8 Q 12 10.5, 16 8" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                  <path d="M16 12 Q 12 14.5, 8 12" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                  <path d="M8 16 Q 12 18.5, 16 16" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+                  <circle cx="12" cy="12" r="1.5" fill="white"/>
+                </svg>
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('dashboard.newJob')}</h1>
