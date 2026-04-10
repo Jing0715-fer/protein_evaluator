@@ -74,9 +74,9 @@ export const CreateJob: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-800">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-500 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -84,8 +84,8 @@ export const CreateJob: React.FC = () => {
                 <Activity className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">{t('dashboard.newJob')}</h1>
-                <p className="text-sm text-gray-500">{t('createJob.configMulti')}</p>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('dashboard.newJob')}</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-300">{t('createJob.configMulti')}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -106,7 +106,7 @@ export const CreateJob: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Error Alert */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
             <div className="flex items-center justify-between">
               <p className="text-red-700">{error}</p>
               <button

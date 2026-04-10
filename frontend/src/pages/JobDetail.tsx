@@ -69,16 +69,16 @@ const UniProtDetailPanel: React.FC<UniProtDetailPanelProps> = React.memo(({ targ
   const evaluation = target.evaluation || {};
 
   return (
-    <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
+    <div className="border border-gray-200 dark:border-gray-500 rounded-lg bg-white dark:bg-gray-800 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-500 bg-gradient-to-r from-blue-50 to-white">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-blue-100 rounded-lg">
             <Dna className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <span className="font-mono font-bold text-lg text-gray-900">{uniprotId}</span>
-            <p className="text-sm text-gray-500">{language === 'zh' ? 'UniProt 条目' : 'UniProt Entry'}</p>
+            <span className="font-mono font-bold text-lg text-gray-900 dark:text-gray-100">{uniprotId}</span>
+            <p className="text-sm text-gray-500 dark:text-gray-300">{language === 'zh' ? 'UniProt 条目' : 'UniProt Entry'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -86,15 +86,15 @@ const UniProtDetailPanel: React.FC<UniProtDetailPanelProps> = React.memo(({ targ
             href={`https://www.uniprot.org/uniprotkb/${uniprotId}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-800 rounded-lg transition-colors"
           >
-            <Globe className="w-4 h-4 text-gray-500" />
+            <Globe className="w-4 h-4 text-gray-500 dark:text-gray-300" />
           </a>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-800 rounded-lg transition-colors"
           >
-            <X className="w-4 h-4 text-gray-500" />
+            <X className="w-4 h-4 text-gray-500 dark:text-gray-300" />
           </button>
         </div>
       </div>
@@ -104,51 +104,51 @@ const UniProtDetailPanel: React.FC<UniProtDetailPanelProps> = React.memo(({ targ
         {/* Protein Name */}
         {metadata.protein_name && (
           <div className="bg-gradient-to-r from-gray-50 to-white p-3 rounded-lg border border-gray-100">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-1">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-300 mb-1">
               <Microscope className="w-4 h-4" />
               {language === 'zh' ? '蛋白质名称' : 'Protein Name'}
             </div>
-            <p className="text-gray-900 font-medium">{metadata.protein_name}</p>
+            <p className="text-gray-900 dark:text-gray-100 font-medium">{metadata.protein_name}</p>
           </div>
         )}
 
         {/* Gene Name */}
         {metadata.gene_name && (
           <div className="bg-gradient-to-r from-gray-50 to-white p-3 rounded-lg border border-gray-100">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-1">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-300 mb-1">
               <Dna className="w-4 h-4" />
               {language === 'zh' ? '基因名称' : 'Gene Name'}
             </div>
-            <p className="text-gray-900 font-mono">{metadata.gene_name}</p>
+            <p className="text-gray-900 dark:text-gray-100 font-mono">{metadata.gene_name}</p>
           </div>
         )}
 
         {/* Organism */}
         {metadata.organism && (
           <div className="bg-gradient-to-r from-gray-50 to-white p-3 rounded-lg border border-gray-100">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-1">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-300 mb-1">
               <Globe className="w-4 h-4" />
               {language === 'zh' ? '物种' : 'Organism'}
             </div>
-            <p className="text-gray-900">{metadata.organism}</p>
+            <p className="text-gray-900 dark:text-gray-100">{metadata.organism}</p>
           </div>
         )}
 
         {/* Function */}
         {metadata.function && (
           <div className="bg-gradient-to-r from-gray-50 to-white p-3 rounded-lg border border-gray-100">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-1">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-300 mb-1">
               <Beaker className="w-4 h-4" />
               {language === 'zh' ? '功能' : 'Function'}
             </div>
-            <p className="text-gray-700 text-sm leading-relaxed">{metadata.function}</p>
+            <p className="text-gray-700 dark:text-gray-200 text-sm leading-relaxed">{metadata.function}</p>
           </div>
         )}
 
         {/* Domains */}
         {metadata.domains && metadata.domains.length > 0 && (
           <div className="bg-gradient-to-r from-gray-50 to-white p-3 rounded-lg border border-gray-100">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-300 mb-2">
               <Layers className="w-4 h-4" />
               {language === 'zh' ? '结构域' : 'Domains'}
             </div>
@@ -156,10 +156,10 @@ const UniProtDetailPanel: React.FC<UniProtDetailPanelProps> = React.memo(({ targ
               {metadata.domains.map((domain: any, idx: number) => (
                 <div
                   key={idx}
-                  className="flex items-center justify-between py-1 px-2 bg-white rounded border border-gray-100"
+                  className="flex items-center justify-between py-1 px-2 bg-white dark:bg-gray-800 rounded border border-gray-100"
                 >
-                  <span className="text-sm text-gray-700">{domain.name}</span>
-                  <span className="text-xs font-mono text-gray-500">
+                  <span className="text-sm text-gray-700 dark:text-gray-200">{domain.name}</span>
+                  <span className="text-xs font-mono text-gray-500 dark:text-gray-300">
                     {domain.start}-{domain.end}
                   </span>
                 </div>
@@ -171,7 +171,7 @@ const UniProtDetailPanel: React.FC<UniProtDetailPanelProps> = React.memo(({ targ
         {/* Modifications */}
         {metadata.modifications && metadata.modifications.length > 0 && (
           <div className="bg-gradient-to-r from-gray-50 to-white p-3 rounded-lg border border-gray-100">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-500 mb-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-300 mb-2">
               <Beaker className="w-4 h-4" />
               {language === 'zh' ? '翻译后修饰' : 'PTMs'}
             </div>
@@ -197,19 +197,19 @@ const UniProtDetailPanel: React.FC<UniProtDetailPanelProps> = React.memo(({ targ
                 <p className="text-lg font-bold text-purple-600">
                   {evaluation.pdb_data.coverage.coverage_percent.toFixed(1)}%
                 </p>
-                <span className="text-xs text-gray-500">{language === 'zh' ? '覆盖率' : 'Coverage'}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-300">{language === 'zh' ? '覆盖率' : 'Coverage'}</span>
               </div>
               <div>
                 <p className="text-lg font-bold text-green-600">
                   {evaluation.pdb_data.coverage.covered_residues}
                 </p>
-                <span className="text-xs text-gray-500">{language === 'zh' ? '覆盖残基' : 'Covered'}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-300">{language === 'zh' ? '覆盖残基' : 'Covered'}</span>
               </div>
               <div>
                 <p className="text-lg font-bold text-orange-600">
                   {evaluation.pdb_data.coverage.total_residues}
                 </p>
-                <span className="text-xs text-gray-500">{language === 'zh' ? '总残基' : 'Total'}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-300">{language === 'zh' ? '总残基' : 'Total'}</span>
               </div>
             </div>
           </div>
@@ -217,7 +217,7 @@ const UniProtDetailPanel: React.FC<UniProtDetailPanelProps> = React.memo(({ targ
 
         {/* No metadata message */}
         {!metadata.protein_name && !metadata.function && (
-          <div className="text-center py-6 text-gray-500">
+          <div className="text-center py-6 text-gray-500 dark:text-gray-300">
             <Dna className="w-10 h-10 mx-auto mb-2 text-gray-300" />
             <p className="text-sm">{language === 'zh' ? '暂无详细元数据' : 'No detailed metadata'}</p>
             <p className="text-xs text-gray-400 mt-1">
@@ -913,10 +913,10 @@ export const JobDetail: React.FC = () => {
   // Early returns must come AFTER all hooks
   if (isLoading && !selectedJob) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">{t('app.loading')}</p>
+          <p className="text-gray-500 dark:text-gray-300">{t('app.loading')}</p>
         </div>
       </div>
     );
@@ -924,11 +924,11 @@ export const JobDetail: React.FC = () => {
 
   if (!selectedJob) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-800 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-gray-900 font-medium mb-2">{language === 'zh' ? '任务不存在' : 'Task Not Found'}</p>
-          <p className="text-gray-500 mb-6">{language === 'zh' ? '无法找到该任务的详细信息' : 'Cannot find detailed information for this task'}</p>
+          <p className="text-gray-900 dark:text-gray-100 font-medium mb-2">{language === 'zh' ? '任务不存在' : 'Task Not Found'}</p>
+          <p className="text-gray-500 dark:text-gray-300 mb-6">{language === 'zh' ? '无法找到该任务的详细信息' : 'Cannot find detailed information for this task'}</p>
           <Button onClick={() => navigate('/')}>{t('app.back')}</Button>
         </div>
       </div>
@@ -943,15 +943,15 @@ export const JobDetail: React.FC = () => {
     job.status === 'completed'
       ? 'bg-green-500'
       : job.status === 'failed'
-      ? 'bg-red-500'
+      ? 'bg-red-50 dark:bg-red-900/300'
       : job.status === 'processing'
       ? 'bg-blue-500'
       : 'bg-gray-400';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-800">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-500 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -959,8 +959,8 @@ export const JobDetail: React.FC = () => {
                 <Activity className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">{job.name}</h1>
-                <p className="text-sm text-gray-500">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{job.name}</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-300">
                   ID: {job.job_id} · {t('templates.createdAt')} {new Date(job.created_at).toLocaleString(language === 'zh' ? 'zh-CN' : 'en-US')}
                 </p>
               </div>
@@ -1027,7 +1027,7 @@ export const JobDetail: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Error Alert */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
             <div className="flex items-center justify-between">
               <p className="text-red-700">{error}</p>
               <button onClick={clearError} className="text-red-500 hover:text-red-700">
@@ -1042,10 +1042,10 @@ export const JobDetail: React.FC = () => {
           <div
             className={`mb-6 p-4 rounded-lg border ${
               job.status === 'failed'
-                ? 'bg-red-50 border-red-200'
+                ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800'
                 : job.status === 'processing'
                 ? 'bg-blue-50 border-blue-200'
-                : 'bg-gray-50 border-gray-200'
+                : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-500'
             }`}
           >
             <div className="flex items-center gap-4">
@@ -1055,14 +1055,14 @@ export const JobDetail: React.FC = () => {
                     ? 'bg-red-100 text-red-600'
                     : job.status === 'processing'
                     ? 'bg-blue-100 text-blue-600'
-                    : 'bg-gray-100 text-gray-600'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'
                 }`}
               >
                 {currentStatus.icon}
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-gray-900">状态:</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">状态:</span>
                   <Badge
                     variant={
                       job.status === 'failed'
@@ -1080,13 +1080,13 @@ export const JobDetail: React.FC = () => {
                 {/* Only show progress bar when job is running/processing/pending */}
                 {(job.status === 'processing' || job.status === 'pending' || job.status === 'running') && (
                   <>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div
                         className={`h-2 rounded-full transition-all duration-500 ${progressColor}`}
                         style={{ width: `${jobProgress?.progress.percentage || 0}%` }}
                       />
                     </div>
-                    <div className="flex justify-between items-center mt-1 text-sm text-gray-600">
+                    <div className="flex justify-between items-center mt-1 text-sm text-gray-600 dark:text-gray-300">
                       <span>
                         进度: {jobProgress?.progress.completed || 0} / {jobProgress?.progress.total || 0} (
                         {jobProgress?.progress.percentage || 0}%)
@@ -1108,7 +1108,7 @@ export const JobDetail: React.FC = () => {
                 )}
                 {/* Show completion summary only for failed jobs - hide for completed */}
                 {job.status === 'failed' && (
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
                     <span>
                       完成: <span className="font-medium text-green-600">{jobProgress?.progress.completed || 0}</span> / {jobProgress?.progress.total || 0}
                     </span>
@@ -1128,7 +1128,7 @@ export const JobDetail: React.FC = () => {
         )}
 
         {/* Tabs */}
-        <div className="mb-6 border-b border-gray-200">
+        <div className="mb-6 border-b border-gray-200 dark:border-gray-500">
           <div className="flex gap-6">
             {[
               { id: 'overview', label: language === 'zh' ? '概览' : 'Overview' },
@@ -1141,7 +1141,7 @@ export const JobDetail: React.FC = () => {
                 className={`pb-3 text-sm font-medium transition-colors relative ${
                   activeTab === tab.id
                     ? 'text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                    : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:text-gray-200'
                 }`}
               >
                 {tab.label}
@@ -1165,9 +1165,9 @@ export const JobDetail: React.FC = () => {
                     <div className="p-1.5 bg-blue-100 rounded-md">
                       <Target className="w-4 h-4 text-blue-600" />
                     </div>
-                    <span className="text-xs font-medium text-gray-600">{language === 'zh' ? '总靶点数' : 'Total Targets'}</span>
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{language === 'zh' ? '总靶点数' : 'Total Targets'}</span>
                   </div>
-                  <div className="text-2xl font-bold text-gray-900">{statistics.total}</div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{statistics.total}</div>
                 </CardContent>
               </Card>
 
@@ -1175,12 +1175,12 @@ export const JobDetail: React.FC = () => {
               <Card className="bg-gradient-to-br from-gray-50 to-white border-gray-100">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="p-1.5 bg-gray-100 rounded-md">
-                      <Clock className="w-4 h-4 text-gray-600" />
+                    <div className="p-1.5 bg-gray-100 dark:bg-gray-800 rounded-md">
+                      <Clock className="w-4 h-4 text-gray-600 dark:text-gray-300" />
                     </div>
-                    <span className="text-xs font-medium text-gray-600">{language === 'zh' ? '待处理' : 'Pending'}</span>
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{language === 'zh' ? '待处理' : 'Pending'}</span>
                   </div>
-                  <div className="text-2xl font-bold text-gray-700">{statistics.pending}</div>
+                  <div className="text-2xl font-bold text-gray-700 dark:text-gray-200">{statistics.pending}</div>
                 </CardContent>
               </Card>
 
@@ -1191,7 +1191,7 @@ export const JobDetail: React.FC = () => {
                     <div className="p-1.5 bg-blue-100 rounded-md">
                       <Loader2 className="w-4 h-4 text-blue-600" />
                     </div>
-                    <span className="text-xs font-medium text-gray-600">{language === 'zh' ? '处理中' : 'Processing'}</span>
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{language === 'zh' ? '处理中' : 'Processing'}</span>
                   </div>
                   <div className="text-2xl font-bold text-blue-600">{statistics.processing}</div>
                 </CardContent>
@@ -1204,7 +1204,7 @@ export const JobDetail: React.FC = () => {
                     <div className="p-1.5 bg-green-100 rounded-md">
                       <CheckCircle className="w-4 h-4 text-green-600" />
                     </div>
-                    <span className="text-xs font-medium text-gray-600">{language === 'zh' ? '已完成' : 'Completed'}</span>
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{language === 'zh' ? '已完成' : 'Completed'}</span>
                   </div>
                   <div className="text-2xl font-bold text-green-600">{statistics.completed}</div>
                 </CardContent>
@@ -1217,7 +1217,7 @@ export const JobDetail: React.FC = () => {
                     <div className="p-1.5 bg-red-100 rounded-md">
                       <AlertCircle className="w-4 h-4 text-red-600" />
                     </div>
-                    <span className="text-xs font-medium text-gray-600">{language === 'zh' ? '失败' : 'Failed'}</span>
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{language === 'zh' ? '失败' : 'Failed'}</span>
                   </div>
                   <div className="text-2xl font-bold text-red-600">{statistics.failed}</div>
                 </CardContent>
@@ -1230,7 +1230,7 @@ export const JobDetail: React.FC = () => {
                     <div className="p-1.5 bg-purple-100 rounded-md">
                       <Activity className="w-4 h-4 text-purple-600" />
                     </div>
-                    <span className="text-xs font-medium text-gray-600">{language === 'zh' ? '成功率' : 'Success Rate'}</span>
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{language === 'zh' ? '成功率' : 'Success Rate'}</span>
                   </div>
                   <div className="text-2xl font-bold text-purple-600">
                     {statistics.success_rate.toFixed(1)}%
@@ -1243,12 +1243,12 @@ export const JobDetail: React.FC = () => {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-gray-700">{language === 'zh' ? '状态分布' : 'Status Distribution'}</span>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200">{language === 'zh' ? '状态分布' : 'Status Distribution'}</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-300">
                     {jobProgress?.progress.completed || 0} / {jobProgress?.progress.total || 0}
                   </span>
                 </div>
-                <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden flex">
+                <div className="w-full h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden flex">
                   {statistics.total > 0 && (
                     <>
                       <div
@@ -1256,7 +1256,7 @@ export const JobDetail: React.FC = () => {
                         style={{ width: `${(statistics.completed / statistics.total) * 100}%` }}
                       />
                       <div
-                        className="h-full bg-red-500 transition-all duration-500"
+                        className="h-full bg-red-50 dark:bg-red-900/300 transition-all duration-500"
                         style={{ width: `${(statistics.failed / statistics.total) * 100}%` }}
                       />
                       <div
@@ -1270,13 +1270,13 @@ export const JobDetail: React.FC = () => {
                     </>
                   )}
                 </div>
-                <div className="flex gap-4 mt-3 text-xs text-gray-500">
+                <div className="flex gap-4 mt-3 text-xs text-gray-500 dark:text-gray-300">
                   <span className="flex items-center gap-1">
                     <span className="w-2 h-2 rounded-full bg-green-500" />
                     {language === 'zh' ? '已完成' : 'Completed'} ({statistics.completed})
                   </span>
                   <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-red-500" />
+                    <span className="w-2 h-2 rounded-full bg-red-50 dark:bg-red-900/300" />
                     {language === 'zh' ? '失败' : 'Failed'} ({statistics.failed})
                   </span>
                   <span className="flex items-center gap-1">
@@ -1294,10 +1294,10 @@ export const JobDetail: React.FC = () => {
             {/* PDB Stats & Target List */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
               {/* Left Column: TargetCard List */}
-              <Card className="border border-gray-200 h-full">
+              <Card className="border border-gray-200 dark:border-gray-500 h-full">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                       <Target className="w-4 h-4 text-blue-600" />
                       {language === 'zh' ? '靶点列表' : 'Target List'}
                     </h3>
@@ -1331,7 +1331,7 @@ export const JobDetail: React.FC = () => {
                       );
                     })
                   ) : (
-                    <div className="text-center py-8 text-gray-500">
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-300">
                       <Target className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                       <p className="text-sm">{language === 'zh' ? '暂无靶点数据' : 'No target data'}</p>
                     </div>
@@ -1357,7 +1357,7 @@ export const JobDetail: React.FC = () => {
                     ) : (
                       <Card>
                         <CardContent>
-                          <div className="text-center py-12 text-gray-500">
+                          <div className="text-center py-12 text-gray-500 dark:text-gray-300">
                             <Dna className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                             <p className="text-sm">{language === 'zh' ? '无法找到靶点数据' : 'Cannot find target data'}</p>
                           </div>
@@ -1366,9 +1366,9 @@ export const JobDetail: React.FC = () => {
                     );
                   })()
                 ) : (
-                  <Card className="border border-gray-200 h-full">
+                  <Card className="border border-gray-200 dark:border-gray-500 h-full">
                     <CardContent className="flex items-center justify-center min-h-[200px] h-full">
-                      <div className="text-center text-gray-500">
+                      <div className="text-center text-gray-500 dark:text-gray-300">
                         <Activity className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                         <p className="text-sm">{language === 'zh' ? '选择左侧靶点查看详情' : 'Select a target on the left to view details'}</p>
                         <p className="text-xs text-gray-400 mt-1">
@@ -1388,18 +1388,18 @@ export const JobDetail: React.FC = () => {
             {selectedJob?.job.status !== 'completed' ? (
               <div className="text-center py-12">
                 <Activity className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">{language === 'zh' ? '任务完成后将自动分析靶点相互作用' : 'Target interactions will be analyzed automatically after task completion'}</p>
+                <p className="text-gray-500 dark:text-gray-300">{language === 'zh' ? '任务完成后将自动分析靶点相互作用' : 'Target interactions will be analyzed automatically after task completion'}</p>
                 <p className="text-sm text-gray-400 mt-2">{language === 'zh' ? '当前状态' : 'Current status'}: {selectedJob?.job.status}</p>
               </div>
             ) : interactionsLoading ? (
               <div className="text-center py-12">
                 <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-4" />
-                <p className="text-gray-500">{language === 'zh' ? '加载相互作用数据...' : 'Loading interaction data...'}</p>
+                <p className="text-gray-500 dark:text-gray-300">{language === 'zh' ? '加载相互作用数据...' : 'Loading interaction data...'}</p>
               </div>
             ) : !interactionAnalysis && interactions.length === 0 ? (
               <div className="text-center py-12">
                 <Activity className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">{language === 'zh' ? '暂未发现靶点间相互作用' : 'No interactions found between targets'}</p>
+                <p className="text-gray-500 dark:text-gray-300">{language === 'zh' ? '暂未发现靶点间相互作用' : 'No interactions found between targets'}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -1456,7 +1456,7 @@ export const JobDetail: React.FC = () => {
                   return (
                     <Card className="border border-blue-200 bg-gradient-to-br from-blue-50/50 to-white">
                       <CardHeader>
-                        <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                           <span className="w-1.5 h-4 bg-blue-600 rounded-full"></span>
                           {language === 'zh' ? '整体概况' : 'Overview'}
                         </h3>
@@ -1464,24 +1464,24 @@ export const JobDetail: React.FC = () => {
                       <CardContent className="space-y-4">
                         {/* Overview stats - only 4 boxes */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                          <div className="bg-white rounded-lg p-2 border border-blue-100">
-                            <div className="text-xs text-gray-500">{language === 'zh' ? '总靶点数' : 'Total Targets'}</div>
+                          <div className="bg-white dark:bg-gray-800 rounded-lg p-2 border border-blue-100">
+                            <div className="text-xs text-gray-500 dark:text-gray-300">{language === 'zh' ? '总靶点数' : 'Total Targets'}</div>
                             <div className="text-lg font-bold text-blue-600">
                               {new Set([...deduped.map((i: any) => i.source_uniprot), ...deduped.map((i: any) => i.target_uniprot)]).size}
                             </div>
                           </div>
-                          <div className="bg-white rounded-lg p-2 border border-blue-100">
-                            <div className="text-xs text-gray-500">{language === 'zh' ? '相互作用数' : 'Interactions'}</div>
+                          <div className="bg-white dark:bg-gray-800 rounded-lg p-2 border border-blue-100">
+                            <div className="text-xs text-gray-500 dark:text-gray-300">{language === 'zh' ? '相互作用数' : 'Interactions'}</div>
                             <div className="text-lg font-bold text-purple-600">{deduped.length}</div>
                           </div>
-                          <div className="bg-white rounded-lg p-2 border border-blue-100">
-                            <div className="text-xs text-gray-500">{language === 'zh' ? '直接互作' : 'Direct'}</div>
+                          <div className="bg-white dark:bg-gray-800 rounded-lg p-2 border border-blue-100">
+                            <div className="text-xs text-gray-500 dark:text-gray-300">{language === 'zh' ? '直接互作' : 'Direct'}</div>
                             <div className="text-lg font-bold text-green-600">
                               {chainInteractions?.direct_interactions?.length || 0}
                             </div>
                           </div>
-                          <div className="bg-white rounded-lg p-2 border border-blue-100">
-                            <div className="text-xs text-gray-500">{language === 'zh' ? '高置信度' : 'High Confidence'}</div>
+                          <div className="bg-white dark:bg-gray-800 rounded-lg p-2 border border-blue-100">
+                            <div className="text-xs text-gray-500 dark:text-gray-300">{language === 'zh' ? '高置信度' : 'High Confidence'}</div>
                             <div className="text-lg font-bold text-orange-600">
                               {deduped.filter((i: any) => i.score > 0.5).length}
                             </div>
@@ -1494,11 +1494,11 @@ export const JobDetail: React.FC = () => {
 
                 {/* AI Analysis Report - Collapsible */}
                 {interactionAnalysis && (
-                  <Card className="border border-gray-200">
+                  <Card className="border border-gray-200 dark:border-gray-500">
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <h3
-                          className="text-base font-semibold text-gray-900 flex items-center gap-2 cursor-pointer"
+                          className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 cursor-pointer"
                           onClick={() => setInteractionReportExpanded(!interactionReportExpanded)}
                         >
                           <span className="w-1.5 h-4 bg-green-500 rounded-full"></span>
@@ -1561,7 +1561,7 @@ export const JobDetail: React.FC = () => {
                     </CardHeader>
                     {interactionReportExpanded && (
                       <CardContent>
-                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-100">
                           <div
                             className="prose prose-sm max-w-none"
                             dangerouslySetInnerHTML={{ __html: parseMarkdown(interactionAnalysis || '') }}
@@ -1589,10 +1589,10 @@ export const JobDetail: React.FC = () => {
                     }
                   });
                   return (
-                    <Card className="border border-gray-200">
+                    <Card className="border border-gray-200 dark:border-gray-500">
                       <CardHeader>
                         <div className="flex items-center justify-between">
-                          <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                             <span className="w-1.5 h-4 bg-blue-500 rounded-full"></span>
                             {language === 'zh' ? '相互作用详情' : 'Interaction Details'}
                           </h3>
@@ -1636,7 +1636,7 @@ export const JobDetail: React.FC = () => {
                               <div className="grid gap-2">
                                 {chainInteractions.direct_interactions.map((interaction: any, idx: number) => {
                                   return (
-                                    <div key={idx} className="bg-white rounded-lg p-3 border border-green-100">
+                                    <div key={idx} className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-green-100">
                                       <div className="flex items-center justify-between flex-wrap gap-2">
                                         <div className="flex items-center gap-2">
                                           <Badge variant="success" className="font-mono">{interaction.source_uniprot}</Badge>
@@ -1681,7 +1681,7 @@ export const JobDetail: React.FC = () => {
                                   const targetName = localProteinNameMap[interaction.target_uniprot] || interaction.target_uniprot;
                                   const mediatorName = localProteinNameMap[interaction.mediator_uniprot] || interaction.mediator_uniprot;
                                   return (
-                                    <div key={idx} className="bg-white rounded-lg p-3 border border-orange-100">
+                                    <div key={idx} className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-orange-100">
                                       <div className="flex items-center justify-between flex-wrap gap-2">
                                         <div className="flex items-center gap-2">
                                           <Badge variant="outline" className="font-mono">{interaction.source_uniprot}</Badge>
@@ -1694,7 +1694,7 @@ export const JobDetail: React.FC = () => {
                                           {language === 'zh' ? '间接' : 'Indirect'}
                                         </Badge>
                                       </div>
-                                      <p className="text-xs text-gray-500 mt-2">
+                                      <p className="text-xs text-gray-500 dark:text-gray-300 mt-2">
                                         {language === 'zh'
                                           ? `${sourceName} 与 ${targetName} 通过 ${mediatorName} 介导形成间接相互作用`
                                           : `${sourceName} connected to ${targetName} via ${mediatorName} (indirect)`}
@@ -1707,7 +1707,7 @@ export const JobDetail: React.FC = () => {
                           )}
 
                           {/* Chain Interaction Summary */}
-                          <div className="text-sm text-gray-600 bg-white/50 rounded-lg p-3">
+                          <div className="text-sm text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800/50 rounded-lg p-3">
                             <p>
                               {language === 'zh'
                                 ? `基于 ${chainInteractions.pdb_structures?.length || 0} 个PDB结构分析，发现 ${(chainInteractions.direct_interactions?.length || 0) + (chainInteractions.indirect_interactions?.length || 0)} 个链级互作对`
@@ -1721,10 +1721,10 @@ export const JobDetail: React.FC = () => {
                 })()}
 
                 {/* Network Visualization */}
-                <Card className="border border-gray-200">
+                <Card className="border border-gray-200 dark:border-gray-500">
                   <CardHeader>
                     <div className="flex items-center justify-between flex-wrap gap-2">
-                      <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                      <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                         <span className="w-1.5 h-4 bg-purple-500 rounded-full"></span>
                         {language === 'zh' ? '相互作用网络图' : 'Interaction Network'}
                       </h3>
@@ -1777,7 +1777,7 @@ export const JobDetail: React.FC = () => {
                       const nodes = Array.from(nodeSet);
                       const nodeCount = nodes.length;
 
-                      if (nodeCount === 0) return <div className="text-center py-8 text-gray-500">{language === 'zh' ? '无数据' : 'No data'}</div>;
+                      if (nodeCount === 0) return <div className="text-center py-8 text-gray-500 dark:text-gray-300">{language === 'zh' ? '无数据' : 'No data'}</div>;
 
                       const centerX = 250, centerY = 150, radius = Math.min(120, 80 + nodeCount * 15);
                       const nodePositions: Record<string, {x: number, y: number}> = {};
@@ -1804,7 +1804,7 @@ export const JobDetail: React.FC = () => {
 
                       return (
                         <div
-                          className="overflow-hidden border border-gray-100 rounded-lg bg-gray-50 touch-none"
+                          className="overflow-hidden border border-gray-100 rounded-lg bg-gray-50 dark:bg-gray-800 touch-none"
                           ref={networkContainerRef}
                           style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
                           onMouseDown={handleMouseDown}
@@ -1818,7 +1818,7 @@ export const JobDetail: React.FC = () => {
                                 <span className="w-4 h-0.5 bg-green-500 rounded"></span>
                                 {language === 'zh' ? '直接互作' : 'Direct'}: {chainInteractions.direct_interactions?.length || 0}
                               </span>
-                              <span className="text-gray-500">
+                              <span className="text-gray-500 dark:text-gray-300">
                                 {language === 'zh' ? '涉及结构数' : 'PDB structures'}: {chainInteractions.pdb_structures?.length || 0}
                               </span>
                             </div>
@@ -1910,7 +1910,7 @@ export const JobDetail: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     {selectedJob?.job.report_generated_at && (
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm text-gray-500 dark:text-gray-300">
                         {language === 'zh' ? '生成于' : 'Generated at'}: {new Date(selectedJob.job.report_generated_at).toLocaleString(language === 'zh' ? 'zh-CN' : 'en-US')}
                       </span>
                     )}
@@ -1921,25 +1921,25 @@ export const JobDetail: React.FC = () => {
                 <div className="space-y-4">
                   {/* 任务统计 */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-500">
                       <div className="text-2xl font-bold text-purple-600">{job.job_id}</div>
-                      <div className="text-xs text-gray-500">{language === 'zh' ? '任务ID' : 'Task ID'}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-300">{language === 'zh' ? '任务ID' : 'Task ID'}</div>
                     </div>
-                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-500">
                       <div className="text-2xl font-bold text-blue-600">{targetsWithEval?.length || 0}</div>
-                      <div className="text-xs text-gray-500">{language === 'zh' ? '靶点数量' : 'Targets'}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-300">{language === 'zh' ? '靶点数量' : 'Targets'}</div>
                     </div>
-                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-500">
                       <div className="text-2xl font-bold text-green-600">
                         {targetsWithEval?.filter((t: any) => t.status === 'completed').length || 0}
                       </div>
-                      <div className="text-xs text-gray-500">{language === 'zh' ? '已完成' : 'Completed'}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-300">{language === 'zh' ? '已完成' : 'Completed'}</div>
                     </div>
-                    <div className="bg-white rounded-lg p-3 border border-gray-200">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-500">
                       <div className="text-2xl font-bold text-orange-600">
                         {targetsWithEval?.filter((t: any) => t.status === 'failed').length || 0}
                       </div>
-                      <div className="text-xs text-gray-500">{language === 'zh' ? '失败' : 'Failed'}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-300">{language === 'zh' ? '失败' : 'Failed'}</div>
                     </div>
                   </div>
 
@@ -1950,7 +1950,7 @@ export const JobDetail: React.FC = () => {
                       {/* Per-target AI Analysis Reports */}
                       {targetsWithEval && targetsWithEval.length > 0 && (
                         <div className="space-y-3">
-                          <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                          <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                             <span className="w-1.5 h-4 bg-blue-500 rounded-full"></span>
                             {language === 'zh' ? '各靶点 AI 分析报告' : 'Per-Target AI Analysis Reports'}
                           </h3>
@@ -1969,10 +1969,10 @@ export const JobDetail: React.FC = () => {
                             );
                             
                             return (
-                              <Card key={target.target_id} className="border border-gray-200">
+                              <Card key={target.target_id} className="border border-gray-200 dark:border-gray-500">
                                 {/* Target Header */}
                                 <CardHeader
-                                  className="cursor-pointer hover:bg-gray-50 transition-colors py-3 px-4"
+                                  className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 dark:bg-gray-800 transition-colors py-3 px-4"
                                   onClick={() => {
                                     setExpandedReports(prev => {
                                       const next = new Set(prev);
@@ -1987,7 +1987,7 @@ export const JobDetail: React.FC = () => {
                                 >
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                      <span className="font-mono font-medium text-gray-900">{target.uniprot_id}</span>
+                                      <span className="font-mono font-medium text-gray-900 dark:text-gray-100">{target.uniprot_id}</span>
                                       <span className="text-lg">
                                         {target.status === 'completed' ? '✅' :
                                          target.status === 'failed' ? '❌' :
@@ -2004,11 +2004,11 @@ export const JobDetail: React.FC = () => {
                                          target.status === 'pending' ? 'pending' : target.status}
                                       </Badge>
                                       {target.evaluation?.overall_score != null && (
-                                        <span className="text-xs text-gray-500">
+                                        <span className="text-xs text-gray-500 dark:text-gray-300">
                                           {language === 'zh' ? '质量' : 'Quality'}: <span className="font-medium text-blue-600">{target.evaluation.overall_score.toFixed(2)}</span>
                                         </span>
                                       )}
-                                      <span className="text-xs text-gray-500">
+                                      <span className="text-xs text-gray-500 dark:text-gray-300">
                                         {language === 'zh' ? '结构' : 'Structures'}: <span className="font-medium text-purple-600">{target?.evaluation?.pdb_data?.structures?.length || 0}</span>
                                       </span>
                                     </div>
@@ -2073,7 +2073,7 @@ export const JobDetail: React.FC = () => {
                                     {/* AI Report Content or Error Display */}
                                     {aiError ? (
                                       /* Error Display */
-                                      <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                                      <div className="bg-red-50 dark:bg-red-900/30 rounded-lg p-4 border border-red-200 dark:border-red-800">
                                         <div className="flex items-start gap-3">
                                           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                                           <div className="flex-1">
@@ -2091,7 +2091,7 @@ export const JobDetail: React.FC = () => {
                                       </div>
                                     ) : reportContent ? (
                                       /* Normal Report Content */
-                                      <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-100">
                                         <div
                                           className="prose prose-sm max-w-none"
                                           dangerouslySetInnerHTML={{ __html: parseMarkdown(reportContent) }}
@@ -2099,25 +2099,25 @@ export const JobDetail: React.FC = () => {
                                       </div>
                                     ) : (
                                       /* No Content Yet */
-                                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-100 text-center text-gray-500 text-sm">
+                                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-100 text-center text-gray-500 dark:text-gray-300 text-sm">
                                         {language === 'zh' ? '暂无报告内容' : 'No report content yet'}
                                       </div>
                                     )}
                                     
                                     {/* Literature for this target */}
                                     {targetLiterature.length > 0 && (
-                                      <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                                        <h4 className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1">
+                                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-100">
+                                        <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-1">
                                           <span className="w-1 h-3 bg-green-500 rounded-full"></span>
                                           {language === 'zh' ? '参考文献' : 'References'} ({targetLiterature.length})
                                         </h4>
                                         <div className="space-y-1.5">
                                           {targetLiterature.map((lit: any, litIdx: number) => (
-                                            <div key={litIdx} className="bg-white rounded p-2 border border-gray-100">
-                                              <p className="text-xs font-medium text-gray-900 mb-0.5 line-clamp-1">
+                                            <div key={litIdx} className="bg-white dark:bg-gray-800 rounded p-2 border border-gray-100">
+                                              <p className="text-xs font-medium text-gray-900 dark:text-gray-100 mb-0.5 line-clamp-1">
                                                 {lit.title}
                                               </p>
-                                              <p className="text-xs text-gray-500">
+                                              <p className="text-xs text-gray-500 dark:text-gray-300">
                                                 {lit.authors?.substring(0, 50)}{lit.authors?.length > 50 ? '...' : ''}
                                                 {lit.journal && ` - ${lit.journal}`}
                                                 {lit.year && ` (${lit.year})`}
@@ -2138,11 +2138,11 @@ export const JobDetail: React.FC = () => {
                     </div>
                   ) : selectedJob?.job.status === 'completed' ? (
                     <div className="text-center py-8">
-                      <p className="text-gray-500">{language === 'zh' ? '暂无 AI 分析报告' : 'No AI analysis report available'}</p>
+                      <p className="text-gray-500 dark:text-gray-300">{language === 'zh' ? '暂无 AI 分析报告' : 'No AI analysis report available'}</p>
                     </div>
                   ) : (
                     <div className="text-center py-8">
-                      <p className="text-gray-500">{language === 'zh' ? '任务完成后将自动生成 AI 分析报告' : 'AI analysis report will be generated automatically after task completion'}</p>
+                      <p className="text-gray-500 dark:text-gray-300">{language === 'zh' ? '任务完成后将自动生成 AI 分析报告' : 'AI analysis report will be generated automatically after task completion'}</p>
                       <p className="text-sm text-gray-400 mt-2">
                         {language === 'zh' ? '当前状态' : 'Current status'}: {selectedJob?.job.status}
                       </p>
@@ -2157,27 +2157,27 @@ export const JobDetail: React.FC = () => {
         {/* Restart Confirmation Dialog */}
         {showRestartDialog && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowRestartDialog(false)}>
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-md mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-500 w-full max-w-md mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-500 bg-gray-50 dark:bg-gray-800">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                     <RotateCcw className="w-4 h-4 text-blue-600" />
                     {language === 'zh' ? '重新运行任务' : 'Restart Task'}
                   </h3>
                   <button
                     onClick={() => setShowRestartDialog(false)}
-                    className="p-1 hover:bg-gray-200 rounded transition-colors"
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-700 rounded transition-colors"
                   >
-                    <X className="w-4 h-4 text-gray-500" />
+                    <X className="w-4 h-4 text-gray-500 dark:text-gray-300" />
                   </button>
                 </div>
               </div>
               <div className="p-6">
-                <p className="text-gray-600 mb-3 text-sm">
+                <p className="text-gray-600 dark:text-gray-300 mb-3 text-sm">
                   {language === 'zh' ? '选择重置模式：' : 'Select reset mode:'}
                 </p>
                 <div className="space-y-2 mb-6">
-                  <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${restartMode === 'all' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}>
+                  <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${restartMode === 'all' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 dark:border-gray-500 hover:border-gray-300 dark:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-600 dark:bg-gray-800'}`}>
                     <input
                       type="radio"
                       name="restartMode"
@@ -2187,15 +2187,15 @@ export const JobDetail: React.FC = () => {
                       className="mt-0.5 w-4 h-4 text-blue-600"
                     />
                     <div>
-                      <div className="font-medium text-gray-900 text-sm">
+                      <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">
                         {language === 'zh' ? '重置所有靶点' : 'Reset All Targets'}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-500 dark:text-gray-300">
                         {language === 'zh' ? '清除所有靶点的评估数据和AI分析报告' : 'Clear all evaluation data and AI analysis reports'}
                       </div>
                     </div>
                   </label>
-                  <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${restartMode === 'failed' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}>
+                  <label className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${restartMode === 'failed' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 dark:border-gray-500 hover:border-gray-300 dark:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-600 dark:bg-gray-800'}`}>
                     <input
                       type="radio"
                       name="restartMode"
@@ -2205,10 +2205,10 @@ export const JobDetail: React.FC = () => {
                       className="mt-0.5 w-4 h-4 text-blue-600"
                     />
                     <div>
-                      <div className="font-medium text-gray-900 text-sm">
+                      <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">
                         {language === 'zh' ? '只重置失败的靶点' : 'Only Reset Failed Targets'}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-500 dark:text-gray-300">
                         {language === 'zh' ? '保留已完成靶点的数据' : 'Keep completed targets data'}
                       </div>
                     </div>
@@ -2239,18 +2239,18 @@ export const JobDetail: React.FC = () => {
         {/* Edit Parameters Dialog */}
         {showAdvancedParams && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowAdvancedParams(false)}>
-            <div className="bg-white rounded-xl shadow-lg border border-gray-200 w-full max-w-md mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-500 w-full max-w-md mx-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-500 bg-gray-50 dark:bg-gray-800">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
                     <Settings className="w-4 h-4 text-blue-600" />
                     {language === 'zh' ? '编辑任务参数' : 'Edit Job Parameters'}
                   </h3>
                   <button
                     onClick={() => setShowAdvancedParams(false)}
-                    className="p-1 hover:bg-gray-200 rounded transition-colors"
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 dark:bg-gray-700 rounded transition-colors"
                   >
-                    <X className="w-4 h-4 text-gray-500" />
+                    <X className="w-4 h-4 text-gray-500 dark:text-gray-300" />
                   </button>
                 </div>
               </div>
@@ -2258,20 +2258,20 @@ export const JobDetail: React.FC = () => {
                 <div className="space-y-4">
                   {/* Job Name */}
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">
+                    <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">
                       {language === 'zh' ? '任务名称' : 'Job Name'}
                     </label>
                     <input
                       type="text"
                       value={restartParams.name}
                       onChange={(e) => setRestartParams({ ...restartParams, name: e.target.value })}
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
 
                   {/* Priority */}
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">
+                    <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">
                       {language === 'zh' ? '优先级' : 'Priority'} (1-10)
                     </label>
                     <div className="flex items-center gap-2">
@@ -2283,19 +2283,19 @@ export const JobDetail: React.FC = () => {
                         onChange={(e) => setRestartParams({ ...restartParams, priority: parseInt(e.target.value) })}
                         className="flex-1"
                       />
-                      <span className="text-sm font-medium text-gray-700 w-6 text-center">{restartParams.priority}</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-200 w-6 text-center">{restartParams.priority}</span>
                     </div>
                   </div>
 
                   {/* Evaluation Mode */}
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">
+                    <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">
                       {language === 'zh' ? '评估模式' : 'Evaluation Mode'}
                     </label>
                     <select
                       value={restartParams.evaluation_mode}
                       onChange={(e) => setRestartParams({ ...restartParams, evaluation_mode: e.target.value as 'parallel' | 'sequential' })}
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="parallel">{language === 'zh' ? '并行' : 'Parallel'}</option>
                       <option value="sequential">{language === 'zh' ? '顺序' : 'Sequential'}</option>
@@ -2304,7 +2304,7 @@ export const JobDetail: React.FC = () => {
 
                   {/* Max PDB */}
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">
+                    <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">
                       {language === 'zh' ? '最大PDB数量上限' : 'Max PDB Count'}
                     </label>
                     <input
@@ -2323,7 +2323,7 @@ export const JobDetail: React.FC = () => {
                           }
                         }
                       }}
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <p className="text-xs text-gray-400 mt-1">
                       {language === 'zh' ? '每个靶点最多获取的PDB结构数量' : 'Maximum number of PDB structures per target'}
@@ -2332,14 +2332,14 @@ export const JobDetail: React.FC = () => {
 
                   {/* Description */}
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">
+                    <label className="block text-xs text-gray-600 dark:text-gray-300 mb-1">
                       {language === 'zh' ? '描述' : 'Description'}
                     </label>
                     <textarea
                       value={restartParams.description}
                       onChange={(e) => setRestartParams({ ...restartParams, description: e.target.value })}
                       rows={2}
-                      className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                      className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
                     />
                   </div>
                 </div>

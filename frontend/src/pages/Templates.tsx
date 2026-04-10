@@ -65,22 +65,22 @@ const parseMarkdown = (text: string): string => {
 
     if (line.startsWith('### ')) {
       const headerText = applyInlineFormatting(line.substring(4));
-      result.push(`<h3 class="text-lg font-semibold text-gray-900 mt-4 mb-2">${headerText}</h3>`);
+      result.push(`<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-4 mb-2">${headerText}</h3>`);
       continue;
     }
     if (line.startsWith('## ')) {
       const headerText = applyInlineFormatting(line.substring(3));
-      result.push(`<h2 class="text-xl font-bold text-gray-900 mt-6 mb-3">${headerText}</h2>`);
+      result.push(`<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mt-6 mb-3">${headerText}</h2>`);
       continue;
     }
     if (line.startsWith('# ')) {
       const headerText = applyInlineFormatting(line.substring(2));
-      result.push(`<h1 class="text-2xl font-bold text-gray-900 mt-6 mb-4">${headerText}</h1>`);
+      result.push(`<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-6 mb-4">${headerText}</h1>`);
       continue;
     }
 
     if (line.match(/^---+$/)) {
-      result.push('<hr class="my-6 border-gray-300" />');
+      result.push('<hr class="my-6 border-gray-300 dark:border-gray-500" />');
       continue;
     }
 
@@ -113,23 +113,23 @@ const parseMarkdown = (text: string): string => {
 
     if (line.match(/^[\s]*[-*]\s/)) {
       const content = applyInlineFormatting(line.replace(/^[\s]*[-*]\s/, ''));
-      result.push(`<li class="ml-4 text-gray-700 list-disc">${content}</li>`);
+      result.push(`<li class="ml-4 text-gray-700 dark:text-gray-200 list-disc">${content}</li>`);
       continue;
     }
 
     if (line.match(/^[\s]*\d+\.\s/)) {
       const content = applyInlineFormatting(line.replace(/^[\s]*\d+\.\s/, ''));
-      result.push(`<li class="ml-4 text-gray-700 list-decimal">${content}</li>`);
+      result.push(`<li class="ml-4 text-gray-700 dark:text-gray-200 list-decimal">${content}</li>`);
       continue;
     }
 
     let formatted = line
       .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code class="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>');
+      .replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>');
 
     if (formatted.trim()) {
-      result.push(`<p class="text-gray-700 mb-2">${formatted}</p>`);
+      result.push(`<p class="text-gray-700 dark:text-gray-200 mb-2">${formatted}</p>`);
     } else {
       result.push('');
     }
@@ -147,19 +147,19 @@ function processTable(rows: string[]): string {
 
   // Parse header cells - apply inline formatting
   const headers = headerRow.split('|').filter(c => c.trim()).map(c =>
-    `<th class="border border-gray-200 px-4 py-3 bg-gradient-to-b from-gray-50 to-gray-100 text-left font-semibold text-gray-700 text-sm">${applyInlineFormatting(c.trim())}</th>`
+    `<th class="border border-gray-200 dark:border-gray-500 px-4 py-3 bg-gradient-to-b from-gray-50 to-gray-100 text-left font-semibold text-gray-700 dark:text-gray-200 text-sm">${applyInlineFormatting(c.trim())}</th>`
   ).join('');
 
   // Parse body cells - apply inline formatting with alternating row colors
   const body = bodyRows.map((row, rowIndex) => {
-    const bgClass = rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+    const bgClass = rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-800';
     const cells = row.split('|').filter(c => c.trim()).map(c =>
-      `<td class="border border-gray-200 px-4 py-3 text-gray-600 text-sm ${bgClass}">${applyInlineFormatting(c.trim())}</td>`
+      `<td class="border border-gray-200 dark:border-gray-500 px-4 py-3 text-gray-600 dark:text-gray-300 text-sm ${bgClass}">${applyInlineFormatting(c.trim())}</td>`
     ).join('');
     return `<tr class="hover:bg-blue-50 transition-colors duration-150">${cells}</tr>`;
   }).join('');
 
-  return `<table class="w-full border-collapse my-4 text-sm rounded-lg overflow-hidden shadow-sm border border-gray-200">
+  return `<table class="w-full border-collapse my-4 text-sm rounded-lg overflow-hidden shadow-sm border border-gray-200 dark:border-gray-500">
     <thead>
       <tr class="bg-gradient-to-r from-gray-100 to-gray-50">${headers}</tr>
     </thead>
@@ -258,15 +258,15 @@ export const Templates: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-800">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-500 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-gray-600" />
-                <h1 className="text-lg font-semibold text-gray-900">{t('templates.title')}</h1>
+                <FileText className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('templates.title')}</h1>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -291,14 +291,14 @@ export const Templates: React.FC = () => {
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Tabs */}
         <div className="mb-6">
-          <div className="border-b border-gray-200">
+          <div className="border-b border-gray-200 dark:border-gray-500">
             <nav className="flex -mb-px">
               <button
                 onClick={() => setActiveTab('single')}
                 className={`py-4 px-6 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'single'
                     ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    : 'border-transparent text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:text-gray-200 hover:border-gray-300 dark:border-gray-500'
                 }`}
               >
                 {t('templates.singleTab')}
@@ -308,7 +308,7 @@ export const Templates: React.FC = () => {
                 className={`py-4 px-6 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === 'batch'
                     ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    : 'border-transparent text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:text-gray-200 hover:border-gray-300 dark:border-gray-500'
                 }`}
               >
                 {t('templates.batchTab')}
@@ -320,7 +320,7 @@ export const Templates: React.FC = () => {
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
             <p className="text-red-700">{error}</p>
             <button
@@ -336,16 +336,16 @@ export const Templates: React.FC = () => {
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <RefreshCw className="w-8 h-8 text-gray-400 animate-spin" />
-            <span className="ml-3 text-gray-500">{t('templates.loading')}</span>
+            <span className="ml-3 text-gray-500 dark:text-gray-300">{t('templates.loading')}</span>
           </div>
         ) : templates.length === 0 ? (
           <Card>
             <CardContent className="py-16 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
                 <FileText className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">{t('templates.noTemplates')}</h3>
-              <p className="text-gray-500 mb-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">{t('templates.noTemplates')}</h3>
+              <p className="text-gray-500 dark:text-gray-300 mb-6">
                 {activeTab === 'single'
                   ? t('templates.noSingleTemplates')
                   : t('templates.noBatchTemplates')}
@@ -364,7 +364,7 @@ export const Templates: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <h3 className="text-lg font-semibold text-gray-900 truncate">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
                           {language === 'zh' ? template.name : (template.name_en || template.name)}
                         </h3>
                         {template.id === defaultId && (
@@ -375,11 +375,11 @@ export const Templates: React.FC = () => {
                         )}
                       </div>
                       {(language === 'zh' ? template.description : template.description_en) && (
-                        <p className="text-sm text-gray-500 mb-3">
+                        <p className="text-sm text-gray-500 dark:text-gray-300 mb-3">
                           {language === 'zh' ? template.description : template.description_en}
                         </p>
                       )}
-                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-300">
                         <span>{t('templates.createdAt')} {formatDate(template.created_at)}</span>
                         {template.updated_at && (
                           <span>{t('templates.updatedAt')} {formatDate(template.updated_at)}</span>
@@ -447,14 +447,14 @@ export const Templates: React.FC = () => {
       {/* Preview Modal */}
       {previewTemplate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-500">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {language === 'zh' ? previewTemplate.name : (previewTemplate.name_en || previewTemplate.name)}
                 </h2>
-                <p className="text-sm text-gray-500 mt-0.5">
+                <p className="text-sm text-gray-500 dark:text-gray-300 mt-0.5">
                   {language === 'zh' ? '模板预览' : 'Template Preview'}
                   <span className="ml-2 text-xs">
                     ({language === 'zh' ? '中文' : 'English'})
@@ -463,9 +463,9 @@ export const Templates: React.FC = () => {
               </div>
               <button
                 onClick={() => setPreviewTemplate(null)}
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 dark:bg-gray-800 rounded-full transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-gray-500 dark:text-gray-300" />
               </button>
             </div>
             {/* Modal Content */}
@@ -478,7 +478,7 @@ export const Templates: React.FC = () => {
               />
             </div>
             {/* Modal Footer */}
-            <div className="flex justify-end p-4 border-t border-gray-200">
+            <div className="flex justify-end p-4 border-t border-gray-200 dark:border-gray-500">
               <Button variant="outline" onClick={() => setPreviewTemplate(null)}>
                 {t('templates.close')}
               </Button>

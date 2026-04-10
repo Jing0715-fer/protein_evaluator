@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, RefreshCw, Filter, Search, Activity, Settings, FileText } from 'lucide-react';
+import { Plus, RefreshCw, Filter, Search, Activity, Settings, FileText, Sun, Moon } from 'lucide-react';
 import { useJobs } from '../contexts/JobContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { JobCard, type Job } from '../components/JobCard';
 import { Button } from '../components/Button';
 import { Card, CardContent } from '../components/Card';
@@ -11,6 +12,7 @@ import { LanguageSwitcher } from '../components/LanguageSwitcher';
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
   const {
     jobs,
     isLoading,
@@ -75,21 +77,28 @@ export const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-800">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-500 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-600 rounded-lg">
+              <div className="p-2 bg-amber-500 dark:bg-amber-600 rounded-lg">
                 <Activity className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">{t('app.title')}</h1>
-                <p className="text-sm text-gray-500">{t('app.subtitle')}</p>
+                <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">{t('app.title')}</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-300">{t('app.subtitle')}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                title={theme === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
+              >
+                {theme === 'dark' ? <Sun className="w-5 h-5 text-gray-400" /> : <Moon className="w-5 h-5 text-gray-600" />}
+              </button>
               <LanguageSwitcher />
               <Button variant="outline" onClick={() => navigate('/templates')}>
                 <FileText className="w-4 h-4 mr-2" />
@@ -99,7 +108,7 @@ export const Dashboard: React.FC = () => {
                 <Settings className="w-4 h-4 mr-2" />
                 {t('nav.settings')}
               </Button>
-              <div className="h-6 w-px bg-gray-300" />
+              <div className="h-6 w-px bg-gray-600" />
               <Button variant="outline" onClick={handleRefresh} disabled={isLoading}>
                 <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
                 {t('app.refresh')}
@@ -119,50 +128,50 @@ export const Dashboard: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <Card>
             <CardContent className="p-4">
-              <div className="text-2xl font-bold text-gray-900">{totalJobs}</div>
-              <div className="text-sm text-gray-500">{t('dashboard.stats.total')}</div>
+              <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{totalJobs}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.total')}</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <div className="text-2xl font-bold text-blue-600">{statusCounts.processing || 0}</div>
-              <div className="text-sm text-gray-500">{t('dashboard.stats.running')}</div>
+              <div className="text-2xl font-bold text-blue-500 dark:text-blue-400">{statusCounts.processing || 0}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.running')}</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <div className="text-2xl font-bold text-yellow-600">{statusCounts.pending || 0}</div>
-              <div className="text-sm text-gray-500">{t('dashboard.stats.pending')}</div>
+              <div className="text-2xl font-bold text-yellow-500 dark:text-yellow-400">{statusCounts.pending || 0}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.pending')}</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <div className="text-2xl font-bold text-green-600">{statusCounts.completed || 0}</div>
-              <div className="text-sm text-gray-500">{t('dashboard.stats.completed')}</div>
+              <div className="text-2xl font-bold text-green-500 dark:text-green-400">{statusCounts.completed || 0}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.completed')}</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <div className="text-2xl font-bold text-red-600">{statusCounts.failed || 0}</div>
-              <div className="text-sm text-gray-500">{t('dashboard.stats.failed')}</div>
+              <div className="text-2xl font-bold text-red-500 dark:text-red-400">{statusCounts.failed || 0}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.failed')}</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <div className="text-2xl font-bold text-gray-600">{statusCounts.paused || 0}</div>
-              <div className="text-sm text-gray-500">{t('dashboard.stats.paused')}</div>
+              <div className="text-2xl font-bold text-gray-500 dark:text-gray-300">{statusCounts.paused || 0}</div>
+              <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.paused')}</div>
             </CardContent>
           </Card>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
             <div className="flex items-center justify-between">
-              <p className="text-red-700">{error}</p>
+              <p className="text-red-600 dark:text-red-400">{error}</p>
               <button
                 onClick={clearError}
-                className="text-red-500 hover:text-red-700"
+                className="text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300"
               >
                 {t('app.close')}
               </button>
@@ -173,8 +182,8 @@ export const Dashboard: React.FC = () => {
         {/* Filters */}
         <div className="mb-6 flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">{t('dashboard.filter')}:</span>
+            <Filter className="w-4 h-4 text-gray-500 dark:text-gray-300" />
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">{t('dashboard.filter')}:</span>
           </div>
           <div className="flex items-center gap-2">
             {statusOptions.map((option) => (
@@ -183,8 +192,8 @@ export const Dashboard: React.FC = () => {
                 onClick={() => setStatusFilter(option.value)}
                 className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                   statusFilter === option.value
-                    ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                    ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-500/40'
+                    : 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-500 hover:bg-gray-300 dark:hover:bg-gray-600'
                 }`}
               >
                 {option.label}
@@ -193,13 +202,13 @@ export const Dashboard: React.FC = () => {
           </div>
           <div className="flex-1 min-w-[200px] max-w-md ml-auto">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
                 placeholder={t('dashboard.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-500 bg-white dark:bg-gray-800 rounded-lg text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 dark:focus:ring-amber-500/40 dark:focus:border-amber-500"
               />
             </div>
           </div>
@@ -208,18 +217,18 @@ export const Dashboard: React.FC = () => {
         {/* Job Grid */}
         {isLoading && jobs.length === 0 ? (
           <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-              <RefreshCw className="w-8 h-8 text-gray-400 animate-spin" />
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-800 mb-4">
+              <RefreshCw className="w-8 h-8 text-gray-400 dark:text-gray-500 animate-spin" />
             </div>
-            <p className="text-gray-500">{t('app.loading')}</p>
+            <p className="text-gray-500 dark:text-gray-300">{t('app.loading')}</p>
           </div>
         ) : filteredJobs.length === 0 ? (
           <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-              <Activity className="w-8 h-8 text-gray-400" />
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-800 mb-4">
+              <Activity className="w-8 h-8 text-gray-400 dark:text-gray-500" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">{t('dashboard.noJobs')}</h3>
-            <p className="text-gray-500 mb-6">{t('dashboard.noTasksDescription')}</p>
+            <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100 mb-2">{t('dashboard.noJobs')}</h3>
+            <p className="text-gray-500 dark:text-gray-300 mb-6">{t('dashboard.noTasksDescription')}</p>
             <Button onClick={() => navigate('/jobs/new')}>
               <Plus className="w-4 h-4 mr-2" />
               {t('dashboard.createFirst')}
@@ -248,7 +257,7 @@ export const Dashboard: React.FC = () => {
 
         {/* Show filtered count */}
         {searchQuery && (
-          <div className="mt-6 text-center text-sm text-gray-500">
+          <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-300">
             {t('dashboard.matchingTasks').replace('{count}', filteredJobs.length.toString())}
           </div>
         )}

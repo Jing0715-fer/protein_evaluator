@@ -227,15 +227,15 @@ export const Settings: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-800">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-500 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <SettingsIcon className="w-5 h-5 text-blue-600" />
-                <h1 className="text-xl font-bold text-gray-900">{t('nav.settings')}</h1>
+                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{t('nav.settings')}</h1>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -256,7 +256,7 @@ export const Settings: React.FC = () => {
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Error Alert */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
             <p className="text-red-700">{error}</p>
           </div>
@@ -282,7 +282,7 @@ export const Settings: React.FC = () => {
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <RefreshCw className="w-8 h-8 text-gray-400 animate-spin" />
-            <span className="ml-3 text-gray-500">{t('settings.loading')}</span>
+            <span className="ml-3 text-gray-500 dark:text-gray-300">{t('settings.loading')}</span>
           </div>
         ) : (
           <div className="space-y-4">
@@ -300,7 +300,7 @@ export const Settings: React.FC = () => {
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-3">
-                      <label className="block text-sm font-medium text-gray-700 mb-3">{t('settings.apiTypeLabel')}</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-3">{t('settings.apiTypeLabel')}</label>
                       <div className="grid grid-cols-3 gap-3">
                         {getApiTypeOptions(language).map((option) => (
                           <button
@@ -309,11 +309,11 @@ export const Settings: React.FC = () => {
                             className={`p-4 rounded-lg border-2 text-left transition-all ${
                               editingModel.apiType === option.value
                                 ? 'border-blue-500 bg-blue-50'
-                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                : 'border-gray-200 dark:border-gray-500 hover:border-gray-300 dark:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-600 dark:bg-gray-800'
                             }`}
                           >
-                            <div className="font-medium text-gray-900">{option.label}</div>
-                            <div className="text-xs text-gray-500 mt-1">{option.description}</div>
+                            <div className="font-medium text-gray-900 dark:text-gray-100">{option.label}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-300 mt-1">{option.description}</div>
                           </button>
                         ))}
                       </div>
@@ -384,7 +384,7 @@ export const Settings: React.FC = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                       {/* API Type Selection */}
                       <div className="lg:col-span-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-3">
                           {t('settings.apiTypeLabel')}
                         </label>
                         <div className="grid grid-cols-3 gap-3">
@@ -395,11 +395,11 @@ export const Settings: React.FC = () => {
                               className={`p-4 rounded-lg border-2 text-left transition-all ${
                                 editingModel.apiType === option.value
                                   ? 'border-blue-500 bg-blue-50'
-                                  : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                  : 'border-gray-200 dark:border-gray-500 hover:border-gray-300 dark:border-gray-500 hover:bg-gray-50 dark:hover:bg-gray-600 dark:bg-gray-800'
                               }`}
                             >
-                              <div className="font-medium text-gray-900">{option.label}</div>
-                              <div className="text-xs text-gray-500 mt-1">{option.description}</div>
+                              <div className="font-medium text-gray-900 dark:text-gray-100">{option.label}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-300 mt-1">{option.description}</div>
                             </button>
                           ))}
                         </div>
@@ -453,7 +453,7 @@ export const Settings: React.FC = () => {
 
                       {/* API Key */}
                       <div className="lg:col-span-3">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                           API Key
                         </label>
                         <input
@@ -461,7 +461,7 @@ export const Settings: React.FC = () => {
                           value={editingModel.apiKey}
                           onChange={(e) => setEditingModel({ ...editingModel, apiKey: e.target.value })}
                           placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
-                          className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          className="w-full px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                         />
                       </div>
                     </div>
@@ -486,32 +486,32 @@ export const Settings: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           {/* Title Row */}
                           <div className="flex items-center gap-3 mb-3">
-                            <h3 className="text-lg font-bold text-gray-900 truncate">{model.name}</h3>
+                            <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 truncate">{model.name}</h3>
                             {model.isDefault && (
                               <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
                                 {t('templates.default')}
                               </span>
                             )}
-                            <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                            <span className="px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-xs rounded-full">
                               {getApiTypeOptions(language).find(o => o.value === model.apiType)?.label || 'OpenAI Compatible'}
                             </span>
                           </div>
 
                           {/* Details Grid */}
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                            <div className="flex items-center gap-2 text-gray-600">
+                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                               <Cpu className="w-4 h-4 text-gray-400 flex-shrink-0" />
                               <span className="truncate">{model.model}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-gray-600">
+                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                               <Thermometer className="w-4 h-4 text-gray-400 flex-shrink-0" />
                               <span>{model.temperature ?? 0.3}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-gray-600">
+                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                               <Hash className="w-4 h-4 text-gray-400 flex-shrink-0" />
                               <span>{(model.maxTokens ?? 20000).toLocaleString()}</span>
                             </div>
-                            <div className="flex items-center gap-2 text-gray-600">
+                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                               <Key className="w-4 h-4 text-gray-400 flex-shrink-0" />
                               <span>{model.apiKey ? (language === 'zh' ? '已设置' : 'Set') : (language === 'zh' ? '未设置' : 'Not set')}</span>
                             </div>
@@ -519,7 +519,7 @@ export const Settings: React.FC = () => {
 
                           {/* Base URL */}
                           {model.baseUrl && (
-                            <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
+                            <div className="mt-3 flex items-center gap-2 text-sm text-gray-500 dark:text-gray-300">
                               <Globe className="w-4 h-4 text-gray-400 flex-shrink-0" />
                               <span className="truncate">{model.baseUrl}</span>
                             </div>
@@ -527,7 +527,7 @@ export const Settings: React.FC = () => {
 
                           {/* Test Result */}
                           {testResults[model.id] && (
-                            <div className={`mt-4 flex items-center gap-2 text-sm px-3 py-2 rounded-lg ${testResults[model.id].success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                            <div className={`mt-4 flex items-center gap-2 text-sm px-3 py-2 rounded-lg ${testResults[model.id].success ? 'bg-green-50 text-green-700' : 'bg-red-50 dark:bg-red-900/30 text-red-700'}`}>
                               <TestTube className="w-4 h-4 flex-shrink-0" />
                               {testResults[model.id].message}
                             </div>
@@ -554,7 +554,7 @@ export const Settings: React.FC = () => {
                             <TestTube className="w-4 h-4 mr-1" />
                             {testingModel === model.id ? (language === 'zh' ? '测试中...' : 'Testing...') : (language === 'zh' ? '测试' : 'Test')}
                           </Button>
-                          <div className="h-8 w-px bg-gray-200 mx-1" />
+                          <div className="h-8 w-px bg-gray-200 dark:bg-gray-700 mx-1" />
                           <Button 
                             variant="ghost" 
                             size="sm"

@@ -66,23 +66,23 @@ const parseMarkdown = (text: string): string => {
     // Headers - apply inline formatting
     if (line.startsWith('### ')) {
       const headerText = applyInlineFormatting(line.substring(4));
-      result.push(`<h3 class="text-lg font-semibold text-gray-900 mt-4 mb-2">${headerText}</h3>`);
+      result.push(`<h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-4 mb-2">${headerText}</h3>`);
       continue;
     }
     if (line.startsWith('## ')) {
       const headerText = applyInlineFormatting(line.substring(3));
-      result.push(`<h2 class="text-xl font-bold text-gray-900 mt-6 mb-3">${headerText}</h2>`);
+      result.push(`<h2 class="text-xl font-bold text-gray-900 dark:text-gray-100 mt-6 mb-3">${headerText}</h2>`);
       continue;
     }
     if (line.startsWith('# ')) {
       const headerText = applyInlineFormatting(line.substring(2));
-      result.push(`<h1 class="text-2xl font-bold text-gray-900 mt-6 mb-4">${headerText}</h1>`);
+      result.push(`<h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-6 mb-4">${headerText}</h1>`);
       continue;
     }
 
     // Horizontal rule
     if (line.match(/^---+$/)) {
-      result.push('<hr class="my-6 border-gray-300" />');
+      result.push('<hr class="my-6 border-gray-300 dark:border-gray-500" />');
       continue;
     }
 
@@ -116,14 +116,14 @@ const parseMarkdown = (text: string): string => {
     // Unordered lists
     if (line.match(/^[\s]*[-*]\s/)) {
       const content = applyInlineFormatting(line.replace(/^[\s]*[-*]\s/, ''));
-      result.push(`<li class="ml-4 text-gray-700 list-disc">${content}</li>`);
+      result.push(`<li class="ml-4 text-gray-700 dark:text-gray-200 list-disc">${content}</li>`);
       continue;
     }
 
     // Ordered lists
     if (line.match(/^[\s]*\d+\.\s/)) {
       const content = applyInlineFormatting(line.replace(/^[\s]*\d+\.\s/, ''));
-      result.push(`<li class="ml-4 text-gray-700 list-decimal">${content}</li>`);
+      result.push(`<li class="ml-4 text-gray-700 dark:text-gray-200 list-decimal">${content}</li>`);
       continue;
     }
 
@@ -134,10 +134,10 @@ const parseMarkdown = (text: string): string => {
       // Italic
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       // Inline code
-      .replace(/`([^`]+)`/g, '<code class="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>');
+      .replace(/`([^`]+)`/g, '<code class="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 px-1.5 py-0.5 rounded text-sm font-mono">$1</code>');
 
     if (formatted.trim()) {
-      result.push(`<p class="text-gray-700 mb-2">${formatted}</p>`);
+      result.push(`<p class="text-gray-700 dark:text-gray-200 mb-2">${formatted}</p>`);
     } else {
       result.push(''); // Empty line for spacing
     }
@@ -155,19 +155,19 @@ function processTable(rows: string[]): string {
 
   // Parse header cells - apply inline formatting
   const headers = headerRow.split('|').filter(c => c.trim()).map(c =>
-    `<th class="border border-gray-200 px-4 py-3 bg-gradient-to-b from-gray-50 to-gray-100 text-left font-semibold text-gray-700 text-sm">${applyInlineFormatting(c.trim())}</th>`
+    `<th class="border border-gray-200 dark:border-gray-500 px-4 py-3 bg-gradient-to-b from-gray-50 to-gray-100 text-left font-semibold text-gray-700 dark:text-gray-200 text-sm">${applyInlineFormatting(c.trim())}</th>`
   ).join('');
 
   // Parse body cells - apply inline formatting with alternating row colors
   const body = bodyRows.map((row, rowIndex) => {
-    const bgClass = rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+    const bgClass = rowIndex % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-800';
     const cells = row.split('|').filter(c => c.trim()).map(c =>
-      `<td class="border border-gray-200 px-4 py-3 text-gray-600 text-sm ${bgClass}">${applyInlineFormatting(c.trim())}</td>`
+      `<td class="border border-gray-200 dark:border-gray-500 px-4 py-3 text-gray-600 dark:text-gray-300 text-sm ${bgClass}">${applyInlineFormatting(c.trim())}</td>`
     ).join('');
     return `<tr class="hover:bg-blue-50 transition-colors duration-150">${cells}</tr>`;
   }).join('');
 
-  return `<table class="w-full border-collapse my-4 text-sm rounded-lg overflow-hidden shadow-sm border border-gray-200">
+  return `<table class="w-full border-collapse my-4 text-sm rounded-lg overflow-hidden shadow-sm border border-gray-200 dark:border-gray-500">
     <thead>
       <tr class="bg-gradient-to-r from-gray-100 to-gray-50">${headers}</tr>
     </thead>
@@ -366,27 +366,27 @@ export const TemplateEditor: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-800">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-500 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-gray-600" />
-                <h1 className="text-lg font-semibold text-gray-900">
+                <FileText className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {isNew ? t('templates.newTemplate') : t('templates.edit')}
                 </h1>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+              <div className="flex items-center border border-gray-300 dark:border-gray-500 rounded-lg overflow-hidden">
                 <button
                   onClick={() => setActiveTab('edit')}
                   className={`px-4 py-2 text-sm font-medium transition-colors ${
                     activeTab === 'edit'
-                      ? 'bg-blue-50 text-blue-600 border-r border-gray-300'
-                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                      ? 'bg-blue-50 text-blue-600 border-r border-gray-300 dark:border-gray-500'
+                      : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 dark:bg-gray-800'
                   }`}
                 >
                   <Edit2Icon className="w-4 h-4 inline mr-1" />
@@ -397,7 +397,7 @@ export const TemplateEditor: React.FC = () => {
                   className={`px-4 py-2 text-sm font-medium transition-colors ${
                     activeTab === 'preview'
                       ? 'bg-blue-50 text-blue-600'
-                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                      : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-600 dark:bg-gray-800'
                   }`}
                 >
                   <Eye className="w-4 h-4 inline mr-1" />
@@ -425,7 +425,7 @@ export const TemplateEditor: React.FC = () => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Error Alert */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
             <p className="text-red-700">{error}</p>
             <button
@@ -452,7 +452,7 @@ export const TemplateEditor: React.FC = () => {
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <RefreshCw className="w-8 h-8 text-gray-400 animate-spin" />
-            <span className="ml-3 text-gray-500">{t('app.loading')}</span>
+            <span className="ml-3 text-gray-500 dark:text-gray-300">{t('app.loading')}</span>
           </div>
         ) : (
           <div className="max-w-4xl mx-auto">
@@ -463,7 +463,7 @@ export const TemplateEditor: React.FC = () => {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Edit2Icon className="w-5 h-5 text-blue-600" />
-                  <h2 className="text-lg font-semibold text-gray-900">{t('editor.title')}</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{t('editor.title')}</h2>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -477,7 +477,7 @@ export const TemplateEditor: React.FC = () => {
 
                 {/* Template Description - Chinese */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     {t('editor.description')} (中文)
                   </label>
                   <textarea
@@ -485,13 +485,13 @@ export const TemplateEditor: React.FC = () => {
                     onChange={(e) => setTemplate({ ...template, description: e.target.value })}
                     placeholder={language === 'zh' ? '输入中文描述' : 'Enter Chinese description'}
                     rows={2}
-                    className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                    className="w-full px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
                   />
                 </div>
 
                 {/* Template Description - English */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     {t('editor.description')} (English)
                   </label>
                   <textarea
@@ -499,13 +499,13 @@ export const TemplateEditor: React.FC = () => {
                     onChange={(e) => setTemplate({ ...template, description_en: e.target.value })}
                     placeholder={language === 'zh' ? '输入英文描述' : 'Enter English description'}
                     rows={2}
-                    className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                    className="w-full px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
                   />
                 </div>
 
                 {/* Variable Shortcuts */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     {t('editor.variables')}
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -523,7 +523,7 @@ export const TemplateEditor: React.FC = () => {
 
                 {/* Template Content - Chinese */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     {t('editor.content')} (中文)
                   </label>
                   <textarea
@@ -532,13 +532,13 @@ export const TemplateEditor: React.FC = () => {
                     onChange={(e) => setTemplate({ ...template, content: e.target.value })}
                     placeholder={language === 'zh' ? '输入中文模板内容' : 'Enter Chinese template content'}
                     rows={15}
-                    className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-sm resize-y"
+                    className="w-full px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-sm resize-y"
                   />
                 </div>
 
                 {/* Template Content - English */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                     {t('editor.content')} (English)
                   </label>
                   <textarea
@@ -547,7 +547,7 @@ export const TemplateEditor: React.FC = () => {
                     onChange={(e) => setTemplate({ ...template, content_en: e.target.value })}
                     placeholder={language === 'zh' ? '输入英文模板内容' : 'Enter English template content'}
                     rows={15}
-                    className="w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-sm resize-y"
+                    className="w-full px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-500 rounded-lg text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono text-sm resize-y"
                   />
                 </div>
 
@@ -558,9 +558,9 @@ export const TemplateEditor: React.FC = () => {
                     id="is-default"
                     checked={template.is_default}
                     onChange={(e) => setTemplate({ ...template, is_default: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-500 rounded focus:ring-blue-500"
                   />
-                  <label htmlFor="is-default" className="text-sm text-gray-700">
+                  <label htmlFor="is-default" className="text-sm text-gray-700 dark:text-gray-200">
                     {t('templates.setDefault')}
                   </label>
                 </div>
@@ -572,13 +572,13 @@ export const TemplateEditor: React.FC = () => {
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Eye className="w-5 h-5 text-blue-600" />
-                  <h2 className="text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {template.name || t('editor.untitled')}
                   </h2>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 min-h-[400px]">
+                <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-500 rounded-lg p-6 min-h-[400px]">
                   <div className="prose prose-sm max-w-none">
                     <div
                       className="markdown-preview"
