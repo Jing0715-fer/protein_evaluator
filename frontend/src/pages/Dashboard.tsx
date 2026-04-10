@@ -8,7 +8,7 @@ import { JobCard, type Job } from '../components/JobCard';
 import { JobRow } from '../components/JobRow';
 import { Sparkline } from '../components/Sparkline';
 import { Button } from '../components/Button';
-import { Card, CardContent } from '../components/Card';
+
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 
 export const Dashboard: React.FC = () => {
@@ -102,10 +102,24 @@ export const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-800">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0e1a] relative overflow-hidden">
+      {/* Subtle dot grid background for dark mode */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.025] dark:opacity-[0.04]" aria-hidden="true">
+        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="dots" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+              <circle cx="1" cy="1" r="1" fill="currentColor" className="text-gray-400"/>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#dots)" />
+        </svg>
+      </div>
+      {/* Gradient orb top-right */}
+      <div className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 rounded-full bg-amber-500/[0.02] dark:bg-amber-500/[0.03] blur-3xl" aria-hidden="true" />
+      <div className="relative z-10">
       {/* Header */}
-      <header className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-500 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+      <header className="bg-white dark:bg-[#0f1525] border-b border-gray-200 dark:border-gray-700/60 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-amber-500 dark:bg-amber-600 rounded-lg flex items-center justify-center">
@@ -156,62 +170,50 @@ export const Dashboard: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards with Sparklines */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          <Card className="border-l-4 border-l-gray-500 dark:border-l-gray-500">
-            <CardContent className="p-4 flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{totalJobs}</div>
-                <Sparkline data={sparklineData.total} color="#64748b" width={56} height={24} />
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.total')}</div>
-            </CardContent>
-          </Card>
-          <Card className="border-l-4 border-l-blue-500 dark:border-l-blue-500">
-            <CardContent className="p-4 flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold text-blue-500 dark:text-blue-400">{statusCounts.processing || 0}</div>
-                <Sparkline data={sparklineData.running} color="#3b82f6" width={56} height={24} />
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.running')}</div>
-            </CardContent>
-          </Card>
-          <Card className="border-l-4 border-l-yellow-500 dark:border-l-yellow-500">
-            <CardContent className="p-4 flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold text-yellow-500 dark:text-yellow-400">{statusCounts.pending || 0}</div>
-                <Sparkline data={[0,0,0,0,0,0,statusCounts.pending||0]} color="#f59e0b" width={56} height={24} />
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.pending')}</div>
-            </CardContent>
-          </Card>
-          <Card className="border-l-4 border-l-green-500 dark:border-l-green-500">
-            <CardContent className="p-4 flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold text-green-500 dark:text-green-400">{statusCounts.completed || 0}</div>
-                <Sparkline data={sparklineData.completed} color="#22c55e" width={56} height={24} />
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.completed')}</div>
-            </CardContent>
-          </Card>
-          <Card className="border-l-4 border-l-red-500 dark:border-l-red-500">
-            <CardContent className="p-4 flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold text-red-500 dark:text-red-400">{statusCounts.failed || 0}</div>
-                <Sparkline data={[0,0,0,0,0,0,statusCounts.failed||0]} color="#ef4444" width={56} height={24} />
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.failed')}</div>
-            </CardContent>
-          </Card>
-          <Card className="border-l-4 border-l-gray-400 dark:border-l-gray-500">
-            <CardContent className="p-4 flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold text-gray-500 dark:text-gray-300">{statusCounts.paused || 0}</div>
-                <Sparkline data={[0,0,0,0,0,0,statusCounts.paused||0]} color="#9ca3af" width={56} height={24} />
-              </div>
-              <div className="text-sm text-gray-500 dark:text-gray-300">{t('dashboard.stats.paused')}</div>
-            </CardContent>
-          </Card>
+        {/* Stats Cards — professional dark glass */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+          {/* Total */}
+          <div className="relative overflow-hidden rounded-xl border border-gray-200/60 dark:border-gray-700/60 bg-gray-50 dark:bg-[#0f1525] p-4 flex flex-col gap-1">
+            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-gray-400 to-gray-600" />
+            <div className="absolute right-2 top-2"><Sparkline data={sparklineData.total} color="#64748b" width={48} height={20} /></div>
+            <div className="text-3xl font-bold text-gray-800 dark:text-gray-100 pr-12">{totalJobs}</div>
+            <div className="text-xs font-medium text-gray-500 dark:text-gray-400 tracking-wide uppercase">{t('dashboard.stats.total')}</div>
+          </div>
+          {/* Running */}
+          <div className="relative overflow-hidden rounded-xl border border-blue-200/40 dark:border-blue-800/30 bg-gray-50 dark:bg-[#0f1525] p-4 flex flex-col gap-1">
+            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-400 to-blue-700" />
+            <div className="absolute right-2 top-2"><Sparkline data={sparklineData.running} color="#3b82f6" width={48} height={20} /></div>
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 pr-12">{statusCounts.processing || 0}</div>
+            <div className="text-xs font-medium text-gray-500 dark:text-gray-400 tracking-wide uppercase">{t('dashboard.stats.running')}</div>
+          </div>
+          {/* Pending */}
+          <div className="relative overflow-hidden rounded-xl border border-yellow-200/40 dark:border-yellow-800/30 bg-gray-50 dark:bg-[#0f1525] p-4 flex flex-col gap-1">
+            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-yellow-400 to-yellow-700" />
+            <div className="absolute right-2 top-2"><Sparkline data={[0,0,0,0,0,0,statusCounts.pending||0]} color="#f59e0b" width={48} height={20} /></div>
+            <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 pr-12">{statusCounts.pending || 0}</div>
+            <div className="text-xs font-medium text-gray-500 dark:text-gray-400 tracking-wide uppercase">{t('dashboard.stats.pending')}</div>
+          </div>
+          {/* Completed */}
+          <div className="relative overflow-hidden rounded-xl border border-green-200/40 dark:border-green-800/30 bg-gray-50 dark:bg-[#0f1525] p-4 flex flex-col gap-1">
+            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-green-400 to-green-700" />
+            <div className="absolute right-2 top-2"><Sparkline data={sparklineData.completed} color="#22c55e" width={48} height={20} /></div>
+            <div className="text-3xl font-bold text-green-600 dark:text-green-400 pr-12">{statusCounts.completed || 0}</div>
+            <div className="text-xs font-medium text-gray-500 dark:text-gray-400 tracking-wide uppercase">{t('dashboard.stats.completed')}</div>
+          </div>
+          {/* Failed */}
+          <div className="relative overflow-hidden rounded-xl border border-red-200/40 dark:border-red-800/30 bg-gray-50 dark:bg-[#0f1525] p-4 flex flex-col gap-1">
+            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-red-400 to-red-700" />
+            <div className="absolute right-2 top-2"><Sparkline data={[0,0,0,0,0,0,statusCounts.failed||0]} color="#ef4444" width={48} height={20} /></div>
+            <div className="text-3xl font-bold text-red-600 dark:text-red-400 pr-12">{statusCounts.failed || 0}</div>
+            <div className="text-xs font-medium text-gray-500 dark:text-gray-400 tracking-wide uppercase">{t('dashboard.stats.failed')}</div>
+          </div>
+          {/* Paused */}
+          <div className="relative overflow-hidden rounded-xl border border-gray-200/40 dark:border-gray-700/40 bg-gray-50 dark:bg-[#0f1525] p-4 flex flex-col gap-1">
+            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-gray-400 to-gray-600" />
+            <div className="absolute right-2 top-2"><Sparkline data={[0,0,0,0,0,0,statusCounts.paused||0]} color="#9ca3af" width={48} height={20} /></div>
+            <div className="text-3xl font-bold text-gray-600 dark:text-gray-400 pr-12">{statusCounts.paused || 0}</div>
+            <div className="text-xs font-medium text-gray-500 dark:text-gray-400 tracking-wide uppercase">{t('dashboard.stats.paused')}</div>
+          </div>
         </div>
 
         {/* Error Alert */}
@@ -299,20 +301,28 @@ export const Dashboard: React.FC = () => {
             <p className="text-gray-500 dark:text-gray-300">{t('app.loading')}</p>
           </div>
         ) : filteredJobs.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-200 dark:bg-gray-800 mb-4">
-              <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M12 3 C 7 3, 4 6.5, 4 12 C 4 17.5, 7 21, 12 21 C 17 21, 20 17.5, 20 12 C 20 6.5, 17 3, 12 3Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                <path d="M8 8 Q 12 10.5, 16 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-                <path d="M16 12 Q 12 14.5, 8 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-                <path d="M8 16 Q 12 18.5, 16 16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-                <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
+          <div className="text-center py-16">
+            {/* Large biotech helix illustration */}
+            <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-amber-500/10 to-blue-500/10 dark:from-amber-500/5 dark:to-blue-500/5 border border-amber-500/20 dark:border-amber-500/10 mb-6">
+              <svg width="48" height="48" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="text-amber-500/60">
+                <path d="M50 8 C 28 8, 12 28, 12 50 C 12 72, 28 92, 50 92 C 72 92, 88 72, 88 50 C 88 28, 72 8, 50 8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M25 25 Q 50 40, 75 25" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M75 42 Q 50 57, 25 42" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <path d="M25 58 Q 50 73, 75 58" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <circle cx="50" cy="50" r="6" fill="currentColor" opacity="0.5"/>
+                <circle cx="25" cy="25" r="3" fill="currentColor"/>
+                <circle cx="75" cy="25" r="3" fill="currentColor"/>
+                <circle cx="25" cy="42" r="3" fill="currentColor"/>
+                <circle cx="75" cy="42" r="3" fill="currentColor"/>
+                <circle cx="25" cy="58" r="3" fill="currentColor"/>
+                <circle cx="75" cy="58" r="3" fill="currentColor"/>
+                <circle cx="50" cy="92" r="3" fill="currentColor"/>
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100 mb-2">{t('dashboard.noJobs')}</h3>
-            <p className="text-gray-500 dark:text-gray-300 mb-6">{t('dashboard.noTasksDescription')}</p>
-            <Button onClick={() => navigate('/jobs/new')}>
-              <Plus className="w-4 h-4 mr-2" />
+            <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-100 mb-2">{t('dashboard.noJobs')}</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-sm mx-auto leading-relaxed">{t('dashboard.noTasksDescription')}</p>
+            <Button size="lg" onClick={() => navigate('/jobs/new')} className="shadow-lg shadow-amber-500/20">
+              <Plus className="w-5 h-5 mr-2" />
               {t('dashboard.createFirst')}
             </Button>
           </div>
@@ -368,6 +378,7 @@ export const Dashboard: React.FC = () => {
           </div>
         )}
       </main>
+      </div>
     </div>
   );
 };
