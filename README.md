@@ -18,8 +18,9 @@ A comprehensive protein structure and function evaluation system that generates 
 
 ### Real-time Progress Tracking
 - Live log display during evaluation
-- Standardized step indicators: [步骤1/6], [步骤2/6], etc.
+- Bilingual step indicators: [步骤1/6] / [Step 1/6] - automatically translated in English interface
 - Sub-progress tracking: PDB fetch (1/19, 2/19...), AI stages (Stage 1/2, Stage 2/2)
+- Log messages are translated to English when using English interface
 
 ## Quick Start
 
@@ -90,12 +91,12 @@ Access at http://localhost:5002
 ## Evaluation Workflow
 
 ```
-[步骤1/6] Fetch UniProt metadata
-[步骤2/6] Fetch PDB structures (progress: 1/19, 2/19...)
-[步骤3/6] BLAST homology search (or skip if coverage > 50%)
-[步骤4/6] Fetch PubMed abstracts
-[步骤5/6] AI analysis (Stage 1/2: statistical summary, Stage 2/2: final report)
-[步骤6/6] Generate evaluation report
+[步骤1/6] / [Step 1/6] Fetch UniProt metadata
+[步骤2/6] / [Step 2/6] Fetch PDB structures (progress: 1/19, 2/19...)
+[步骤3/6] / [Step 3/6] BLAST homology search (or skip if coverage > 50%)
+[步骤4/6] / [Step 4/6] Fetch PubMed abstracts
+[步骤5/6] / [Step 5/6] AI analysis (Stage 1/2: statistical summary, Stage 2/2: final report)
+[步骤6/6] / [Step 6/6] Generate evaluation report
 ```
 
 ## API Reference

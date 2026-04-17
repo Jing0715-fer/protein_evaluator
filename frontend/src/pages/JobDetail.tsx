@@ -56,6 +56,41 @@ function generatePopupHtml(title: string, content: string): string {
   </style></head><body><div class="container"><p style="margin:0 0 0.75rem 0;color:#374151;">${htmlContent}</p></div></body></html>`;
 }
 
+// Translate step log messages to English
+function translateLogMessage(message: string, lang: string): string {
+  if (lang === 'zh') return message;
+
+  const translations: Record<string, string> = {
+    '[步骤': '[Step ',
+    '开始获取UniProt元数据...': 'Fetching UniProt metadata...',
+    'UniProt元数据获取成功:': 'UniProt metadata fetched successfully:',
+    '警告: 未能获取UniProt数据': 'Warning: Failed to fetch UniProt data',
+    '开始获取PDB数据, 共': 'Fetching PDB data,',
+    '个结构...': 'structures...',
+    'PDB序列覆盖度:': 'PDB sequence coverage:',
+    '开始执行BLAST同源蛋白搜索...': 'Running BLAST homology search...',
+    '跳过BLAST搜索 (覆盖度充足)': 'Skipping BLAST search (coverage sufficient)',
+    '获取PubMed文献摘要...': 'Fetching PubMed abstracts...',
+    '开始AI深度分析...': 'Running AI deep analysis...',
+    '开始中文AI分析...': 'Starting Chinese AI analysis...',
+    '开始英文AI分析...': 'Starting English AI analysis...',
+    '生成统计摘要...': 'Generating statistical summary...',
+    '生成最终报告...': 'Generating final report...',
+    '失败:': 'Failed:',
+    '========== 评估过程日志 ==========': '========== Evaluation Process Log ==========',
+    '错误信息:': 'Error:',
+  };
+
+  let result = message;
+  // First translate step indicators [步骤X/Y] -> [Step X/Y]
+  result = result.replace(/\[步骤(\d+)\/(\d+)\]/g, '[Step $1/$2]');
+  // Then do exact string replacements
+  for (const [cn, en] of Object.entries(translations)) {
+    result = result.split(cn).join(en);
+  }
+  return result;
+}
+
 // UniProt metadata detail panel component
 interface UniProtDetailPanelProps {
   target: any;
@@ -741,9 +776,10 @@ export const JobDetail: React.FC = () => {
         const result = await api.jobControl.getJobLogs(jobId);
         if (result.success && result.logs) {
           setJobLogs(result.logs);
-          // Set latest log message (last one in the array)
+          // Set latest log message (last one in the array) - apply translation if English
           if (result.logs.length > 0) {
-            setLatestLog(result.logs[result.logs.length - 1].message);
+            const rawMessage = result.logs[result.logs.length - 1].message;
+            setLatestLog(translateLogMessage(rawMessage, language));
           }
         }
       } catch (err) {
@@ -755,7 +791,7 @@ export const JobDetail: React.FC = () => {
     // Poll logs every 5 seconds when job is running
     const interval = setInterval(fetchLogs, 5000);
     return () => clearInterval(interval);
-  }, [jobId, selectedJob?.job.status]);
+  }, [jobId, selectedJob?.job.status, language]);
 
   // Clear latestLog when job status changes to pending (after restart)
   useEffect(() => {

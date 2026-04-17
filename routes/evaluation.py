@@ -1321,19 +1321,30 @@ def test_model_connection():
                 # Anthropic API (including MiniMax anthropic-compatible API)
                 if not api_key:
                     return jsonify({'success': False, 'error': 'Claude API 需要 API Key'})
-                
-                headers['x-api-key'] = api_key
+
+                # MiniMax uses Bearer token in Authorization header
+                if 'minimaxi' in (base_url or '').lower():
+                    headers['Authorization'] = f'Bearer {api_key}'
+                else:
+                    headers['x-api-key'] = api_key
                 headers['anthropic-version'] = '2023-06-01'
-                
+
+                # Build URL: if base_url ends with /messages or /v1, use as-is; otherwise append /messages
                 test_url = base_url or 'https://api.anthropic.com/v1'
+                if test_url.endswith('/messages') or test_url.endswith('/v1'):
+                    final_url = test_url
+                elif 'minimaxi' in test_url:
+                    final_url = f"{test_url}/v1/messages"
+                else:
+                    final_url = f"{test_url}/messages"
                 test_payload = {
                     'model': model_id,
                     'max_tokens': 10,
                     'messages': [{'role': 'user', 'content': 'Hello'}]
                 }
-                
+
                 response = requests.post(
-                    f"{test_url}/messages",
+                    final_url,
                     headers=headers,
                     json=test_payload,
                     timeout=30
@@ -1347,14 +1358,18 @@ def test_model_connection():
                 headers['Authorization'] = f'Bearer {api_key}'
                 
                 test_url = base_url or 'https://api.openai.com/v1'
+                if test_url.endswith('/chat/completions'):
+                    final_url = test_url
+                else:
+                    final_url = f"{test_url}/chat/completions"
                 test_payload = {
                     'model': model_id,
                     'messages': [{'role': 'user', 'content': 'Hello'}],
                     'max_tokens': 10
                 }
-                
+
                 response = requests.post(
-                    f"{test_url}/chat/completions",
+                    final_url,
                     headers=headers,
                     json=test_payload,
                     timeout=30
@@ -1365,18 +1380,22 @@ def test_model_connection():
                 # 所有兼容 API 都需要 API Key
                 if not api_key:
                     return jsonify({'success': False, 'error': 'API Key 不能为空'})
-                
+
                 headers['Authorization'] = f'Bearer {api_key}'
-                
+
                 test_url = base_url or 'https://api.deepseek.com/v1'
+                if test_url.endswith('/chat/completions'):
+                    final_url = test_url
+                else:
+                    final_url = f"{test_url}/chat/completions"
                 test_payload = {
                     'model': model_id,
                     'messages': [{'role': 'user', 'content': 'Hello'}],
                     'max_tokens': 10
                 }
-                
+
                 response = requests.post(
-                    f"{test_url}/chat/completions",
+                    final_url,
                     headers=headers,
                     json=test_payload,
                     timeout=30

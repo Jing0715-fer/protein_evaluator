@@ -201,9 +201,15 @@ class AnthropicClient:
                 import os
                 self._anthropic_available = True
 
-                # MiniMax 需要设置环境变量和base_url
+                # MiniMax 需要特殊处理base_url
                 if self.base_url and 'minimaxi' in self.base_url.lower():
-                    os.environ['ANTHROPIC_BASE_URL'] = self.base_url
+                    # MiniMax的端点是 base_url + /v1/messages
+                    # 如果base_url已经包含/v1/messages，直接使用
+                    # 否则加上/v1/messages
+                    if '/v1/messages' in self.base_url:
+                        os.environ['ANTHROPIC_BASE_URL'] = self.base_url
+                    else:
+                        os.environ['ANTHROPIC_BASE_URL'] = self.base_url.rstrip('/') + '/v1'
                     os.environ['ANTHROPIC_API_KEY'] = self.api_key
 
                 # 创建客户端 - 明确传递base_url
