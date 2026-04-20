@@ -417,7 +417,7 @@
     }
 
     html += '<div class="tab-content" id="tab-report">' +
-        renderReportTab(job, job.status) +
+        renderReportTab(job, targets, job.status) +
       '</div>' +
     '</div>';
 
@@ -697,27 +697,32 @@
     return positions;
   }
 
-  function renderReportTab(job, jobStatus) {
-    var reportContent = job.report_content || '';
-    var reportEn = job.report_content_en || '';
-
+  function renderReportTab(job, targets, jobStatus) {
     // Only show report if job is completed
     if (jobStatus !== 'completed') {
       return '<div class="empty-state">' + I18n.t('job.reportNotReady') + '</div>';
     }
 
-    if (!reportContent && !reportEn) {
+    // Get AI analysis from first target's evaluation
+    var aiAnalysis = null;
+    if (targets && targets.length > 0) {
+      var evalData = targets[0].evaluation || {};
+      var aiData = evalData.ai_analysis || {};
+      if (typeof aiData === 'object') {
+        aiAnalysis = AppState.language === 'zh' ? (aiData.analysis || '') : (aiData.analysis_en || aiData.analysis || '');
+      }
+    }
+
+    if (!aiAnalysis) {
       return '<div class="empty-state">' + I18n.t('job.noReport') + '</div>';
     }
 
-    var content = AppState.language === 'zh' ? reportContent : (reportEn || reportContent);
-
     // Render markdown if available
     if (typeof marked !== 'undefined') {
-      content = marked.parse(content);
+      aiAnalysis = marked.parse(aiAnalysis);
     }
 
-    return '<div class="report-section"><div class="report-content">' + content + '</div></div>';
+    return '<div class="report-section"><div class="report-content">' + aiAnalysis + '</div></div>';
   }
 
   // ========== View: Create Job ==========
