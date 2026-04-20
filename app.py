@@ -107,6 +107,16 @@ def create_app(debug=None):
     def serve_icons():
         return send_from_directory(FRONTEND_DIST, 'icons.svg')
 
+    # Catch-all route for React SPA - must be after static file routes
+    # This allows React Router to handle client-side routing
+    @app.route('/<path:fallback>')
+    def serve_spa_fallback(fallback):
+        # Skip API routes and static assets
+        if fallback.startswith('api/') or fallback.startswith('static/') or fallback.startswith('assets/') or fallback.startswith('_'):
+            return jsonify({'error': 'Not found'}), 404
+        # Serve React index.html for client-side routing
+        return send_from_directory(FRONTEND_DIST, 'index.html')
+
     @app.route('/health')
     def health():
         """健康检查"""
