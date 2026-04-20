@@ -4,6 +4,10 @@
 flask>=2.3.0
 werkzeug>=2.3.0
 
+# Production WSGI servers (choose one)
+gunicorn>=21.0.0
+# uvicorn>=0.24.0  # Alternative ASGI server
+
 # Database
 sqlalchemy>=2.0.0
 

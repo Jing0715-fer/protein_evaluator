@@ -42,8 +42,11 @@ source venv/bin/activate  # Linux/macOS
 # or
 venv\Scripts\activate  # Windows
 
-# Install dependencies
+# Install dependencies (basic)
 pip install -r requirements.txt
+
+# For production deployment, also install gunicorn:
+pip install gunicorn
 ```
 
 ## Configuration
@@ -93,7 +96,12 @@ Access at http://localhost:5173
 **Production build:**
 ```bash
 cd frontend && npm run build && cd ..
+
+# Development (single-threaded, may have concurrent request issues)
 python app.py
+
+# Production (use gunicorn for multi-worker support)
+gunicorn -w 4 -b 0.0.0.0:5002 --timeout 120 app:app
 ```
 
 Access at http://localhost:5002 (frontend is served by Flask)
@@ -118,6 +126,48 @@ This mode provides:
 - Job detail view with chain interaction visualization
 - Settings page for API key configuration
 - Template management
+
+---
+
+## Production Deployment
+
+For production environments, **always use a WSGI server** instead of Flask's development server. This ensures:
+- Multi-threaded request handling (critical for concurrent API access)
+- Stable background task execution
+- Better database connection management
+
+### Using Gunicorn (Recommended)
+
+```bash
+# Install gunicorn
+pip install gunicorn
+
+# Build frontend (optional, for single-port deployment)
+cd frontend && npm run build && cd ..
+
+# Start with gunicorn (4 workers recommended)
+gunicorn -w 4 -b 0.0.0.0:5002 --timeout 120 app:app
+```
+
+### Using Uvicorn (Alternative ASGI Server)
+
+```bash
+# Install uvicorn
+pip install uvicorn
+
+# Start with uvicorn
+uvicorn app:app --host 0.0.0.0 --port 5002 --workers 4
+```
+
+### Why Gunicorn/Uvicorn?
+
+The Flask development server (`python app.py`) runs in a **single thread**. When the background scheduler writes to the database during evaluation, concurrent API requests from the frontend may experience:
+- `404 Not Found` errors
+- `500 Internal Server Error` 
+- `sqlite3.InterfaceError` (database lock issues)
+- Intermittent request failures
+
+Gunicorn/Uvicorn provides multi-worker processing that handles concurrent requests properly.
 
 ---
 

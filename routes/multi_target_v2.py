@@ -320,7 +320,9 @@ def get_multi_target_job(job_id: int):
                 }), 404
 
             # Check if job is completed and we have targets with interactions
-            targets = session.query(Target).options(joinedload(Target.evaluation)).filter_by(job_id=job_id).order_by(Target.target_index).all()
+            # Don't use joinedload here - evaluation may be in progress and cause DetachedInstanceError
+            # We access evaluation safely via evaluation_id query later
+            targets = session.query(Target).filter_by(job_id=job_id).order_by(Target.target_index).all()
 
             # Regenerate AI interaction analysis if job is completed and force_refresh or AI not available in cache
             if job.status == 'completed' and targets:
@@ -339,25 +341,32 @@ def get_multi_target_job(job_id: int):
                 target_dict = target.to_dict()
 
                 # Add evaluation details with language-aware ai_analysis
-                if target.evaluation:
-                    eval_dict = {
-                        'id': target.evaluation.id,
-                        'overall_score': getattr(target.evaluation, 'overall_score', None),
-                        'status': target.evaluation.evaluation_status
-                    }
-                    if target.evaluation.pdb_data:
-                        eval_dict['pdb_data'] = target.evaluation.pdb_data
-                    # Return analysis based on language
-                    if lang == 'en' and target.evaluation.ai_analysis_en:
-                        eval_dict['ai_analysis'] = target.evaluation.ai_analysis_en
-                    elif target.evaluation.ai_analysis:
-                        eval_dict['ai_analysis'] = target.evaluation.ai_analysis
-                    # Always include both versions for frontend flexibility
-                    eval_dict['ai_analysis_zh'] = target.evaluation.ai_analysis
-                    eval_dict['ai_analysis_en'] = target.evaluation.ai_analysis_en
-                    # Include AI prompt for debugging
-                    eval_dict['ai_prompt'] = getattr(target.evaluation, 'ai_prompt', None)
-                    target_dict['evaluation'] = eval_dict
+                # Safe access: check evaluation_id first, then query to avoid DetachedInstanceError
+                if target.evaluation_id:
+                    try:
+                        eval_record = session.query(ProteinEvaluation).filter_by(id=target.evaluation_id).first()
+                        if eval_record:
+                            eval_dict = {
+                                'id': eval_record.id,
+                                'overall_score': getattr(eval_record, 'overall_score', None),
+                                'status': eval_record.evaluation_status
+                            }
+                            if eval_record.pdb_data:
+                                eval_dict['pdb_data'] = eval_record.pdb_data
+                            # Return analysis based on language
+                            if lang == 'en' and eval_record.ai_analysis_en:
+                                eval_dict['ai_analysis'] = eval_record.ai_analysis_en
+                            elif eval_record.ai_analysis:
+                                eval_dict['ai_analysis'] = eval_record.ai_analysis
+                            # Always include both versions for frontend flexibility
+                            eval_dict['ai_analysis_zh'] = eval_record.ai_analysis
+                            eval_dict['ai_analysis_en'] = eval_record.ai_analysis_en
+                            # Include AI prompt for debugging
+                            eval_dict['ai_prompt'] = getattr(eval_record, 'ai_prompt', None)
+                            target_dict['evaluation'] = eval_dict
+                    except Exception:
+                        # evaluation record was deleted or inaccessible, skip it
+                        pass
 
                 targets_data.append(target_dict)
 
@@ -1018,7 +1027,8 @@ def get_job_targets(job_id: int):
 
             total = query.count()
 
-            targets = query.options(joinedload(Target.evaluation)).order_by(Target.target_index).offset(offset).limit(limit).all()
+            # Don't use joinedload - evaluation may be in progress, access safely via evaluation_id query
+            targets = query.order_by(Target.target_index).offset(offset).limit(limit).all()
 
             targets_data = []
             for target in targets:
@@ -1044,30 +1054,37 @@ def get_job_targets(job_id: int):
                     logger.warning(f"Failed to fetch UniProt metadata for {target.uniprot_id}: {e}")
 
                 # Add evaluation result (if exists)
-                if target.evaluation:
-                    eval_dict = {
-                        'id': target.evaluation.id,
-                        'overall_score': getattr(target.evaluation, 'overall_score', None),
-                        'status': target.evaluation.evaluation_status
-                    }
-                    # Add PDB data
-                    if target.evaluation.pdb_data:
-                        pdb_data = target.evaluation.pdb_data
-                        eval_dict['pdb_data'] = pdb_data
-                    # Add BLAST results
-                    if target.evaluation.blast_results:
-                        eval_dict['blast_results'] = target.evaluation.blast_results
-                    # Return analysis based on language
-                    if lang == 'en' and target.evaluation.ai_analysis_en:
-                        eval_dict['ai_analysis'] = target.evaluation.ai_analysis_en
-                    elif target.evaluation.ai_analysis:
-                        eval_dict['ai_analysis'] = target.evaluation.ai_analysis
-                    # Always include both versions for frontend flexibility
-                    eval_dict['ai_analysis_zh'] = target.evaluation.ai_analysis
-                    eval_dict['ai_analysis_en'] = target.evaluation.ai_analysis_en
-                    # Include AI prompt for debugging
-                    eval_dict['ai_prompt'] = getattr(target.evaluation, 'ai_prompt', None)
-                    target_dict['evaluation'] = eval_dict
+                # Safe access: check evaluation_id first, then query to avoid DetachedInstanceError
+                if target.evaluation_id:
+                    try:
+                        eval_record = session.query(ProteinEvaluation).filter_by(id=target.evaluation_id).first()
+                        if eval_record:
+                            eval_dict = {
+                                'id': eval_record.id,
+                                'overall_score': getattr(eval_record, 'overall_score', None),
+                                'status': eval_record.evaluation_status
+                            }
+                            # Add PDB data
+                            if eval_record.pdb_data:
+                                pdb_data = eval_record.pdb_data
+                                eval_dict['pdb_data'] = pdb_data
+                            # Add BLAST results
+                            if eval_record.blast_results:
+                                eval_dict['blast_results'] = eval_record.blast_results
+                            # Return analysis based on language
+                            if lang == 'en' and eval_record.ai_analysis_en:
+                                eval_dict['ai_analysis'] = eval_record.ai_analysis_en
+                            elif eval_record.ai_analysis:
+                                eval_dict['ai_analysis'] = eval_record.ai_analysis
+                            # Always include both versions for frontend flexibility
+                            eval_dict['ai_analysis_zh'] = eval_record.ai_analysis
+                            eval_dict['ai_analysis_en'] = eval_record.ai_analysis_en
+                            # Include AI prompt for debugging
+                            eval_dict['ai_prompt'] = getattr(eval_record, 'ai_prompt', None)
+                            target_dict['evaluation'] = eval_dict
+                    except Exception:
+                        # evaluation record was deleted or inaccessible, skip it
+                        pass
                 targets_data.append(target_dict)
 
             return jsonify({
@@ -1110,22 +1127,29 @@ def get_target_detail(job_id: int, target_id: int):
             target_dict = target.to_dict()
             
             # 添加完整评估结果
-            if target.evaluation:
-                eval_data = {
-                    'id': target.evaluation.id,
-                    'status': target.evaluation.evaluation_status,
-                    'created_at': target.evaluation.created_at.isoformat() if target.evaluation.created_at else None
-                }
-                
-                # 添加评分详情
-                if hasattr(target.evaluation, 'structure_quality_score'):
-                    eval_data['structure_quality_score'] = target.evaluation.structure_quality_score
-                if hasattr(target.evaluation, 'function_score'):
-                    eval_data['function_score'] = target.evaluation.function_score
-                if hasattr(target.evaluation, 'overall_score'):
-                    eval_data['overall_score'] = target.evaluation.overall_score
-                
-                target_dict['evaluation'] = eval_data
+            # Safe access: check evaluation_id first, then query to avoid DetachedInstanceError
+            if target.evaluation_id:
+                try:
+                    eval_record = session.query(ProteinEvaluation).filter_by(id=target.evaluation_id).first()
+                    if eval_record:
+                        eval_data = {
+                            'id': eval_record.id,
+                            'status': eval_record.evaluation_status,
+                            'created_at': eval_record.created_at.isoformat() if eval_record.created_at else None
+                        }
+
+                        # 添加评分详情
+                        if hasattr(eval_record, 'structure_quality_score'):
+                            eval_data['structure_quality_score'] = eval_record.structure_quality_score
+                        if hasattr(eval_record, 'function_score'):
+                            eval_data['function_score'] = eval_record.function_score
+                        if hasattr(eval_record, 'overall_score'):
+                            eval_data['overall_score'] = eval_record.overall_score
+
+                        target_dict['evaluation'] = eval_data
+                except Exception:
+                    # evaluation record was deleted or inaccessible, skip it
+                    pass
             
             # 添加关系信息
             relationships = []
