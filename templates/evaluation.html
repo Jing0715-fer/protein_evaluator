@@ -42,6 +42,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/marked.min.js') }}"></script>
 <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
 <script src="{{ url_for('static', filename='js/api-client.js') }}"></script>
 <script src="{{ url_for('static', filename='js/sse-manager.js') }}"></script>
