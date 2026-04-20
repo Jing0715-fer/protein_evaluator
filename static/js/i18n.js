@@ -38,6 +38,7 @@
       'job.status': '状态',
       'job.createdAt': '创建时间',
       'job.noReport': '报告将在任务完成后生成',
+      'job.reportNotReady': '报告将在任务完成后显示',
 
       // Targets
       'target.pdbStructures': 'PDB结构',
@@ -170,6 +171,7 @@
       'job.status': 'Status',
       'job.createdAt': 'Created At',
       'job.noReport': 'Report will be generated after task completion',
+      'job.reportNotReady': 'Report will be available after task completion',
 
       // Targets
       'target.pdbStructures': 'PDB Structures',

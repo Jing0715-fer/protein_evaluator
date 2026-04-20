@@ -367,6 +367,7 @@
     var targets = result.targets || [];
     var statistics = result.statistics || {};
     var lang = AppState.language;
+    var hasMultipleTargets = targets.length > 1;
 
     var html = '<div class="job-detail">' +
       '<header class="job-header">' +
@@ -396,19 +397,27 @@
       '</div>' +
 
       '<div class="tabs">' +
-        '<button class="tab active" data-tab="overview">' + I18n.t('job.overview') + '</button>' +
-        '<button class="tab" data-tab="interactions">' + I18n.t('job.interactions') + '</button>' +
-        '<button class="tab" data-tab="report">' + I18n.t('job.report') + '</button>' +
+        '<button class="tab active" data-tab="overview">' + I18n.t('job.overview') + '</button>';
+
+    if (hasMultipleTargets) {
+      html += '<button class="tab" data-tab="interactions">' + I18n.t('job.interactions') + '</button>';
+    }
+
+    html += '<button class="tab" data-tab="report">' + I18n.t('job.report') + '</button>' +
       '</div>' +
 
       '<div class="tab-content active" id="tab-overview">' +
         renderOverviewTab(targets, job) +
-      '</div>' +
-      '<div class="tab-content" id="tab-interactions">' +
+      '</div>';
+
+    if (hasMultipleTargets) {
+      html += '<div class="tab-content" id="tab-interactions">' +
         renderInteractionsTab(job.job_id) +
-      '</div>' +
-      '<div class="tab-content" id="tab-report">' +
-        renderReportTab(job) +
+      '</div>';
+    }
+
+    html += '<div class="tab-content" id="tab-report">' +
+        renderReportTab(job, job.status) +
       '</div>' +
     '</div>';
 
@@ -688,9 +697,14 @@
     return positions;
   }
 
-  function renderReportTab(job) {
+  function renderReportTab(job, jobStatus) {
     var reportContent = job.report_content || '';
     var reportEn = job.report_content_en || '';
+
+    // Only show report if job is completed
+    if (jobStatus !== 'completed') {
+      return '<div class="empty-state">' + I18n.t('job.reportNotReady') + '</div>';
+    }
 
     if (!reportContent && !reportEn) {
       return '<div class="empty-state">' + I18n.t('job.noReport') + '</div>';
