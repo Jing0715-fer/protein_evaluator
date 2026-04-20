@@ -46,7 +46,10 @@ def get_scheduler() -> MultiTargetScheduler:
         with _scheduler_lock:
             # Double-check inside lock to avoid race on second-plus entrant
             if _scheduler is None:
-                _scheduler = MultiTargetScheduler()
+                # Get AI config from default model settings
+                from routes.evaluation import get_default_ai_config
+                ai_config = get_default_ai_config()
+                _scheduler = MultiTargetScheduler(config=ai_config)
     return _scheduler
 
 

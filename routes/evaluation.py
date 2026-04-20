@@ -1142,6 +1142,37 @@ def _save_model_configs():
 # 启动时加载配置
 _load_model_configs()
 
+def get_default_ai_config():
+    """获取默认模型的AI配置，用于Job执行时的AI调用"""
+    global _model_configs, _default_model_id
+
+    # Find default model
+    default_model = None
+    if _default_model_id:
+        default_model = next((m for m in _model_configs if m.get('id') == _default_model_id), None)
+
+    if not default_model:
+        # Fallback to first model with apiKey
+        default_model = next((m for m in _model_configs if m.get('apiKey')), None)
+
+    if not default_model:
+        return {}
+
+    # Convert UI model config to AI wrapper config format
+    api_type = default_model.get('apiType', 'openai')
+    is_anthropic = api_type == 'anthropic' or 'claude' in default_model.get('model', '').lower()
+
+    config = {
+        'ai_provider': 'anthropic' if is_anthropic else 'openai',
+        'ai_model': default_model.get('model', ''),
+        'ai_api_key': default_model.get('apiKey', ''),
+        'ai_base_url': default_model.get('baseUrl', ''),
+        'ai_temperature': default_model.get('temperature', 0.3),
+        'ai_max_tokens': default_model.get('maxTokens', 20000),
+    }
+
+    return config
+
 @bp.route('/models', methods=['GET'])
 def get_models():
     """获取所有 AI 模型配置
