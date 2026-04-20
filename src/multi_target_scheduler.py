@@ -434,13 +434,16 @@ class MultiTargetScheduler:
                     # 保存 AI 分析结果（中文）
                     if results.get('ai_analysis'):
                         eval_record.ai_analysis = results['ai_analysis']
-                        # 保存 AI prompt
+                        # 保存 AI prompt (来自成功分析或 fallback)
                         if results['ai_analysis'].get('prompt'):
                             eval_record.ai_prompt = results['ai_analysis']['prompt']
 
                     # 保存 AI 分析结果（英文）
                     if results.get('ai_analysis_en'):
                         eval_record.ai_analysis_en = results['ai_analysis_en']
+                        # 保存英文 AI prompt (来自成功分析或 fallback)
+                        if results['ai_analysis_en'].get('prompt'):
+                            eval_record.ai_prompt_en = results['ai_analysis_en']['prompt']
 
                     # 保存 BLAST 结果
                     if results.get('blast_results'):

@@ -21,7 +21,7 @@ from datetime import datetime
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.attributes import flag_modified
 
-from src.multi_target_scheduler import MultiTargetScheduler, EvaluationMode
+from src.multi_target_scheduler import MultiTargetScheduler, EvaluationMode, get_scheduler
 from src.api_clients import UniProtClient, PDBClient
 from src.multi_target_models import MultiTargetJob, Target, TargetRelationship
 from src.database import get_session, get_prompt_template
@@ -34,30 +34,7 @@ logger = logging.getLogger(__name__)
 # 创建蓝图 - v2 API
 bp = Blueprint('multi_target_v2', __name__, url_prefix='/api/v2/evaluate/multi')
 
-# 全局调度器实例（线程安全单例）
-_scheduler_lock = threading.Lock()
-_scheduler: Optional[MultiTargetScheduler] = None
-
-
-def get_scheduler() -> MultiTargetScheduler:
-    """获取调度器单例（线程安全）"""
-    global _scheduler
-    if _scheduler is None:
-        with _scheduler_lock:
-            # Double-check inside lock to avoid race on second-plus entrant
-            if _scheduler is None:
-                # Get AI config from default model settings
-                from routes.evaluation import get_default_ai_config
-                ai_config = get_default_ai_config()
-                _scheduler = MultiTargetScheduler(config=ai_config)
-    return _scheduler
-
-
-def reset_scheduler() -> None:
-    """重置调度器（仅用于测试隔离）"""
-    global _scheduler
-    with _scheduler_lock:
-        _scheduler = None
+# 使用 src.multi_target_scheduler 中的 get_scheduler
 
 
 # ========== 多靶点任务管理 API ==========

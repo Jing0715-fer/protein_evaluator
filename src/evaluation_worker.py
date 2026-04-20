@@ -224,6 +224,11 @@ class EvaluationWorker:
         custom_template: str = None
     ) -> tuple:
         """Run AI analysis in both Chinese and English."""
+        # Pre-build prompts for debugging (even if AI fails)
+        ai_wrapper = get_ai_client_wrapper(self.config)
+        prompt_zh = None
+        prompt_en = None
+
         # Run Chinese analysis
         if evaluation_id:
             self._log(evaluation_id, "[步骤5/6] → 开始中文AI分析...")
@@ -234,9 +239,15 @@ class EvaluationWorker:
         )
         if evaluation_id:
             if ai_analysis_zh.get('error'):
-                self._log(evaluation_id, f"[步骤5/6]   [Stage 1/2] 失败: {ai_analysis_zh.get('error')}", level='warning')
+                self._log(evaluation_id, f"[步骤5/6]   AI分析失败: {ai_analysis_zh.get('error')}", level='warning')
+                self._log(evaluation_id, "[步骤5/6]   使用备用分析数据继续...", level='warning')
+                # 尝试获取失败时的prompt用于调试
+                prompt_zh = ai_analysis_zh.get('prompt')
+                # 生成备用分析，传入prompt用于调试
+                ai_analysis_zh = self._generate_fallback_analysis(uniprot_data, pdb_data, blast_results, 'zh', prompt_zh)
             else:
                 self._log(evaluation_id, "[步骤5/6]   [Stage 2/2] 生成最终报告...")
+                prompt_zh = ai_analysis_zh.get('prompt')
 
         # Run English analysis
         if evaluation_id:
@@ -248,11 +259,92 @@ class EvaluationWorker:
         )
         if evaluation_id:
             if ai_analysis_en.get('error'):
-                self._log(evaluation_id, f"[步骤5/6]   [Stage 1/2] 失败: {ai_analysis_en.get('error')}", level='warning')
+                self._log(evaluation_id, f"[步骤5/6]   AI分析失败: {ai_analysis_en.get('error')}", level='warning')
+                self._log(evaluation_id, "[步骤5/6]   使用备用分析数据继续...", level='warning')
+                # 尝试获取失败时的prompt用于调试
+                prompt_en = ai_analysis_en.get('prompt')
+                # 生成备用分析，传入prompt用于调试
+                ai_analysis_en = self._generate_fallback_analysis(uniprot_data, pdb_data, blast_results, 'en', prompt_en)
             else:
                 self._log(evaluation_id, "[步骤5/6]   [Stage 2/2] 生成最终报告...")
+                prompt_en = ai_analysis_en.get('prompt')
 
         return ai_analysis_zh, ai_analysis_en
+
+    def _generate_fallback_analysis(
+        self,
+        uniprot_data: Dict,
+        pdb_data: Dict,
+        blast_results: Dict,
+        language: str = 'zh',
+        prompt: str = None  # Add prompt parameter for debugging
+    ) -> Dict[str, Any]:
+        """Generate fallback analysis when AI service is unavailable."""
+        from datetime import datetime
+
+        protein_name = uniprot_data.get('protein_name', 'Unknown') if uniprot_data else 'Unknown'
+        uniprot_id = uniprot_data.get('uniprot_id', 'N/A') if uniprot_data else 'N/A'
+        structures = pdb_data.get('structures', []) if pdb_data else []
+        structure_count = len(structures)
+
+        if language == 'zh':
+            analysis = f"""## 蛋白质结构评估报告（备用）
+
+**注意**: 由于AI服务暂时不可用，此报告为自动生成的备用版本。
+
+### 蛋白质信息
+- **UniProt ID**: {uniprot_id}
+- **蛋白质名称**: {protein_name}
+- **数据来源**: UniProt, PDB
+
+### 结构数据概览
+- **PDB结构数量**: {structure_count}个
+
+### 数据可用性说明
+本评估基于以下数据源：
+1. **UniProt数据库**: 蛋白质序列和注释信息
+2. **PDB数据库**: {structure_count}个实验结构
+3. **文献数据**: 相关研究文献
+
+### 评估状态
+- **评估时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+- **评估状态**: 数据收集完成，AI分析不可用
+
+### 建议
+请稍后重新运行评估以获取AI生成的深度分析报告。"""
+        else:
+            analysis = f"""## Protein Structure Evaluation Report (Fallback)
+
+**Note**: This is a fallback report generated automatically due to temporary AI service unavailability.
+
+### Protein Information
+- **UniProt ID**: {uniprot_id}
+- **Protein Name**: {protein_name}
+- **Data Sources**: UniProt, PDB
+
+### Structure Data Overview
+- **PDB Structure Count**: {structure_count}
+
+### Data Availability
+This evaluation is based on the following data sources:
+1. **UniProt Database**: Protein sequence and annotation information
+2. **PDB Database**: {structure_count} experimental structures
+3. **Literature Data**: Related research publications
+
+### Evaluation Status
+- **Evaluation Time**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+- **Evaluation Status**: Data collection completed, AI analysis unavailable
+
+### Recommendations
+Please re-run the evaluation later to obtain the AI-generated in-depth analysis report."""
+
+        return {
+            'analysis': analysis,
+            'quality_score': 0,
+            'success': True,
+            'fallback': True,
+            'prompt': prompt  # Include prompt for debugging
+        }
 
     def _log(self, evaluation_id: int, message: str, level: str = 'info'):
         """Add log to evaluation."""

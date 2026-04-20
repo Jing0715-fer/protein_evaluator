@@ -97,8 +97,13 @@ def retry_with_backoff(
             for attempt in range(max_retries):
                 try:
                     return func(*args, **kwargs)
-                except exceptions as e:
+                except Exception as e:
                     last_exception = e
+
+                    # Check if this exception type should be retried
+                    if not isinstance(e, exceptions):
+                        logger.error(f"{func.__name__} failed with non-retryable exception: {e}")
+                        raise
 
                     if attempt < max_retries - 1:
                         wait_time = delay * (backoff_factor ** attempt)

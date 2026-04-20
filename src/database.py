@@ -54,6 +54,13 @@ def _get_engine():
         connect_args={'check_same_thread': False, 'timeout': 30}
     )
 
+    # Enable WAL mode for better concurrent access
+    with engine.connect() as conn:
+        conn.execute(text('PRAGMA journal_mode=WAL'))
+        conn.execute(text('PRAGMA synchronous=NORMAL'))
+        conn.commit()
+        logger.info(f"SQLite WAL mode enabled for {DATABASE_PATH}")
+
     # Create tables
     Base.metadata.create_all(engine)
 

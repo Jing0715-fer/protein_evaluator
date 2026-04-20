@@ -407,6 +407,40 @@ class ChainInteractionAnalyzer:
 
             logger.info(f"Collected {len(pdb_structures)} PDB structures")
 
+            # Also check BLAST results for shared PDBs as interaction evidence
+            blast_shared_pdbs: Dict[Tuple[str, str], Set[str]] = defaultdict(set)
+            for target_a in targets:
+                if not target_a.evaluation or not target_a.evaluation.blast_results:
+                    continue
+                blast_data_a = target_a.evaluation.blast_results
+                pdb_ids_a = set()
+                # Extract PDB IDs from BLAST results
+                for result in blast_data_a.get('results', []):
+                    for pdb_ref in result.get('pdb_references', []):
+                        pdb_id = pdb_ref.get('pdb_id', '')
+                        if pdb_id:
+                            pdb_ids_a.add(pdb_id.upper())
+
+                for target_b in targets:
+                    if target_a.uniprot_id >= target_b.uniprot_id:
+                        continue  # Skip duplicates and self
+                    if not target_b.evaluation or not target_b.evaluation.blast_results:
+                        continue
+                    blast_data_b = target_b.evaluation.blast_results
+                    pdb_ids_b = set()
+                    for result in blast_data_b.get('results', []):
+                        for pdb_ref in result.get('pdb_references', []):
+                            pdb_id = pdb_ref.get('pdb_id', '')
+                            if pdb_id:
+                                pdb_ids_b.add(pdb_id.upper())
+
+                    # Find shared PDBs from BLAST
+                    shared = pdb_ids_a & pdb_ids_b
+                    if shared:
+                        pair = tuple(sorted([target_a.uniprot_id, target_b.uniprot_id]))
+                        blast_shared_pdbs[pair].update(shared)
+                        logger.info(f"Found {len(shared)} shared PDBs from BLAST for {pair}: {shared}")
+
             # Get interface data from PDBe API with parallel processing
             input_set = set(input_uniprot_ids)
             direct_graph: Dict[str, Set[str]] = defaultdict(set)
@@ -480,17 +514,37 @@ class ChainInteractionAnalyzer:
                     pair = tuple(sorted([uniprot_a, uniprot_b]))
                     pdb_ids_for_pair = list(interaction_pdbs.get(pair, set()))
 
+                    # Also include BLAST shared PDBs as evidence
+                    blast_pdbs = list(blast_shared_pdbs.get(pair, set()))
+                    all_pdb_evidence = list(set(pdb_ids_for_pair + blast_pdbs))
+
                     if uniprot_b in neighbors_a:
-                        # Direct interaction
+                        # Direct interaction (from PDB structure)
                         direct_interactions.append({
                             'source_uniprot': uniprot_a,
                             'target_uniprot': uniprot_b,
                             'interaction_type': 'direct',
-                            'pdb_ids': pdb_ids_for_pair,
+                            'pdb_ids': all_pdb_evidence,
                             'score': 1.0,
                             'is_confirmed': True,
-                            'mediator_uniprot': None
+                            'mediator_uniprot': None,
+                            'evidence_source': 'pdb_structure'
                         })
+                    elif blast_pdbs:
+                        # Direct interaction evidence from BLAST shared PDBs
+                        direct_interactions.append({
+                            'source_uniprot': uniprot_a,
+                            'target_uniprot': uniprot_b,
+                            'interaction_type': 'direct',
+                            'pdb_ids': all_pdb_evidence,
+                            'score': 0.8,  # Slightly lower confidence than structure-based
+                            'is_confirmed': True,
+                            'mediator_uniprot': None,
+                            'evidence_source': 'blast_shared_pdb'
+                        })
+                        # Also add to graph for node connection counting
+                        direct_graph[uniprot_a].add(uniprot_b)
+                        direct_graph[uniprot_b].add(uniprot_a)
                     else:
                         # Check for indirect (mediated) interaction
                         mediator = None
@@ -505,7 +559,7 @@ class ChainInteractionAnalyzer:
                                 'source_uniprot': uniprot_a,
                                 'target_uniprot': uniprot_b,
                                 'interaction_type': 'indirect',
-                                'pdb_ids': pdb_ids_for_pair,
+                                'pdb_ids': all_pdb_evidence,
                                 'score': 0.5,
                                 'is_confirmed': False,
                                 'mediator_uniprot': mediator

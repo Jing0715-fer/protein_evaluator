@@ -273,10 +273,16 @@ class AnthropicClient:
                 'content': response_text,
                 'model': self.model
             }
-        except (requests.RequestException, requests.Timeout, requests.ConnectionError,
-                ValueError, KeyError, TypeError, AttributeError) as e:
+        except Exception as e:
+            error_str = str(e)
             logger.error(f"Anthropic API error: {e}")
-            return {'success': False, 'error': str(e)}
+
+            # 检查是否是 429 限流错误，如果是则抛出异常让重试装饰器处理
+            if '429' in error_str or 'rate_limit' in error_str.lower():
+                logger.warning(f"Rate limit hit (429), will retry with backoff: {e}")
+                raise  # 抛出异常以触发重试
+
+            return {'success': False, 'error': error_str}
 
     def json_chat(self, messages, temperature=0.1, timeout=180):
         """发送 JSON 模式对话请求"""

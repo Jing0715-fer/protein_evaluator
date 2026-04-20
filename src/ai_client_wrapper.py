@@ -109,7 +109,7 @@ class AIClientWrapper:
         """Check if AI client is available."""
         return self.client is not None
 
-    @retry_with_backoff(max_retries=2, initial_delay=1.0)
+    @retry_with_backoff(max_retries=5, initial_delay=5.0, backoff_factor=3.0, exceptions=(Exception,))
     def analyze(
         self,
         prompt: str,
@@ -130,38 +130,33 @@ class AIClientWrapper:
             Dictionary with 'analysis', 'model', and optional 'error'
         """
         if not self.client:
-            return {'error': 'AI client not initialized'}
+            return {'error': 'AI client not initialized', 'success': False}
 
-        try:
-            messages = []
+        messages = []
 
-            if system_message:
-                messages.append({"role": "system", "content": system_message})
+        if system_message:
+            messages.append({"role": "system", "content": system_message})
 
-            messages.append({"role": "user", "content": prompt})
+        messages.append({"role": "user", "content": prompt})
 
-            response = self.client.chat(
-                messages,
-                max_tokens=max_tokens or self.max_tokens,
-                temperature=temperature or self.temperature,
-                timeout=300
-            )
+        response = self.client.chat(
+            messages,
+            max_tokens=max_tokens or self.max_tokens,
+            temperature=temperature or self.temperature,
+            timeout=300
+        )
 
-            if response.get('success'):
-                return {
-                    'analysis': response.get('content', ''),
-                    'model': response.get('model', self.model),
-                    'success': True
-                }
-            else:
-                return {
-                    'error': response.get('error', 'AI analysis failed'),
-                    'success': False
-                }
-
-        except Exception as e:
-            logger.error(f"AI analysis failed: {e}")
-            return {'error': str(e), 'success': False}
+        if response.get('success'):
+            return {
+                'analysis': response.get('content', ''),
+                'model': response.get('model', self.model),
+                'success': True
+            }
+        else:
+            return {
+                'error': response.get('error', 'AI analysis failed'),
+                'success': False
+            }
 
     def build_analysis_prompt(
         self,
@@ -1096,38 +1091,45 @@ Please generate a concise statistical summary (300-500 words), containing:
         if not self.client:
             return {'error': 'AI client not initialized', 'success': False}
 
-        # Detect homology mode
-        homology_info = self._detect_homology_mode(uniprot_data, pdb_data, blast_results)
+        try:
+            # Detect homology mode
+            homology_info = self._detect_homology_mode(uniprot_data, pdb_data, blast_results)
 
-        # Get prompt template
-        prompt_template = self._get_default_prompt_template(language)
+            # Get prompt template
+            prompt_template = self._get_default_prompt_template(language)
 
-        # Format template with actual data
-        prompt = self._format_prompt_template(
-            prompt_template, uniprot_data, pdb_data, blast_results, homology_info, language
-        )
+            # Format template with actual data
+            prompt = self._format_prompt_template(
+                prompt_template, uniprot_data, pdb_data, blast_results, homology_info, language
+            )
 
-        # Add system message
-        if language == 'zh':
-            system_message = "你是一个专业的蛋白质结构生物信息学专家。请根据提供的数据生成准确的统计摘要。"
-        else:
-            system_message = "You are a professional structural bioinformatics expert. Generate an accurate statistical summary based on the provided data."
+            # Add system message
+            if language == 'zh':
+                system_message = "你是一个专业的蛋白质结构生物信息学专家。请根据提供的数据生成准确的统计摘要。"
+            else:
+                system_message = "You are a professional structural bioinformatics expert. Generate an accurate statistical summary based on the provided data."
 
-        # Run AI analysis
-        result = self.analyze(prompt, system_message=system_message, max_tokens=2000)
+            # Run AI analysis
+            result = self.analyze(prompt, system_message=system_message, max_tokens=2000)
 
-        if result.get('success'):
+            if result.get('success'):
+                return {
+                    'summary': result.get('analysis', ''),
+                    'model': result.get('model', self.model),
+                    'success': True,
+                    'prompt': prompt
+                }
+            else:
+                return {
+                    'error': result.get('error', 'Failed to generate statistical summary'),
+                    'success': False,
+                    'prompt': prompt
+                }
+        except Exception as e:
+            logger.error(f"Failed to generate statistical summary after all retries: {e}")
             return {
-                'summary': result.get('analysis', ''),
-                'model': result.get('model', self.model),
-                'success': True,
-                'prompt': prompt
-            }
-        else:
-            return {
-                'error': result.get('error', 'Failed to generate statistical summary'),
-                'success': False,
-                'prompt': prompt
+                'error': f'AI service temporarily unavailable: {str(e)}',
+                'success': False
             }
 
     def _build_english_prompt(
@@ -2321,8 +2323,10 @@ Please generate the report following this framework:""")
             )
 
             if not summary_result.get('success'):
+                error_msg = summary_result.get('error', 'Unknown error')
+                logger.warning(f"Stage 1 failed: {error_msg}")
                 return {
-                    'error': f"Stage 1 failed: {summary_result.get('error', 'Unknown error')}",
+                    'error': f"AI analysis temporarily unavailable: {error_msg}",
                     'success': False,
                     'stage': 1
                 }
@@ -2352,8 +2356,10 @@ Please generate the report following this framework:""")
                     'prompt': prompt
                 }
             else:
+                error_msg = result.get('error', 'Unknown error')
+                logger.warning(f"Stage 2 failed: {error_msg}")
                 return {
-                    'error': f"Stage 2 failed: {result.get('error', 'Unknown error')}",
+                    'error': f"AI analysis temporarily unavailable: {error_msg}",
                     'success': False,
                     'stage': 2,
                     'stage1_summary': statistical_summary,
@@ -2362,6 +2368,10 @@ Please generate the report following this framework:""")
 
         except Exception as e:
             logger.error(f"Two-stage analysis failed: {e}")
+            return {
+                'error': f'AI service temporarily unavailable after retries: {str(e)}',
+                'success': False
+            }
             return {'error': str(e), 'success': False}
 
     def _apply_template_to_prompt(

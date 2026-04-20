@@ -61,7 +61,8 @@ class ProteinEvaluation(Base):
     current_step = Column(String(50))  # 当前执行步骤
     error_message = Column(Text)  # 错误信息（如有）
     logs = Column(JSON)  # 运行日志列表
-    ai_prompt = Column(Text)  # 提交给 AI 的 prompt
+    ai_prompt = Column(Text)  # 提交给 AI 的 prompt（中文）
+    ai_prompt_en = Column(Text)  # 提交给 AI 的 prompt（英文）
 
     # 关联数据（JSON存储）
     pdb_data = Column(JSON)  # PDB元数据
@@ -97,6 +98,7 @@ class ProteinEvaluation(Base):
             'error_message': self.error_message,
             'logs': self.logs,
             'ai_prompt': self.ai_prompt,
+            'ai_prompt_en': self.ai_prompt_en,
             'pdb_data': self.pdb_data,
             'uniprot_data': self.uniprot_data,
             'blast_results': self.blast_results,

@@ -577,7 +577,7 @@ class PDBClient:
 
             return {
                 'query_id': None,
-                'results': results[:20],
+                'results': results[:50],
                 'method': 'pdbe_search',
                 'pdb_data': pdb_data
             }
@@ -600,14 +600,30 @@ class BLASTClient:
         protein_sequence: str = None,
         evaluation_id: int = None
     ) -> Dict[str, Any]:
-        """Run BLAST search for similar proteins."""
-        # Try NCBI qBLAST first
-        try:
-            return self._run_ncbi_qblast(uniprot_id, protein_sequence, evaluation_id)
-        except Exception as e:
-            logger.warning(f"NCBI qBLAST failed: {e}, trying fallback search...")
+        """Run BLAST search for similar proteins with retry logic."""
+        max_retries = 3
+        last_error = None
 
-        # Fallback to UniProt-based search
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"BLAST search attempt {attempt + 1}/{max_retries} for {uniprot_id}")
+                return self._run_ncbi_qblast(uniprot_id, protein_sequence, evaluation_id)
+            except Exception as e:
+                last_error = e
+                logger.warning(
+                    f"NCBI qBLAST attempt {attempt + 1}/{max_retries} failed: {e}"
+                )
+
+                if attempt < max_retries - 1:
+                    wait_time = 10 * (attempt + 1)  # 10s, 20s, 30s
+                    logger.info(f"Waiting {wait_time}s before retry...")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"All {max_retries} BLAST attempts failed, using fallback search")
+
+        # All retries exhausted, use fallback
+        logger.warning(f"NCBI qBLAST failed after {max_retries} attempts: {last_error}")
+        logger.info(f"Trying fallback search for {uniprot_id}...")
         return self._fallback_search(uniprot_id, protein_sequence, evaluation_id)
 
     def _run_ncbi_qblast(
@@ -647,81 +663,194 @@ class BLASTClient:
 
         return {
             'query_id': uniprot_id,
-            'results': parsed_results['results'][:20],
+            'results': parsed_results['results'][:50],
             'method': 'ncbi_qblast',
             'pdb_data': pdb_data
         }
 
-    def _submit_blast_job(self, protein_sequence: str) -> Optional[str]:
-        """Submit BLAST job to NCBI."""
-        try:
-            query_params = urllib.parse.urlencode({
-                'CMD': 'Put',
-                'QUERY': protein_sequence[:10000],
-                'DATABASE': 'pdb',
-                'PROGRAM': 'blastp',
-                'EXPECT': 0.01,
-                'HITLIST_SIZE': 50,
-                'FILTER': 'L',
-                'FORMAT_TYPE': 'XML'
-            })
+    def _submit_blast_job(self, protein_sequence: str, max_retries: int = 3) -> Optional[str]:
+        """Submit BLAST job to NCBI with retry logic.
 
-            cmd = [
-                'curl', '-s', '-X', 'POST',
-                '-d', query_params,
-                'https://blast.ncbi.nlm.nih.gov/Blast.cgi'
-            ]
+        Args:
+            protein_sequence: Protein sequence to search
+            max_retries: Maximum number of submission retries
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        Returns:
+            Job ID (RID) or None on failure
+        """
+        query_params = urllib.parse.urlencode({
+            'CMD': 'Put',
+            'QUERY': protein_sequence[:10000],
+            'DATABASE': 'pdb',
+            'PROGRAM': 'blastp',
+            'EXPECT': 0.01,
+            'HITLIST_SIZE': 50,
+            'FILTER': 'L',
+            'FORMAT_TYPE': 'XML'
+        })
 
-            if result.returncode != 0:
-                logger.error(f"curl BLAST submission failed: {result.stderr}")
-                return None
+        for attempt in range(max_retries):
+            try:
+                cmd = [
+                    'curl', '-s', '--connect-timeout', '30', '--max-time', '90',
+                    '-X', 'POST', '-d', query_params,
+                    'https://blast.ncbi.nlm.nih.gov/Blast.cgi'
+                ]
 
-            # Parse RID from response
-            match = re.search(r'RID = (\w+)', result.stdout)
-            if match:
-                return match.group(1)
+                logger.info(f"Submitting BLAST job (attempt {attempt + 1}/{max_retries})...")
 
-            return None
-        except Exception as e:
-            logger.error(f"Failed to submit BLAST job: {e}")
-            return None
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=95
+                )
 
-    def _wait_for_blast_results(self, job_id: str, max_wait: int = 300) -> str:
-        """Wait for and retrieve BLAST results."""
+                if result.returncode != 0:
+                    logger.error(f"curl BLAST submission failed: {result.stderr}")
+                    if attempt < max_retries - 1:
+                        wait_time = 5 * (attempt + 1)
+                        logger.info(f"Retrying in {wait_time}s...")
+                        time.sleep(wait_time)
+                        continue
+                    return None
+
+                # Parse RID from response
+                match = re.search(r'RID = (\w+)', result.stdout)
+                if match:
+                    job_id = match.group(1)
+                    logger.info(f"BLAST job submitted successfully: {job_id}")
+                    return job_id
+                else:
+                    logger.error(f"No RID found in BLAST response: {result.stdout[:500]}")
+                    if attempt < max_retries - 1:
+                        wait_time = 5 * (attempt + 1)
+                        logger.info(f"Retrying in {wait_time}s...")
+                        time.sleep(wait_time)
+                        continue
+                    return None
+
+            except subprocess.TimeoutExpired as e:
+                logger.warning(f"BLAST submission timeout (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    wait_time = 10 * (attempt + 1)
+                    logger.info(f"Retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"BLAST submission failed after {max_retries} attempts")
+                    return None
+
+            except Exception as e:
+                logger.error(f"Failed to submit BLAST job (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    wait_time = 5 * (attempt + 1)
+                    logger.info(f"Retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    return None
+
+        return None
+
+    def _wait_for_blast_results(self, job_id: str, max_wait: int = 600) -> str:
+        """Wait for and retrieve BLAST results with retry logic.
+
+        Args:
+            job_id: BLAST job ID (RID)
+            max_wait: Maximum total wait time in seconds (default 600s = 10 minutes)
+
+        Returns:
+            XML results string
+
+        Raises:
+            BLASTSearchError: If search fails or times out
+        """
         start_time = time.time()
+        consecutive_errors = 0
+        max_consecutive_errors = 5  # Allow up to 5 consecutive network errors
+
+        logger.info(f"Waiting for BLAST results (job_id={job_id}, max_wait={max_wait}s)")
+
         while time.time() - start_time < max_wait:
             try:
-                # Check status
+                # Check status with longer timeout (60s instead of 30s)
                 status_cmd = [
-                    'curl', '-s',
+                    'curl', '-s', '--connect-timeout', '30', '--max-time', '60',
                     f'https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Get&FORMAT_OBJECT=Status&RID={job_id}'
                 ]
 
-                status_result = subprocess.run(status_cmd, capture_output=True, text=True, timeout=30)
+                status_result = subprocess.run(
+                    status_cmd, capture_output=True, text=True, timeout=65
+                )
+
+                # Reset error counter on successful HTTP request
+                consecutive_errors = 0
 
                 if 'Status=READY' in status_result.stdout:
-                    # Get results
+                    logger.info(f"BLAST job {job_id} is ready, fetching results...")
+
+                    # Get results with longer timeout
                     results_cmd = [
-                        'curl', '-s',
+                        'curl', '-s', '--connect-timeout', '30', '--max-time', '120',
                         f'https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Get&FORMAT_TYPE=XML&RID={job_id}'
                     ]
 
-                    results = subprocess.run(results_cmd, capture_output=True, text=True, timeout=60)
+                    results = subprocess.run(
+                        results_cmd, capture_output=True, text=True, timeout=125
+                    )
 
-                    if results.returncode == 0:
+                    if results.returncode == 0 and results.stdout:
+                        logger.info(f"BLAST results retrieved successfully (job_id={job_id})")
                         return results.stdout
+                    else:
+                        logger.warning(f"Failed to retrieve BLAST results: {results.stderr}")
+                        # Retry on fetch failure
+                        time.sleep(5)
+                        continue
 
                 elif 'Status=WAITING' in status_result.stdout:
+                    elapsed = int(time.time() - start_time)
+                    logger.debug(f"BLAST job {job_id} still waiting... ({elapsed}s elapsed)")
                     time.sleep(10)
                     continue
+
+                elif 'Status=FAILED' in status_result.stdout or 'ERROR' in status_result.stdout.upper():
+                    raise BLASTSearchError(f"BLAST job failed: {status_result.stdout[:200]}")
+
                 else:
-                    raise BLASTSearchError(f"BLAST job failed or unknown status")
+                    # Unknown status, might be transient
+                    logger.warning(f"Unknown BLAST status response: {status_result.stdout[:200]}")
+                    time.sleep(10)
+                    continue
+
+            except subprocess.TimeoutExpired as e:
+                consecutive_errors += 1
+                elapsed = int(time.time() - start_time)
+                logger.warning(
+                    f"BLAST status check timeout ({consecutive_errors}/{max_consecutive_errors}) "
+                    f"after {elapsed}s: {e}"
+                )
+
+                if consecutive_errors >= max_consecutive_errors:
+                    raise BLASTSearchError(
+                        f"BLAST search failed after {consecutive_errors} consecutive timeouts"
+                    )
+
+                # Wait a bit longer before retry after timeout
+                time.sleep(15)
+                continue
 
             except Exception as e:
-                logger.warning(f"BLAST polling error: {e}")
+                consecutive_errors += 1
+                elapsed = int(time.time() - start_time)
+                logger.warning(
+                    f"BLAST polling error ({consecutive_errors}/{max_consecutive_errors}) "
+                    f"after {elapsed}s: {e}"
+                )
+
+                if consecutive_errors >= max_consecutive_errors:
+                    raise BLASTSearchError(
+                        f"BLAST search failed after {consecutive_errors} consecutive errors: {e}"
+                    )
+
                 time.sleep(10)
+                continue
 
         raise BLASTSearchError(f"BLAST search timeout after {max_wait}s")
 
@@ -812,7 +941,7 @@ class BLASTClient:
 
         return {
             'query_id': uniprot_id,
-            'results': results[:20],
+            'results': results[:50],
             'method': 'uniprot_fallback',
             'pdb_data': None
         }
