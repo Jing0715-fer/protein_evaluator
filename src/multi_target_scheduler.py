@@ -393,12 +393,12 @@ class MultiTargetScheduler:
                     target.uniprot_id,
                     progress_callback=None
                 )
-                
+
                 # 保存评估结果到数据库
                 if results.get('success'):
                     target.status = 'completed'
                     eval_record.evaluation_status = 'completed'
-                    
+
                     # 保存 PDB 数据
                     if results.get('pdb_data'):
                         eval_record.pdb_data = results['pdb_data']
@@ -417,7 +417,7 @@ class MultiTargetScheduler:
                     # 保存 BLAST 结果
                     if results.get('blast_results'):
                         eval_record.blast_results = results['blast_results']
-                    
+
                     # 保存 UniProt 数据
                     if results.get('uniprot_data'):
                         eval_record.uniprot_data = results['uniprot_data']
@@ -427,22 +427,42 @@ class MultiTargetScheduler:
                     eval_record.evaluation_status = 'failed'
                     if results.get('error'):
                         eval_record.error_message = results['error']
-                
+
                 target.completed_at = datetime.now()
                 eval_record.completed_at = datetime.now()
-                session.commit()
-                
+
+                # Commit with error handling for race conditions
+                try:
+                    session.commit()
+                except Exception as commit_err:
+                    logger.error(f"提交评估结果失败: {commit_err}")
+                    # Try to re-fetch and save
+                    session.rollback()
+                    eval_record = session.get(ProteinEvaluation, eval_record.id)
+                    if eval_record:
+                        eval_record.evaluation_status = target.status
+                        eval_record.error_message = target.error_message
+                        eval_record.completed_at = target.completed_at
+                        session.commit()
+                    else:
+                        # Evaluation record was never saved, just save target status
+                        session.commit()
+
                 return results.get('success', False)
-                
+
         except Exception as e:
             logger.error(f"评估靶点 {target_id} 失败: {e}")
-            with get_session() as session:
-                target = session.get(Target, target_id)
+            try:
+                session.rollback()
+            except:
+                pass
+            with get_session() as new_session:
+                target = new_session.get(Target, target_id)
                 if target:
                     target.status = 'failed'
                     target.error_message = str(e)
                     target.completed_at = datetime.now()
-                    session.commit()
+                    new_session.commit()
             return False
     
     def _update_progress(self, job_id: int, progress: int, message: str):
