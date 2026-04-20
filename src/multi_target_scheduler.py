@@ -26,7 +26,7 @@ class EvaluationMode(Enum):
 
 class MultiTargetScheduler:
     """多靶点评估调度器
-    
+
     负责管理多靶点任务的执行流程，支持：
     - 并行评估：多个靶点同时评估
     - 串行评估：按顺序逐个评估
@@ -34,7 +34,10 @@ class MultiTargetScheduler:
     - 失败处理和重试
     - 任务暂停/恢复/取消
     """
-    
+
+    # Class-level lock for database writes to prevent SQLite concurrency issues
+    _db_write_lock = threading.Lock()
+
     def __init__(self, max_workers: int = 5, config: Dict[str, Any] = None):
         """
         初始化调度器
@@ -111,30 +114,46 @@ class MultiTargetScheduler:
     def start_job(self, job_id: int, progress_callback: Callable = None) -> bool:
         """
         启动多靶点评估任务
-        
+
         Args:
             job_id: 任务ID
             progress_callback: 进度回调函数，接收 (job_id, progress, status) 参数
-            
+
         Returns:
             bool: 是否成功启动
         """
-        # 检查是否已有相同任务在运行
-        with self._jobs_lock:
-            logger.info(f"尝试启动任务 {job_id}, 当前活动任务: {list(self._active_jobs.keys())}")
-            if job_id in self._active_jobs:
-                logger.warning(f"任务 {job_id} 已在运行中")
+        # 先检查数据库中的任务状态
+        with get_session() as session:
+            job = session.get(MultiTargetJob, job_id)
+            if not job:
+                logger.error(f"任务 {job_id} 不存在")
                 return False
+
+            db_status = job.status
+            logger.info(f"任务 {job_id} 数据库状态: {db_status}")
+
+            # 只允许启动 pending 或 paused 状态的任务
+            if db_status not in ('pending', 'paused'):
+                logger.warning(f"任务 {job_id} 状态为 {db_status}，不能启动")
+                return False
+
+        # 检查是否已有相同任务在运行（清理僵尸任务）
+        with self._jobs_lock:
+            if job_id in self._active_jobs:
+                # 如果数据库状态是 pending/paused，但内存中有记录，说明是僵尸任务
+                logger.warning(f"任务 {job_id} 在内存中有残留记录，清理中...")
+                self._active_jobs.pop(job_id, None)
+                self._progress_callbacks.pop(job_id, None)
 
             # 注册取消事件和回调
             cancel_event = threading.Event()
             self._active_jobs[job_id] = cancel_event
             logger.info(f"任务 {job_id} 已注册到活动任务列表")
-        
+
         if progress_callback:
             with self._callbacks_lock:
                 self._progress_callbacks[job_id] = progress_callback
-        
+
         # 在后台线程启动任务
         thread = threading.Thread(
             target=self._execute_job,
@@ -142,7 +161,7 @@ class MultiTargetScheduler:
             daemon=True
         )
         thread.start()
-        
+
         logger.info(f"任务 {job_id} 已启动")
         return True
     
@@ -385,14 +404,23 @@ class MultiTargetScheduler:
                 target.evaluation_id = eval_record.id
                 target.status = 'processing'
                 target.started_at = datetime.now()
-                session.commit()
-                
+
+                # Commit initial state with lock
+                with self._db_write_lock:
+                    session.commit()
+
                 # 执行评估
                 results = worker.evaluate(
                     eval_record.id,
                     target.uniprot_id,
                     progress_callback=None
                 )
+
+                # 重新获取 eval_record，因为在长时间评估后它可能已经 detached
+                eval_record = session.get(ProteinEvaluation, eval_record.id)
+                if not eval_record:
+                    logger.error(f"无法重新获取评估记录 {target.evaluation_id}")
+                    return False
 
                 # 保存评估结果到数据库
                 if results.get('success'):
@@ -431,22 +459,23 @@ class MultiTargetScheduler:
                 target.completed_at = datetime.now()
                 eval_record.completed_at = datetime.now()
 
-                # Commit with error handling for race conditions
-                try:
-                    session.commit()
-                except Exception as commit_err:
-                    logger.error(f"提交评估结果失败: {commit_err}")
-                    # Try to re-fetch and save
-                    session.rollback()
-                    eval_record = session.get(ProteinEvaluation, eval_record.id)
-                    if eval_record:
-                        eval_record.evaluation_status = target.status
-                        eval_record.error_message = target.error_message
-                        eval_record.completed_at = target.completed_at
+                # Commit with error handling for race conditions - use lock to serialize writes
+                with self._db_write_lock:
+                    try:
                         session.commit()
-                    else:
-                        # Evaluation record was never saved, just save target status
-                        session.commit()
+                    except Exception as commit_err:
+                        logger.error(f"提交评估结果失败: {commit_err}")
+                        # Try to re-fetch and save
+                        session.rollback()
+                        eval_record = session.get(ProteinEvaluation, eval_record.id)
+                        if eval_record:
+                            eval_record.evaluation_status = target.status
+                            eval_record.error_message = target.error_message
+                            eval_record.completed_at = target.completed_at
+                            session.commit()
+                        else:
+                            # Evaluation record was never saved, just save target status
+                            session.commit()
 
                 return results.get('success', False)
 
@@ -456,13 +485,15 @@ class MultiTargetScheduler:
                 session.rollback()
             except:
                 pass
-            with get_session() as new_session:
-                target = new_session.get(Target, target_id)
-                if target:
-                    target.status = 'failed'
-                    target.error_message = str(e)
-                    target.completed_at = datetime.now()
-                    new_session.commit()
+            # Use lock for the fallback write as well
+            with self._db_write_lock:
+                with get_session() as new_session:
+                    target = new_session.get(Target, target_id)
+                    if target:
+                        target.status = 'failed'
+                        target.error_message = str(e)
+                        target.completed_at = datetime.now()
+                        new_session.commit()
             return False
     
     def _update_progress(self, job_id: int, progress: int, message: str):
@@ -1033,6 +1064,14 @@ def get_scheduler(max_workers: int = 5, config: Dict[str, Any] = None) -> MultiT
         with _scheduler_lock:
             # Double-check inside lock to avoid race on second-plus entrant
             if _scheduler is None:
+                # Load AI config from default model settings if not provided
+                if config is None:
+                    try:
+                        from routes.evaluation import get_default_ai_config
+                        config = get_default_ai_config()
+                    except Exception:
+                        # If routes.evaluation is not available (e.g., in tests), use empty config
+                        config = {}
                 _scheduler = MultiTargetScheduler(max_workers=max_workers, config=config)
     return _scheduler
 
