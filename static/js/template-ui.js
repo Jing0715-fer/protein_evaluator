@@ -329,16 +329,28 @@
   }
 
   function updateProgress(data) {
+    // Handle nested progress structure from SSE
+    var progress = data.progress || {};
+    var percentage = progress.percentage !== undefined ? progress.percentage : data.progress;
+    var completed = progress.completed !== undefined ? progress.completed : null;
+    var total = progress.total !== undefined ? progress.total : null;
+
     // Update progress bar
     var progressFill = document.querySelector('.progress-fill');
-    if (progressFill && data.progress !== undefined) {
-      progressFill.style.width = data.progress + '%';
+    if (progressFill && percentage !== undefined) {
+      progressFill.style.width = percentage + '%';
     }
 
     // Update progress text
     var progressText = document.getElementById('progress-text');
-    if (progressText && data.progress !== undefined) {
-      progressText.textContent = data.progress + '%';
+    if (progressText && completed !== null && total !== null) {
+      progressText.textContent = completed + '/' + total;
+    }
+
+    // Update progress percent
+    var progressPercent = document.getElementById('progress-percent');
+    if (progressPercent && percentage !== undefined) {
+      progressPercent.textContent = percentage + '%';
     }
 
     // Update latest log
@@ -356,7 +368,7 @@
       }
 
       // If job completed or failed, disconnect SSE
-      if (data.status === 'completed' || data.status === 'failed') {
+      if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
         SSEManager.disconnect(AppState.selectedJobId);
       }
     }
@@ -411,8 +423,8 @@
       '</div>';
 
     if (hasMultipleTargets) {
-      html += '<div class="tab-content" id="tab-interactions">' +
-        renderInteractionsTab(job.job_id) +
+      html += '<div class="tab-content" id="tab-interactions" data-job-id="' + job.job_id + '">' +
+        '<div class="loading-state">' + I18n.t('common.loading') + '</div>' +
       '</div>';
     }
 
@@ -493,7 +505,32 @@
     document.querySelectorAll('.tab-content').forEach(function(c) {
       c.classList.toggle('active', c.id === 'tab-' + tabName);
     });
+
+    // Load interactions tab content if not already loaded
+    if (tabName === 'interactions') {
+      var tabContent = document.getElementById('tab-interactions');
+      if (tabContent && tabContent.querySelector('.loading-state')) {
+        var jobId = tabContent.dataset.jobId;
+        if (jobId) {
+          loadInteractionsContent(jobId, tabContent);
+        }
+      }
+    }
   };
+
+  async function loadInteractionsContent(jobId, container) {
+    try {
+      var result = await ApiClient.Jobs.getChainInteractions(jobId);
+      if (result.success) {
+        container.innerHTML = renderChainInteractions(result);
+      } else {
+        container.innerHTML = '<div class="empty-state">' + (result.error || I18n.t('interactions.noInteractions')) + '</div>';
+      }
+    } catch (err) {
+      console.error('Failed to load interactions:', err);
+      container.innerHTML = '<div class="empty-state">' + I18n.t('interactions.noInteractions') + '</div>';
+    }
+  }
 
   function renderOverviewTab(targets, job) {
     if (!targets || targets.length === 0) {
@@ -544,18 +581,6 @@
 
     html += '</div></div></div>';
     return html;
-  }
-
-  async function renderInteractionsTab(jobId) {
-    try {
-      var result = await ApiClient.Jobs.getChainInteractions(jobId);
-      if (result.success) {
-        return renderChainInteractions(result);
-      }
-    } catch (err) {
-      console.error('Failed to load interactions:', err);
-    }
-    return '<div class="empty-state">' + I18n.t('interactions.noInteractions') + '</div>';
   }
 
   function renderChainInteractions(data) {

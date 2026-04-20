@@ -21,6 +21,7 @@
       this._reconnectAttempts[jobId] = 0;
 
       var self = this;
+      var completed = false;
 
       eventSource.onmessage = function(event) {
         try {
@@ -31,15 +32,16 @@
             return;
           }
 
+          // Mark as completed if job is done
+          if (data.done || data.status === 'completed' ||
+              data.status === 'failed' || data.status === 'cancelled') {
+            completed = true;
+            self.disconnect(jobId);
+          }
+
           // Call the message handler
           if (onMessage) {
             onMessage(data);
-          }
-
-          // Auto-disconnect on completion
-          if (data.done || data.status === 'completed' ||
-              data.status === 'failed' || data.status === 'cancelled') {
-            self.disconnect(jobId);
           }
         } catch (e) {
           console.error('SSE parse error:', e);
@@ -50,6 +52,12 @@
         console.error('SSE error for job', jobId, ':', err);
 
         self.disconnect(jobId);
+
+        // Don't reconnect if job completed normally
+        if (completed) {
+          console.log('SSE: Job completed, not reconnecting');
+          return;
+        }
 
         // Try to reconnect with exponential backoff
         if (self._reconnectAttempts[jobId] < self._maxReconnectAttempts) {
