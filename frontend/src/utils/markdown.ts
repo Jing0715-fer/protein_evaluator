@@ -69,6 +69,20 @@ export function parseMarkdown(text: string): string {
   const lines = processed.split('\n');
   const result: string[] = [];
   let inCodeBlock = false;
+  let inOrderedList = false;
+  let inUnorderedList = false;
+  let listStartNumber = 1;
+
+  const closeLists = () => {
+    if (inOrderedList) {
+      result.push('</ol>');
+      inOrderedList = false;
+    }
+    if (inUnorderedList) {
+      result.push('</ul>');
+      inUnorderedList = false;
+    }
+  };
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -76,6 +90,7 @@ export function parseMarkdown(text: string): string {
     // Code blocks (must be processed before other regex)
     if (line.startsWith('```')) {
       if (!inCodeBlock) {
+        closeLists(); // Close any open lists before code block
         inCodeBlock = true;
         result.push('<pre class="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto my-4"><code>');
       } else {
@@ -85,22 +100,37 @@ export function parseMarkdown(text: string): string {
       continue;
     }
     if (inCodeBlock) {
-      result.push(line);
+      // Escape HTML in code blocks to prevent rendering issues
+      const escapedLine = line
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      result.push(escapedLine);
       continue;
     }
 
-    // Headers - apply inline formatting to header text
+    // Check for empty line - close lists on empty line
+    if (!line.trim()) {
+      closeLists();
+      result.push('');
+      continue;
+    }
+
+    // Headers - close lists before headers
     if (line.startsWith('### ')) {
+      closeLists();
       const headerText = applyInlineFormatting(line.substring(4));
       result.push(`<h3 class="text-lg font-semibold text-gray-900 mt-4 mb-2">${headerText}</h3>`);
       continue;
     }
     if (line.startsWith('## ')) {
+      closeLists();
       const headerText = applyInlineFormatting(line.substring(3));
       result.push(`<h2 class="text-xl font-bold text-gray-900 mt-6 mb-3">${headerText}</h2>`);
       continue;
     }
     if (line.startsWith('# ')) {
+      closeLists();
       const headerText = applyInlineFormatting(line.substring(2));
       result.push(`<h1 class="text-2xl font-bold text-gray-900 mt-6 mb-4">${headerText}</h1>`);
       continue;
@@ -108,12 +138,14 @@ export function parseMarkdown(text: string): string {
 
     // Horizontal rule
     if (line.match(/^---+$/)) {
+      closeLists();
       result.push('<hr class="my-6 border-gray-300" />');
       continue;
     }
 
-    // Table detection - markdown table structure: header, separator, then data rows
+    // Table detection - close lists before tables
     if (line.startsWith('|')) {
+      closeLists();
       // Check if the next line is a table separator
       if (i + 1 < lines.length && lines[i + 1].match(/^\|[\s\-:]+\|([\s\-:]+\|)*[\s\-:]*$/)) {
         // It's a table - collect header (current line)
@@ -140,18 +172,39 @@ export function parseMarkdown(text: string): string {
     }
 
     // Unordered lists
-    if (line.match(/^[\s]*[-*]\s/)) {
+    const unorderedMatch = line.match(/^[\s]*[-*]\s/);
+    if (unorderedMatch) {
+      if (inOrderedList) {
+        closeLists();
+      }
+      if (!inUnorderedList) {
+        inUnorderedList = true;
+        result.push('<ul class="my-2 space-y-1">');
+      }
       const content = applyInlineFormatting(line.replace(/^[\s]*[-*]\s/, ''));
       result.push(`<li class="ml-4 text-gray-700 list-disc">${content}</li>`);
       continue;
     }
 
     // Ordered lists
-    if (line.match(/^[\s]*\d+\.\s/)) {
+    const orderedMatch = line.match(/^[\s]*(\d+)\.\s/);
+    if (orderedMatch) {
+      if (inUnorderedList) {
+        closeLists();
+      }
+      const currentNumber = parseInt(orderedMatch[1], 10);
+      if (!inOrderedList) {
+        inOrderedList = true;
+        listStartNumber = currentNumber;
+        result.push(`<ol start="${listStartNumber}" class="my-2 space-y-1 list-decimal ml-4">`);
+      }
       const content = applyInlineFormatting(line.replace(/^[\s]*\d+\.\s/, ''));
-      result.push(`<li class="ml-4 text-gray-700 list-decimal">${content}</li>`);
+      result.push(`<li class="text-gray-700">${content}</li>`);
       continue;
     }
+
+    // Close lists before regular paragraphs
+    closeLists();
 
     // Regular paragraph - apply inline formatting
     const formatted = applyInlineFormatting(line);
@@ -162,6 +215,9 @@ export function parseMarkdown(text: string): string {
       result.push(''); // Empty line for spacing
     }
   }
+
+  // Close any remaining open lists
+  closeLists();
 
   return result.join('\n');
 }

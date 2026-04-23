@@ -150,15 +150,22 @@ class ProteinEvaluationService:
                     'pdb_data': results.get('pdb_data'),
                     'blast_results': results.get('blast_results'),
                     'ai_analysis': results.get('ai_analysis'),
+                    'ai_prompt': results.get('ai_analysis', {}).get('prompt') if results.get('ai_analysis') else None,
+                    'ai_analysis_en': results.get('ai_analysis_en'),
+                    'ai_prompt_en': results.get('ai_analysis_en', {}).get('prompt') if results.get('ai_analysis_en') else None,
                     'report': results.get('report')
                 })
                 logger.info(f"评估任务完成 [ID={evaluation_id}]")
             else:
-                # Mark as failed
+                # Mark as failed but still save AI analysis and prompts
                 update_protein_evaluation(evaluation_id, {
                     'evaluation_status': 'failed',
                     'current_step': 'failed',
-                    'error': results.get('error', 'Unknown error')
+                    'error': results.get('error', 'Unknown error'),
+                    'ai_analysis': results.get('ai_analysis'),
+                    'ai_prompt': results.get('ai_analysis', {}).get('prompt') if results.get('ai_analysis') else None,
+                    'ai_analysis_en': results.get('ai_analysis_en'),
+                    'ai_prompt_en': results.get('ai_analysis_en', {}).get('prompt') if results.get('ai_analysis_en') else None
                 })
                 logger.error(f"评估任务失败 [ID={evaluation_id}]: {results.get('error')}")
 

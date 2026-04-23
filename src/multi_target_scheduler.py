@@ -422,7 +422,21 @@ class MultiTargetScheduler:
                     logger.error(f"无法重新获取评估记录 {target.evaluation_id}")
                     return False
 
-                # 保存评估结果到数据库
+                # 保存AI分析和prompt（无论成功或失败）
+                # 保存 AI 分析结果（中文）
+                if results.get('ai_analysis'):
+                    eval_record.ai_analysis = results['ai_analysis']
+                    # 保存 AI prompt (来自成功分析或 fallback)
+                    if results['ai_analysis'].get('prompt'):
+                        eval_record.ai_prompt = results['ai_analysis']['prompt']
+
+                # 保存 AI 分析结果（英文）
+                if results.get('ai_analysis_en'):
+                    eval_record.ai_analysis_en = results['ai_analysis_en']
+                    # 保存英文 AI prompt (来自成功分析或 fallback)
+                    if results['ai_analysis_en'].get('prompt'):
+                        eval_record.ai_prompt_en = results['ai_analysis_en']['prompt']
+
                 if results.get('success'):
                     target.status = 'completed'
                     eval_record.evaluation_status = 'completed'
@@ -430,20 +444,6 @@ class MultiTargetScheduler:
                     # 保存 PDB 数据
                     if results.get('pdb_data'):
                         eval_record.pdb_data = results['pdb_data']
-
-                    # 保存 AI 分析结果（中文）
-                    if results.get('ai_analysis'):
-                        eval_record.ai_analysis = results['ai_analysis']
-                        # 保存 AI prompt (来自成功分析或 fallback)
-                        if results['ai_analysis'].get('prompt'):
-                            eval_record.ai_prompt = results['ai_analysis']['prompt']
-
-                    # 保存 AI 分析结果（英文）
-                    if results.get('ai_analysis_en'):
-                        eval_record.ai_analysis_en = results['ai_analysis_en']
-                        # 保存英文 AI prompt (来自成功分析或 fallback)
-                        if results['ai_analysis_en'].get('prompt'):
-                            eval_record.ai_prompt_en = results['ai_analysis_en']['prompt']
 
                     # 保存 BLAST 结果
                     if results.get('blast_results'):

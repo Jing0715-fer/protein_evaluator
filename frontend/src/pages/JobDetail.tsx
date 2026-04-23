@@ -56,41 +56,6 @@ function generatePopupHtml(title: string, content: string): string {
   </style></head><body><div class="container"><p style="margin:0 0 0.75rem 0;color:#374151;">${htmlContent}</p></div></body></html>`;
 }
 
-// Translate step log messages to English
-function translateLogMessage(message: string, lang: string): string {
-  if (lang === 'zh') return message;
-
-  const translations: Record<string, string> = {
-    '[步骤': '[Step ',
-    '开始获取UniProt元数据...': 'Fetching UniProt metadata...',
-    'UniProt元数据获取成功:': 'UniProt metadata fetched successfully:',
-    '警告: 未能获取UniProt数据': 'Warning: Failed to fetch UniProt data',
-    '开始获取PDB数据, 共': 'Fetching PDB data,',
-    '个结构...': 'structures...',
-    'PDB序列覆盖度:': 'PDB sequence coverage:',
-    '开始执行BLAST同源蛋白搜索...': 'Running BLAST homology search...',
-    '跳过BLAST搜索 (覆盖度充足)': 'Skipping BLAST search (coverage sufficient)',
-    '获取PubMed文献摘要...': 'Fetching PubMed abstracts...',
-    '开始AI深度分析...': 'Running AI deep analysis...',
-    '开始中文AI分析...': 'Starting Chinese AI analysis...',
-    '开始英文AI分析...': 'Starting English AI analysis...',
-    '生成统计摘要...': 'Generating statistical summary...',
-    '生成最终报告...': 'Generating final report...',
-    '失败:': 'Failed:',
-    '========== 评估过程日志 ==========': '========== Evaluation Process Log ==========',
-    '错误信息:': 'Error:',
-  };
-
-  let result = message;
-  // First translate step indicators [步骤X/Y] -> [Step X/Y]
-  result = result.replace(/\[步骤(\d+)\/(\d+)\]/g, '[Step $1/$2]');
-  // Then do exact string replacements
-  for (const [cn, en] of Object.entries(translations)) {
-    result = result.split(cn).join(en);
-  }
-  return result;
-}
-
 // UniProt metadata detail panel component
 interface UniProtDetailPanelProps {
   target: any;
@@ -325,8 +290,7 @@ export const JobDetail: React.FC = () => {
   const networkContainerRef = useRef<HTMLDivElement>(null);
 
   // Job logs state for status bar
-  const [, setJobLogs] = useState<Array<{ timestamp: string; level: string; message: string }>>([]);
-  const [latestLog, setLatestLog] = useState<string>('');
+  const [jobLogs, setJobLogs] = useState<Array<{ timestamp: string; level: string; message: string }>>([]);
 
   // Print report function - opens new window with just the report content
   const printReport = useCallback((_targetId: number, uniprotId: string, content: string) => {
@@ -776,11 +740,6 @@ export const JobDetail: React.FC = () => {
         const result = await api.jobControl.getJobLogs(jobId);
         if (result.success && result.logs) {
           setJobLogs(result.logs);
-          // Set latest log message (last one in the array) - apply translation if English
-          if (result.logs.length > 0) {
-            const rawMessage = result.logs[result.logs.length - 1].message;
-            setLatestLog(translateLogMessage(rawMessage, language));
-          }
         }
       } catch (err) {
         console.error('Failed to fetch job logs:', err);
@@ -791,14 +750,7 @@ export const JobDetail: React.FC = () => {
     // Poll logs every 5 seconds when job is running
     const interval = setInterval(fetchLogs, 5000);
     return () => clearInterval(interval);
-  }, [jobId, selectedJob?.job.status, language]);
-
-  // Clear latestLog when job status changes to pending (after restart)
-  useEffect(() => {
-    if (selectedJob?.job.status === 'pending') {
-      setLatestLog('');
-    }
-  }, [selectedJob?.job.status]);
+  }, [jobId, selectedJob?.job.status]);
 
   // All hooks must be defined before any early returns or conditional logic
   // Memoize statusConfig to prevent recreation on every render
@@ -809,6 +761,35 @@ export const JobDetail: React.FC = () => {
     completed: { label: language === 'zh' ? '已完成' : 'Completed', color: 'green', icon: <CheckCircle className="w-5 h-5" /> },
     failed: { label: language === 'zh' ? '失败' : 'Failed', color: 'red', icon: <AlertCircle className="w-5 h-5" /> },
     paused: { label: language === 'zh' ? '已暂停' : 'Paused', color: 'gray', icon: <Pause className="w-5 h-5" /> },
+  }), [language]);
+
+  // Extract current step from logs
+  const currentStep = useMemo(() => {
+    if (jobLogs.length === 0) return null;
+    const stepRegex = /\[步骤(\d+)\/(\d+)\]\s*(.+?)(?:$|[\n→])/;
+    let latestStep: { step: number; total: number; description: string } | null = null;
+    for (const log of jobLogs) {
+      const match = String(log.message || '').match(stepRegex);
+      if (match) {
+        const step = parseInt(match[1], 10);
+        const total = parseInt(match[2], 10);
+        const description = match[3].trim();
+        if (!latestStep || step > latestStep.step) {
+          latestStep = { step, total, description };
+        }
+      }
+    }
+    return latestStep;
+  }, [jobLogs]);
+
+  // Step names mapping
+  const stepNames = useMemo(() => ({
+    1: language === 'zh' ? '获取UniProt元数据' : 'Fetching UniProt metadata',
+    2: language === 'zh' ? '获取PDB结构数据' : 'Fetching PDB structures',
+    3: language === 'zh' ? 'BLAST序列搜索' : 'BLAST sequence search',
+    4: language === 'zh' ? '获取PubMed文献' : 'Fetching PubMed literature',
+    5: language === 'zh' ? 'AI深度分析' : 'AI deep analysis',
+    6: language === 'zh' ? '生成评估报告' : 'Generating report',
   }), [language]);
 
   // Memoize callbacks for TargetCard to prevent unnecessary re-renders
@@ -1133,11 +1114,36 @@ export const JobDetail: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    {/* Status log bar - shows current step */}
-                    {latestLog && (
-                      <div className="mt-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800 truncate">
-                        <span className="font-medium">{language === 'zh' ? '当前步骤:' : 'Current step:'} </span>
-                        {latestLog}
+                    {/* Step indicator */}
+                    {currentStep && (
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs font-medium text-gray-500">
+                            {language === 'zh' ? '当前步骤' : 'Current Step'}:
+                          </span>
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+                            {currentStep.step}/{currentStep.total}
+                          </span>
+                          <span className="text-xs text-gray-600">
+                            {stepNames[currentStep.step as keyof typeof stepNames] || currentStep.description}
+                          </span>
+                        </div>
+                        {/* Step progress dots */}
+                        <div className="flex gap-1">
+                          {Array.from({ length: currentStep.total }, (_, i) => i + 1).map((step) => (
+                            <div
+                              key={step}
+                              className={`h-1.5 flex-1 rounded-full transition-all ${
+                                step < currentStep.step
+                                  ? 'bg-green-500'
+                                  : step === currentStep.step
+                                  ? 'bg-blue-500 animate-pulse'
+                                  : 'bg-gray-200'
+                              }`}
+                              title={`${language === 'zh' ? '步骤' : 'Step'} ${step}: ${stepNames[step as keyof typeof stepNames] || ''}`}
+                            />
+                          ))}
+                        </div>
                       </div>
                     )}
                   </>

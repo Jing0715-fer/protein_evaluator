@@ -25,6 +25,7 @@ from src.multi_target_scheduler import MultiTargetScheduler, EvaluationMode, get
 from src.api_clients import UniProtClient, PDBClient
 from src.multi_target_models import MultiTargetJob, Target, TargetRelationship
 from src.database import get_session, get_prompt_template
+from src.models import ProteinEvaluation
 from src.report_service import get_report_service
 from src.ai_client_wrapper import get_ai_client_wrapper
 from core.uniprot_client import UniProtAPIClient
@@ -363,9 +364,11 @@ def get_multi_target_job(job_id: int):
                             eval_dict['ai_analysis_en'] = eval_record.ai_analysis_en
                             # Include AI prompt for debugging
                             eval_dict['ai_prompt'] = getattr(eval_record, 'ai_prompt', None)
+                            eval_dict['ai_prompt_en'] = getattr(eval_record, 'ai_prompt_en', None)
                             target_dict['evaluation'] = eval_dict
-                    except Exception:
+                    except Exception as e:
                         # evaluation record was deleted or inaccessible, skip it
+                        logger.warning(f"Failed to load evaluation {target.evaluation_id} for target {target.target_id}: {e}")
                         pass
 
                 targets_data.append(target_dict)
@@ -1081,6 +1084,7 @@ def get_job_targets(job_id: int):
                             eval_dict['ai_analysis_en'] = eval_record.ai_analysis_en
                             # Include AI prompt for debugging
                             eval_dict['ai_prompt'] = getattr(eval_record, 'ai_prompt', None)
+                            eval_dict['ai_prompt_en'] = getattr(eval_record, 'ai_prompt_en', None)
                             target_dict['evaluation'] = eval_dict
                     except Exception:
                         # evaluation record was deleted or inaccessible, skip it
@@ -1488,10 +1492,8 @@ def get_interaction_analysis(job_id: int):
 def _ensure_interaction_analysis(job, targets, relationships, session):
     """Ensure interaction analysis exists in both languages (called from get_multi_target_job).
 
-    This function generates AI analysis if:
-    1. AI is available
-    2. Existing cache is template-based (detected by presence of template markers)
-    3. force_refresh is requested
+    This function ONLY uses template-based analysis to avoid blocking page load.
+    AI generation is handled separately by the /interaction-analysis/<job_id> endpoint.
     """
     try:
         # Build interaction summary
@@ -1534,53 +1536,20 @@ def _ensure_interaction_analysis(job, targets, relationships, session):
                 'source_db': rel.relationship_metadata.get('source_db', []) if rel.relationship_metadata else []
             })
 
-        job_name = job.name or '多靶点评估'
-        ai_wrapper = get_ai_client_wrapper()
-        ai_available = ai_wrapper.is_available()
-
-        # Check if existing content is template-based (simple heuristic)
-        def is_template_based(content):
-            if not content:
-                return True
-            template_markers = ['Overall Overview', '整体概况', 'Overall overview']
-            return any(marker in content for marker in template_markers[:1])
-
-        # Generate Chinese analysis - always try AI if available
-        needs_zh = not job.interaction_ai_analysis or (ai_available and is_template_based(job.interaction_ai_analysis))
-        if ai_available and needs_zh:
-            result_zh = _generate_ai_interaction_analysis(
-                job, targets, interaction_summary, job_name, lang='zh'
-            )
-            if result_zh:
-                job.interaction_ai_analysis, job.interaction_prompt = result_zh
-            else:
-                job.interaction_ai_analysis = _generate_template_interaction_analysis(
-                    targets, interaction_summary, lang='zh'
-                )
-        elif needs_zh:
+        # Only use template-based analysis to avoid blocking page load
+        # AI generation is handled by /interaction-analysis/<job_id> endpoint
+        if not job.interaction_ai_analysis:
             job.interaction_ai_analysis = _generate_template_interaction_analysis(
                 targets, interaction_summary, lang='zh'
             )
 
-        # Generate English analysis - always try AI if available
-        needs_en = not job.interaction_ai_analysis_en or (ai_available and is_template_based(job.interaction_ai_analysis_en))
-        if ai_available and needs_en:
-            result_en = _generate_ai_interaction_analysis(
-                job, targets, interaction_summary, job_name, lang='en'
-            )
-            if result_en:
-                job.interaction_ai_analysis_en, job.interaction_prompt_en = result_en
-            else:
-                job.interaction_ai_analysis_en = _generate_template_interaction_analysis(
-                    targets, interaction_summary, lang='en'
-                )
-        elif needs_en:
+        if not job.interaction_ai_analysis_en:
             job.interaction_ai_analysis_en = _generate_template_interaction_analysis(
                 targets, interaction_summary, lang='en'
             )
 
         session.commit()
-        logger.info(f"Interaction analysis ensured for job {job.job_id}")
+        logger.info(f"Interaction analysis (template) ensured for job {job.job_id}")
 
     except Exception as e:
         logger.error(f"Failed to ensure interaction analysis: {e}")
