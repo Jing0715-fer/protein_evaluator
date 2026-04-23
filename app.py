@@ -87,6 +87,11 @@ def create_app(debug=None):
         """首页/评估页面 - 服务 Vite 构建的前端"""
         return send_from_directory(FRONTEND_DIST, 'index.html')
 
+    @app.route('/style-demo')
+    def style_demo():
+        """样式演示页面 - 展示HTML模板UI组件"""
+        return render_template('style-demo.html')
+
     @app.route('/evaluation')
     def evaluation_page():
         """评估页面 - 服务 Vite 构建的前端"""

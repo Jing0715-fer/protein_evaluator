@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蛋白质评估系统 - HTML模板样式</title>
+    <link rel="stylesheet" href="/static/css/template-ui-new.css">
+    <style>
+        /* Demo page specific styles */
+        .demo-section {
+            margin-bottom: var(--space-12);
+        }
+
+        .demo-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: var(--space-4);
+            padding-bottom: var(--space-2);
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--space-6);
+        }
+
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: var(--space-3);
+        }
+
+        .color-item {
+            padding: var(--space-4);
+            border-radius: var(--radius-lg);
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .component-showcase {
+            background: var(--gray-50);
+            padding: var(--space-6);
+            border-radius: var(--radius-xl);
+            border: 1px dashed var(--gray-300);
+        }
+
+        .component-showcase > * {
+            margin-bottom: var(--space-3);
+        }
+    </style>
+</head>
+<body>
+    <div class="template-app">
+        <!-- Header -->
+        <header class="template-header">
+            <div class="header-brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>蛋白质结构评估系统</h1>
+                    <p>Protein Structure Evaluation Platform</p>
+                </div>
+            </div>
+            <nav class="header-nav">
+                <a href="#" class="nav-link active">仪表盘</a>
+                <a href="#" class="nav-link">新建任务</a>
+                <a href="#" class="nav-link">模板</a>
+                <a href="#" class="nav-link">设置</a>
+            </nav>
+            <div class="header-actions">
+                <button class="btn btn-ghost">EN</button>
+            </div>
+        </header>
+
+        <main class="template-main">
+            <!-- Page Header -->
+            <div class="page-header">
+                <h1>样式组件展示</h1>
+                <p>基于前端 React 组件设计的 HTML 模板样式系统</p>
+            </div>
+
+            <!-- Cards Section -->
+            <div class="demo-section">
+                <h2 class="demo-title">卡片组件 (Card)</h2>
+                <div class="demo-grid">
+                    <!-- Basic Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>基础卡片</h2>
+                        </div>
+                        <div class="card-content">
+                            <p class="text-muted">这是一个基础卡片组件，包含标题和内容区域。适用于展示各类信息。</p>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-secondary">取消</button>
+                            <button class="btn btn-primary">确认</button>
+                        </div>
+                    </div>
+
+                    <!-- Job Card Example -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="flex justify-between items-center">
+                                <h2>任务示例</h2>
+                                <span class="badge badge-success">已完成</span>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="flex gap-2 mb-4">
+                                <span class="target-tag">Q9GZU1</span>
+                                <span class="target-tag">Q8IZK6</span>
+                            </div>
+                            <div class="progress-container">
+                                <div class="progress-bar success" style="width: 100%;"></div>
+                            </div>
+                            <div class="progress-info">
+                                <span>进度</span>
+                                <span>2/2 (100%)</span>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-ghost">查看详情</button>
+                            <button class="btn btn-primary">下载报告</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buttons Section -->
+            <div class="demo-section">
+                <h2 class="demo-title">按钮组件 (Button)</h2>
+                <div class="component-showcase">
+                    <div class="flex gap-4">
+                        <button class="btn btn-primary">主要按钮</button>
+                        <button class="btn btn-secondary">次要按钮</button>
+                        <button class="btn btn-danger">危险按钮</button>
+                        <button class="btn btn-ghost">幽灵按钮</button>
+                    </div>
+                    <div class="flex gap-4">
+                        <button class="btn btn-primary btn-sm">小按钮</button>
+                        <button class="btn btn-primary">默认按钮</button>
+                        <button class="btn btn-primary btn-lg">大按钮</button>
+                    </div>
+                    <div class="flex gap-4">
+                        <button class="btn btn-primary" disabled>禁用状态</button>
+                        <button class="btn btn-secondary" disabled>禁用次要</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Badges Section -->
+            <div class="demo-section">
+                <h2 class="demo-title">标签组件 (Badge)</h2>
+                <div class="component-showcase">
+                    <div class="flex gap-2 flex-wrap">
+                        <span class="badge badge-success">已完成</span>
+                        <span class="badge badge-warning">进行中</span>
+                        <span class="badge badge-danger">失败</span>
+                        <span class="badge badge-info">信息</span>
+                        <span class="badge badge-default">默认</span>
+                        <span class="badge badge-primary">主要</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Indicators -->
+            <div class="demo-section">
+                <h2 class="demo-title">状态指示器</h2>
+                <div class="component-showcase">
+                    <div class="flex gap-6">
+                        <div class="status-indicator">
+                            <span class="status-dot success"></span>
+                            <span>运行中</span>
+                        </div>
+                        <div class="status-indicator">
+                            <span class="status-dot warning"></span>
+                            <span>警告</span>
+                        </div>
+                        <div class="status-indicator">
+                            <span class="status-dot danger"></span>
+                            <span>错误</span>
+                        </div>
+                        <div class="status-indicator">
+                            <span class="status-dot info"></span>
+                            <span>处理中</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Bars -->
+            <div class="demo-section">
+                <h2 class="demo-title">进度条</h2>
+                <div class="component-showcase">
+                    <div class="mb-4">
+                        <div class="progress-container">
+                            <div class="progress-bar" style="width: 75%;"></div>
+                        </div>
+                        <div class="progress-info">
+                            <span>处理中</span>
+                            <span>75%</span>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <div class="progress-container">
+                            <div class="progress-bar success" style="width: 100%;"></div>
+                        </div>
+                        <div class="progress-info">
+                            <span>已完成</span>
+                            <span>100%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="progress-container">
+                            <div class="progress-bar warning" style="width: 45%;"></div>
+                        </div>
+                        <div class="progress-info">
+                            <span>等待中</span>
+                            <span>45%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts -->
+            <div class="demo-section">
+                <h2 class="demo-title">提示框 (Alert)</h2>
+                <div class="card">
+                    <div class="card-content">
+                        <div class="alert alert-info">
+                            <strong>信息：</strong> 这是一个信息提示框，用于显示一般性通知。
+                        </div>
+                        <div class="alert alert-success">
+                            <strong>成功：</strong> 操作已成功完成！
+                        </div>
+                        <div class="alert alert-warning">
+                            <strong>警告：</strong> 请注意，某些功能可能不可用。
+                        </div>
+                        <div class="alert alert-danger">
+                            <strong>错误：</strong> 发生错误，请稍后重试。
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tables -->
+            <div class="demo-section">
+                <h2 class="demo-title">数据表格</h2>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>靶点列表</h2>
+                    </div>
+                    <div class="card-content" style="padding: 0;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>UniProt ID</th>
+                                    <th>蛋白质名称</th>
+                                    <th>状态</th>
+                                    <th>PDB数量</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Q9GZU1</strong></td>
+                                    <td>Mucolipin-1</td>
+                                    <td><span class="badge badge-success">已完成</span></td>
+                                    <td>19</td>
+                                    <td><button class="btn btn-ghost btn-sm">查看</button></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Q8IZK6</strong></td>
+                                    <td>Mucolipin-2</td>
+                                    <td><span class="badge badge-warning">处理中</span></td>
+                                    <td>8</td>
+                                    <td><button class="btn btn-ghost btn-sm">查看</button></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Q91UL0</strong></td>
+                                    <td>Unknown</td>
+                                    <td><span class="badge badge-danger">失败</span></td>
+                                    <td>0</td>
+                                    <td><button class="btn btn-ghost btn-sm">重试</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Forms -->
+            <div class="demo-section">
+                <h2 class="demo-title">表单组件</h2>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>新建评估任务</h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="form-group">
+                            <label class="form-label">任务名称</label>
+                            <input type="text" class="form-input" placeholder="输入任务名称">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">UniProt IDs</label>
+                            <textarea class="form-textarea" placeholder="输入UniProt IDs，每行一个"></textarea>
+                            <p class="text-muted" style="font-size: 0.75rem; margin-top: var(--space-1);">支持多个靶点，每行一个ID</p>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">评估模板</label>
+                            <select class="form-select">
+                                <option>默认模板</option>
+                                <option>结构分析模板</option>
+                                <option>药物发现模板</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <button class="btn btn-secondary">取消</button>
+                        <button class="btn btn-primary">开始评估</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="demo-section">
+                <h2 class="demo-title">标签页 (Tabs)</h2>
+                <div class="card">
+                    <div class="tabs">
+                        <button class="tab active">概览</button>
+                        <button class="tab">靶点详情</button>
+                        <button class="tab">评估报告</button>
+                        <button class="tab">设置</button>
+                    </div>
+                    <div class="card-content">
+                        <p class="text-muted">标签页内容区域</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log Display -->
+            <div class="demo-section">
+                <h2 class="demo-title">日志显示</h2>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>运行日志</h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="log-container">
+                            <div class="log-entry">
+                                <span class="log-time">10:23:45</span>
+                                <span class="log-level info">INFO</span>
+                                <span class="log-message">开始获取UniProt元数据...</span>
+                            </div>
+                            <div class="log-entry">
+                                <span class="log-time">10:23:46</span>
+                                <span class="log-level success">SUCCESS</span>
+                                <span class="log-message">UniProt元数据获取成功: Mucolipin-1</span>
+                            </div>
+                            <div class="log-entry">
+                                <span class="log-time">10:23:47</span>
+                                <span class="log-level warning">WARN</span>
+                                <span class="log-message">PDB结构数量较多，限制为100个</span>
+                            </div>
+                            <div class="log-entry">
+                                <span class="log-time">10:23:50</span>
+                                <span class="log-level error">ERROR</span>
+                                <span class="log-message">获取PDB 9HJ6失败: 连接超时</span>
+                            </div>
+                            <div class="log-entry">
+                                <span class="log-time">10:24:15</span>
+                                <span class="log-level info">INFO</span>
+                                <span class="log-message">开始AI深度分析...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Markdown Content -->
+            <div class="demo-section">
+                <h2 class="demo-title">Markdown 渲染</h2>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>评估报告</h2>
+                    </div>
+                    <div class="card-content markdown-content">
+                        <h1>蛋白质结构评估报告</h1>
+                        <p>这是一份示例评估报告，展示 Markdown 内容的渲染效果。</p>
+
+                        <h2>基本信息</h2>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>属性</th>
+                                    <th>值</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>UniProt ID</td>
+                                    <td>Q9GZU1</td>
+                                </tr>
+                                <tr>
+                                    <td>蛋白质名称</td>
+                                    <td>Mucolipin-1</td>
+                                </tr>
+                                <tr>
+                                    <td>PDB结构数</td>
+                                    <td>19</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h2>结构分析</h2>
+                        <ul>
+                            <li>高分辨率冷冻电镜结构</li>
+                            <li>多种配体结合状态</li>
+                            <li>完整跨膜区结构</li>
+                        </ul>
+
+                        <h2>结论</h2>
+                        <blockquote>
+                            该蛋白质具有大量高质量结构数据，非常适合进行结构生物学研究和药物设计。
+                        </blockquote>
+
+                        <pre><code>// 示例代码块
+const protein = {
+    id: 'Q9GZU1',
+    name: 'Mucolipin-1',
+    structures: 19
+};</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading States -->
+            <div class="demo-section">
+                <h2 class="demo-title">加载状态</h2>
+                <div class="demo-grid">
+                    <div class="card">
+                        <div class="card-content">
+                            <div class="loading-container" style="padding: var(--space-8);">
+                                <div class="spinner"></div>
+                                <p>加载中...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-content">
+                            <div class="empty-state" style="padding: var(--space-8);">
+                                <div class="empty-state-icon">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                                    </svg>
+                                </div>
+                                <h3 style="margin-bottom: var(--space-2);">暂无任务</h3>
+                                <p style="font-size: 0.875rem;">点击"新建任务"开始评估</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid Layout -->
+            <div class="demo-section">
+                <h2 class="demo-title">网格布局</h2>
+                <div class="grid grid-4" style="margin-bottom: var(--space-6);">
+                    <div class="card">
+                        <div class="card-content text-center">
+                            <div style="font-size: 2rem; font-weight: 700; color: var(--primary);">24</div>
+                            <div class="text-muted">总任务</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-content text-center">
+                            <div style="font-size: 2rem; font-weight: 700; color: var(--success);">18</div>
+                            <div class="text-muted">已完成</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-content text-center">
+                            <div style="font-size: 2rem; font-weight: 700; color: var(--warning);">4</div>
+                            <div class="text-muted">进行中</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-content text-center">
+                            <div style="font-size: 2rem; font-weight: 700; color: var(--danger);">2</div>
+                            <div class="text-muted">失败</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="text-align: center; padding: var(--space-8); color: var(--gray-500); border-top: 1px solid var(--gray-200); margin-top: var(--space-12);">
+                <p>蛋白质结构评估系统 &copy; 2024</p>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
