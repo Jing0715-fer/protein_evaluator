@@ -3,6 +3,25 @@
 {% block title %}蛋白质评估 - 蛋白评估系统{% endblock %}
 
 {% block extra_css %}
+<style>
+    /* Header actions positioned to the right */
+    .template-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .header-nav {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        gap: var(--space-1);
+    }
+
+    .header-actions {
+        margin-left: auto;
+    }
+</style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/template-ui-new.css') }}">
 {% endblock %}
 
@@ -27,13 +46,13 @@
             <a href="#/templates" class="nav-link" data-i18n="nav.templates">模板</a>
         </nav>
         <div class="header-actions">
-            <button id="lang-toggle" class="btn-secondary">EN</button>
+            <button id="lang-toggle" class="btn btn-ghost">EN</button>
         </div>
     </header>
 
     <main class="template-main" id="main-content">
         <!-- Content loaded dynamically by router -->
-        <div class="loading-spinner">
+        <div class="loading-container">
             <div class="spinner"></div>
             <p data-i18n="common.loading">加载中...</p>
         </div>
