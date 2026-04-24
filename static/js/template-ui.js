@@ -12,7 +12,8 @@
     isLoading: false,
     error: null,
     statusFilter: null,
-    searchQuery: ''
+    searchQuery: '',
+    jobsViewMode: 'grid' // 'grid' or 'list'
   };
 
   // ========== DOM Elements ==========
@@ -87,6 +88,9 @@
       }
     }
 
+    // Update header actions based on route
+    updateHeaderActions(path);
+
     if (path === '/' || path === '' || path === '/jobs') {
       showDashboard();
     } else if (path === '/jobs/new') {
@@ -107,6 +111,33 @@
 
     // Update active nav
     updateActiveNav(path);
+  }
+
+  function updateHeaderActions(path) {
+    var headerActions = document.querySelector('.header-actions');
+    if (!headerActions) return;
+
+    // Check if we're on a job detail page
+    if (path.startsWith('/jobs/') && path !== '/jobs/new') {
+      var jobId = path.split('/')[2];
+      // Add back and restart buttons for job detail
+      var existingDetailActions = document.getElementById('detail-actions');
+      if (!existingDetailActions) {
+        var detailActions = document.createElement('div');
+        detailActions.id = 'detail-actions';
+        detailActions.style.cssText = 'display:flex;gap:8px;margin-right:12px;';
+        detailActions.innerHTML =
+          '<a href="#\/" class="btn btn-secondary btn-sm">' + I18n.t('common.back') + '</a>' +
+          '<button class="btn btn-secondary btn-sm" onclick="jobAction(\'restart\')">' + I18n.t('job.restart') + '</button>';
+        headerActions.insertBefore(detailActions, headerActions.firstChild);
+      }
+    } else {
+      // Remove detail actions when not on job detail page
+      var detailActions = document.getElementById('detail-actions');
+      if (detailActions) {
+        detailActions.remove();
+      }
+    }
   }
 
   function updateActiveNav(path) {
@@ -210,10 +241,30 @@
           '<button class="filter-btn ' + (AppState.statusFilter === 'failed' ? 'active' : '') + '" onclick="filterByStatus(\'failed\')">' + I18n.t('common.filterFailed') + '</button>' +
           '<button class="filter-btn ' + (AppState.statusFilter === 'paused' ? 'active' : '') + '" onclick="filterByStatus(\'paused\')">' + I18n.t('common.filterPaused') + '</button>' +
         '</div>' +
+        '<div class="view-toggle">' +
+          '<button class="view-btn ' + (AppState.jobsViewMode === 'grid' ? 'active' : '') + '" onclick="toggleJobsView(\'grid\')" title="Grid view">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+              '<rect x="3" y="3" width="7" height="7"></rect>' +
+              '<rect x="14" y="3" width="7" height="7"></rect>' +
+              '<rect x="14" y="14" width="7" height="7"></rect>' +
+              '<rect x="3" y="14" width="7" height="7"></rect>' +
+            '</svg>' +
+          '</button>' +
+          '<button class="view-btn ' + (AppState.jobsViewMode === 'list' ? 'active' : '') + '" onclick="toggleJobsView(\'list\')" title="List view">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+              '<line x1="8" y1="6" x2="21" y2="6"></line>' +
+              '<line x1="8" y1="12" x2="21" y2="12"></line>' +
+              '<line x1="8" y1="18" x2="21" y2="18"></line>' +
+              '<line x1="3" y1="6" x2="3.01" y2="6"></line>' +
+              '<line x1="3" y1="12" x2="3.01" y2="12"></line>' +
+              '<line x1="3" y1="18" x2="3.01" y2="18"></line>' +
+            '</svg>' +
+          '</button>' +
+        '</div>' +
         '<input type="text" class="search-input" placeholder="' + I18n.t('dashboard.searchPlaceholder') + '" value="' + escapeHtml(AppState.searchQuery) + '" oninput="searchJobs(this.value)">' +
       '</div>' +
 
-      '<div class="jobs-grid" id="jobs-grid">' +
+      '<div class="jobs-container ' + AppState.jobsViewMode + '-view" id="jobs-grid">' +
         renderJobCards(filterJobs(jobs)) +
       '</div>' +
     '</div>';
@@ -254,26 +305,45 @@
       return '<div class="empty-state">' + I18n.t('dashboard.noJobs') + '</div>';
     }
 
+    var isListView = AppState.jobsViewMode === 'list';
     var html = '';
     jobs.forEach(function(job) {
       var statusClass = I18n.getStatusClass(job.status);
       var badgeClass = I18n.getStatusBadge(job.status);
-      html += '<div class="job-card" onclick="navigateTo(\'/jobs/' + job.job_id + '\')">' +
-        '<div class="job-card-header">' +
-          '<span class="job-title">' + escapeHtml(job.name || 'Untitled') + '</span>' +
-          '<span class="' + badgeClass + '">' + I18n.t('status.' + job.status) + '</span>' +
-        '</div>' +
-        '<div class="job-meta">' +
-          '<span>ID: ' + job.job_id + '</span>' +
-          '<span>' + job.target_count + ' targets</span>' +
-          '<span>' + formatDate(job.created_at) + '</span>' +
+
+      if (isListView) {
+        // List view
+        html += '<div class="job-card job-card-list" onclick="navigateTo(\'/jobs/' + job.job_id + '\')">' +
+          '<div class="job-card-list-main">' +
+            '<span class="job-title">' + escapeHtml(job.name || 'Untitled') + '</span>' +
+            '<span class="job-list-meta">' + job.target_count + ' targets · ' + formatDate(job.created_at) + '</span>' +
+          '</div>' +
+          '<div class="job-card-list-status">' +
+            '<span class="' + badgeClass + '">' + I18n.t('status.' + job.status) + '</span>' +
+            (job.status === 'processing' || job.status === 'running' ?
+              '<div class="progress-bar-mini"><div class="progress-fill-mini" style="width: ' + (job.progress || 0) + '%"></div></div>' :
+              '') +
+          '</div>' +
         '</div>';
-      if (job.status === 'processing' || job.status === 'running') {
-        html += '<div class="progress-bar-mini">' +
-          '<div class="progress-fill-mini" style="width: ' + (job.progress || 0) + '%"></div>' +
-        '</div>';
+      } else {
+        // Grid view
+        html += '<div class="job-card" onclick="navigateTo(\'/jobs/' + job.job_id + '\')">' +
+          '<div class="job-card-header">' +
+            '<span class="job-title">' + escapeHtml(job.name || 'Untitled') + '</span>' +
+            '<span class="' + badgeClass + '">' + I18n.t('status.' + job.status) + '</span>' +
+          '</div>' +
+          '<div class="job-meta">' +
+            '<span>ID: ' + job.job_id + '</span>' +
+            '<span>' + job.target_count + ' targets</span>' +
+            '<span>' + formatDate(job.created_at) + '</span>' +
+          '</div>';
+        if (job.status === 'processing' || job.status === 'running') {
+          html += '<div class="progress-bar-mini">' +
+            '<div class="progress-fill-mini" style="width: ' + (job.progress || 0) + '%"></div>' +
+          '</div>';
+        }
+        html += '</div>';
       }
-      html += '</div>';
     });
     return html;
   }
@@ -291,6 +361,19 @@
     AppState.searchQuery = query;
     var filtered = filterJobs(AppState.jobs);
     document.getElementById('jobs-grid').innerHTML = renderJobCards(filtered);
+  };
+
+  window.toggleJobsView = function(mode) {
+    AppState.jobsViewMode = mode;
+    var container = document.getElementById('jobs-grid');
+    if (container) {
+      container.className = 'jobs-container ' + mode + '-view';
+      container.innerHTML = renderJobCards(filterJobs(AppState.jobs));
+    }
+    // Update button states
+    document.querySelectorAll('.view-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.getAttribute('onclick').includes(mode));
+    });
   };
 
   // ========== View: Job Detail ==========
@@ -344,7 +427,7 @@
     // Update progress text
     var progressText = document.getElementById('progress-text');
     if (progressText && completed !== null && total !== null) {
-      progressText.textContent = completed + '/' + total;
+      progressText.textContent = I18n.t('job.progress') + ': ' + completed + '/' + total;
     }
 
     // Update progress percent
@@ -353,10 +436,9 @@
       progressPercent.textContent = percentage + '%';
     }
 
-    // Update latest log
-    var latestLog = document.getElementById('latest-log');
-    if (latestLog && data.latest_log) {
-      latestLog.textContent = data.latest_log;
+    // Add log entry if new log message
+    if (data.latest_log || data.message) {
+      addLogEntry(data.latest_log || data.message, data.log_level || 'info');
     }
 
     // Update status if changed
@@ -374,6 +456,47 @@
     }
   }
 
+  function addLogEntry(message, level) {
+    var logContainer = document.getElementById('log-container');
+    var logCount = document.getElementById('log-count');
+    if (!logContainer) return;
+
+    var time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    level = level || 'info';
+
+    var entry = document.createElement('div');
+    entry.className = 'log-entry log-' + level;
+    entry.innerHTML = '<span class="log-time">' + time + '</span>' +
+      '<span class="log-level ' + level + '">' + level.toUpperCase() + '</span>' +
+      '<span class="log-message">' + escapeHtml(message) + '</span>';
+
+    logContainer.appendChild(entry);
+    logContainer.scrollTop = logContainer.scrollHeight;
+
+    if (logCount) {
+      logCount.textContent = logContainer.children.length;
+    }
+  }
+
+  async function loadJobLogs(jobId) {
+    try {
+      // Try to fetch logs from API if available
+      var result = await ApiClient.Jobs.getLogs(jobId);
+      if (result.success && result.logs && result.logs.length > 0) {
+        var logContainer = document.getElementById('log-container');
+        if (logContainer) {
+          logContainer.innerHTML = '';
+          result.logs.forEach(function(log) {
+            addLogEntry(log.message, log.level);
+          });
+        }
+      }
+    } catch (e) {
+      // Logs API might not be available
+      console.log('Logs API not available');
+    }
+  }
+
   function renderJobDetail(result) {
     var job = result.job;
     var targets = result.targets || [];
@@ -381,33 +504,54 @@
     var lang = AppState.language;
     var hasMultipleTargets = targets.length > 1;
 
-    var html = '<div class="job-detail">' +
-      '<header class="job-header">' +
-        '<div class="job-info">' +
-          '<a href="#/" class="btn btn-secondary btn-sm">' + I18n.t('common.back') + '</a>' +
-          '<div class="job-title-block">' +
-            '<h1>' + escapeHtml(job.name || 'Untitled') + '</h1>' +
-            '<span class="status-badge ' + I18n.getStatusClass(job.status) + '">' + I18n.t('status.' + job.status) + '</span>' +
-          '</div>' +
-        '</div>' +
-        '<div class="job-controls">' +
-          renderJobControls(job) +
-        '</div>' +
-      '</header>' +
+    // Store job for header actions
+    AppState.selectedJob = job;
+    AppState.selectedJobId = job.job_id;
 
-      '<div class="progress-section">' +
-        '<div class="progress-header">' +
-          '<span id="progress-text">' + I18n.t('job.progress') + ': ' + (statistics.completed || 0) + '/' + (statistics.total || 0) + '</span>' +
-          '<span id="progress-percent">' + (statistics.percentage || 0) + '%</span>' +
-        '</div>' +
-        '<div class="progress-bar">' +
-          '<div class="progress-fill" style="width: ' + (statistics.percentage || 0) + '%"></div>' +
-        '</div>' +
-        '<div class="mt-4 text-sm text-muted">' +
-          I18n.t('log.currentStep') + ': <span id="latest-log">' + (result.latest_log || '-') + '</span>' +
+    // Get first target for UniProt info card
+    var firstTarget = targets[0] || {};
+
+    var html = '<div class="job-detail">';
+
+    // Job Title Section - for all task types
+    html += renderJobTitleCard(job, targets);
+
+    // Progress section - only show if job is not completed
+    if (job.status !== 'completed') {
+      html += '<div class="progress-section">' +
+          '<div class="progress-header">' +
+            '<span id="progress-text">' + I18n.t('job.progress') + ': ' + (statistics.completed || 0) + '/' + (statistics.total || 0) + '</span>' +
+            '<span class="status-badge ' + I18n.getStatusClass(job.status) + '">' + I18n.t('status.' + job.status) + '</span>' +
+            '<span id="progress-percent">' + (statistics.percentage || 0) + '%</span>' +
+          '</div>' +
+          '<div class="progress-container">' +
+            '<div class="progress-fill" style="width: ' + (statistics.percentage || 0) + '%"></div>' +
+          '</div>' +
+        '</div>';
+    }
+
+    // Collapsible Logs section
+    html += '<div class="logs-section collapsed" id="logs-section">' +
+      '<div class="logs-header" onclick="toggleLogs()">' +
+        '<div class="logs-title">' +
+          '<svg class="logs-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+            '<polyline points="9 18 15 12 9 6"></polyline>' +
+          '</svg>' +
+          '<h3>' + I18n.t('log.title') + '</h3>' +
+          '<span class="log-count" id="log-count">1</span>' +
         '</div>' +
       '</div>' +
+      '<div class="log-container" id="log-container">' +
+        '<div class="log-entry log-info">' +
+          '<span class="log-time">' + new Date().toLocaleTimeString('zh-CN', { hour12: false }) + '</span>' +
+          '<span class="log-level info">INFO</span>' +
+          '<span class="log-message">' + (result.latest_log || I18n.t('log.waiting')) + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
 
+    // Tabs
+    html += '<div class="tabs-container">' +
       '<div class="tabs">' +
         '<button class="tab active" data-tab="overview">' + I18n.t('job.overview') + '</button>';
 
@@ -431,6 +575,7 @@
     html += '<div class="tab-content" id="tab-report">' +
         renderReportTab(job, targets, job.status) +
       '</div>' +
+    '</div>' +
     '</div>';
 
     mainContent.innerHTML = html;
@@ -441,13 +586,138 @@
         switchTab(this.dataset.tab);
       });
     });
+
+    // Load logs if available
+    if (job.job_id) {
+      loadJobLogs(job.job_id);
+    }
   }
+
+  function renderUniprotCard(uniprotId, meta) {
+    var proteinName = meta.protein_name || '-';
+    var geneName = meta.gene_name || '-';
+
+    // Get additional metadata
+    var organism = meta.organism || '-';
+    var length = meta.sequence_length || '-';
+    var keywords = meta.keywords || [];
+
+    var html = '<div class="uniprot-card">' +
+      '<div class="uniprot-header">' +
+        '<div class="uniprot-main">' +
+          '<span class="uniprot-id">' + uniprotId + '</span>' +
+          '<span class="uniprot-name">' + proteinName + '</span>' +
+        '</div>' +
+        '<a href="https://www.uniprot.org/uniprotkb/' + uniprotId + '" target="_blank" class="btn btn-ghost btn-sm">' +
+          'View on UniProt ' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 4px;">' +
+            '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>' +
+            '<polyline points="15 3 21 3 21 9"></polyline>' +
+            '<line x1="10" y1="14" x2="21" y2="3"></line>' +
+          '</svg>' +
+        '</a>' +
+      '</div>' +
+      '<div class="uniprot-details">' +
+        '<div class="uniprot-detail-item">' +
+          '<span class="detail-label">Gene</span>' +
+          '<span class="detail-value">' + geneName + '</span>' +
+        '</div>' +
+        '<div class="uniprot-detail-item">' +
+          '<span class="detail-label">Organism</span>' +
+          '<span class="detail-value">' + organism + '</span>' +
+        '</div>' +
+        '<div class="uniprot-detail-item">' +
+          '<span class="detail-label">Length</span>' +
+          '<span class="detail-value">' + length + ' aa</span>' +
+        '</div>' +
+      '</div>';
+
+    // Add keywords if available
+    if (keywords && keywords.length > 0) {
+      html += '<div class="uniprot-keywords">' +
+        '<span class="detail-label">Keywords</span>' +
+        '<div class="keywords-list">';
+      keywords.slice(0, 6).forEach(function(keyword) {
+        html += '<span class="keyword-tag">' + keyword + '</span>';
+      });
+      if (keywords.length > 6) {
+        html += '<span class="keyword-tag">+' + (keywords.length - 6) + ' more</span>';
+      }
+      html += '</div></div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function renderJobTitleCard(job, targets) {
+    var targetCount = targets ? targets.length : 0;
+    var firstTarget = targets && targets[0] ? targets[0] : {};
+    var uniprotMeta = firstTarget.uniprot_metadata || {};
+
+    // Get protein info for single target
+    var proteinSubtitle = '';
+    if (targetCount === 1) {
+      var geneName = firstTarget.gene_name || uniprotMeta.gene_name || '';
+      var proteinName = firstTarget.protein_name || uniprotMeta.protein_name || '';
+      if (geneName && proteinName) {
+        proteinSubtitle = geneName + ' — ' + proteinName;
+      } else if (proteinName) {
+        proteinSubtitle = proteinName;
+      } else if (geneName) {
+        proteinSubtitle = geneName;
+      }
+    } else {
+      proteinSubtitle = targetCount + ' targets evaluation';
+    }
+
+    var html = '<div class="job-title-section">' +
+      '<div class="job-status-indicator ' + I18n.getStatusClass(job.status) + '"></div>' +
+      '<div class="job-title-body">' +
+        '<h1 class="job-title-name">' + escapeHtml(job.name || 'Untitled Job') + '</h1>';
+
+    if (proteinSubtitle) {
+      html += '<p class="job-title-subtitle">' + escapeHtml(proteinSubtitle) + '</p>';
+    }
+
+    html += '<div class="job-title-meta">' +
+          '<span>ID #' + job.job_id + '</span>' +
+          '<span class="meta-separator">·</span>' +
+          '<span>' + formatDate(job.created_at) + '</span>' +
+          '<span class="meta-separator">·</span>' +
+          '<span class="status-text ' + I18n.getStatusClass(job.status) + '">' + I18n.t('status.' + job.status) + '</span>' +
+        '</div>' +
+      '</div>';
+
+    // Target badges for multi-target
+    if (targetCount > 1 && targets) {
+      html += '<div class="job-target-badges">';
+      targets.slice(0, 3).forEach(function(target) {
+        html += '<span class="target-badge-mini" title="' + target.uniprot_id + '">' + target.uniprot_id + '</span>';
+      });
+      if (targetCount > 3) {
+        html += '<span class="target-badge-more">+' + (targetCount - 3) + '</span>';
+      }
+      html += '</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  window.toggleLogs = function() {
+    var logsSection = document.getElementById('logs-section');
+    if (logsSection) {
+      logsSection.classList.toggle('collapsed');
+    }
+  };
 
   function renderJobControls(job) {
     var html = '';
     var status = job.status;
 
-    if (status === 'pending' || status === 'failed') {
+    // Show start button for pending, failed, or initial states
+    if (status === 'pending' || status === 'failed' || status === 'created' || status === 'initialized' || status === 'ready') {
       html += '<button class="btn btn-success" onclick="jobAction(\'start\')">' + I18n.t('job.start') + '</button>';
     }
     if (status === 'processing' || status === 'running') {
@@ -551,27 +821,73 @@
     var structures = pdb_data.structures || [];
     var uniprot = target.uniprot_metadata || {};
 
+    // Get UniProt info
+    var proteinName = target.protein_name || uniprot.protein_name || '';
+    var geneName = target.gene_name || uniprot.gene_name || '';
+    var organism = uniprot.organism || '';
+    var length = uniprot.sequence_length || '';
+
     var html = '<div class="target-card">' +
       '<div class="target-header">' +
         '<div class="target-info">' +
-          '<span class="target-uniprot">' + target.uniprot_id + '</span>' +
-          '<span class="target-gene">' + (uniprot.gene_name || '-') + '</span>' +
-        '</div>' +
+          '<a href="https://www.uniprot.org/uniprotkb/' + target.uniprot_id + '" target="_blank" class="target-uniprot">' + target.uniprot_id + '</a>' +
+          '<span class="target-gene">' + (geneName || '-') + '</span>';
+
+    // Add protein name if available
+    if (proteinName) {
+      html += '<span class="target-protein-name">' + proteinName + '</span>';
+    }
+
+    html += '</div>' +
         '<span class="' + I18n.getStatusBadge(target.status) + '">' + I18n.t('status.' + target.status) + '</span>' +
-      '</div>' +
-      '<div class="target-body">' +
+      '</div>';
+
+    // Add UniProt metadata bar
+    if (organism || length) {
+      html += '<div class="target-metadata-bar">';
+      if (organism) {
+        html += '<span class="metadata-item"><strong>Organism:</strong> ' + organism + '</span>';
+      }
+      if (length) {
+        html += '<span class="metadata-item"><strong>Length:</strong> ' + length + ' aa</span>';
+      }
+      html += '</div>';
+    }
+
+    html += '<div class="target-body">' +
+        '<div class="pdb-section-title">PDB Structures (' + structures.length + ')</div>' +
         '<div class="pdb-grid">';
 
     if (structures.length > 0) {
       structures.forEach(function(pdb) {
+        // Extract method from experimental_method
+        var method = pdb.experimental_method || '-';
+        // Shorten method name
+        if (method === 'ELECTRON MICROSCOPY') method = 'EM';
+        else if (method === 'X-RAY DIFFRACTION') method = 'X-ray';
+        else if (method === 'SOLUTION NMR') method = 'NMR';
+
+        // Count chains from entity_list
+        var chainCount = 0;
+        if (pdb.entity_list && Array.isArray(pdb.entity_list)) {
+          pdb.entity_list.forEach(function(entity) {
+            if (entity.chain) chainCount++;
+          });
+        }
+
+        // Get title
+        var title = pdb.title || '-';
+        if (title.length > 50) title = title.substring(0, 50) + '...';
+
         html += '<div class="pdb-item">' +
           '<div class="pdb-header">' +
             '<span class="pdb-id"><a href="https://www.rcsb.org/structure/' + pdb.pdb_id + '" target="_blank">' + pdb.pdb_id + '</a></span>' +
-            '<span class="badge badge-secondary">' + (pdb.resolution || '-') + 'A</span>' +
+            '<span class="badge badge-secondary">' + (pdb.resolution || '-') + 'Å</span>' +
           '</div>' +
+          '<div class="pdb-title" title="' + escapeHtml(pdb.title || '') + '">' + escapeHtml(title) + '</div>' +
           '<div class="pdb-meta">' +
-            '<span>' + (pdb.method || '-') + '</span>' +
-            '<span>' + (pdb.chain_count || '-') + ' chains</span>' +
+            '<span>' + method + '</span>' +
+            '<span>' + chainCount + ' chains</span>' +
           '</div>' +
         '</div>';
       });
@@ -723,11 +1039,6 @@
   }
 
   function renderReportTab(job, targets, jobStatus) {
-    // Only show report if job is completed
-    if (jobStatus !== 'completed') {
-      return '<div class="empty-state">' + I18n.t('job.reportNotReady') + '</div>';
-    }
-
     // Get AI analysis from first target's evaluation
     var aiAnalysis = null;
     if (targets && targets.length > 0) {
@@ -738,16 +1049,78 @@
       }
     }
 
-    if (!aiAnalysis) {
-      return '<div class="empty-state">' + I18n.t('job.noReport') + '</div>';
+    // Collect unique citations from all targets
+    var citationsMap = {};
+    if (targets && targets.length > 0) {
+      targets.forEach(function(target) {
+        var eval_ = target.evaluation || {};
+        var pdbData = eval_.pdb_data || {};
+        var structures = pdbData.structures || [];
+        structures.forEach(function(pdb) {
+          if (pdb.citations && Array.isArray(pdb.citations)) {
+            pdb.citations.forEach(function(citation) {
+              var key = citation.title || citation.doi || citation.pubmed_id;
+              if (key && !citationsMap[key]) {
+                citationsMap[key] = citation;
+              }
+            });
+          }
+        });
+      });
+    }
+    var citations = Object.values(citationsMap);
+
+    // Build report HTML
+    var html = '<div class="report-section">';
+
+    // Report content (if available)
+    if (aiAnalysis && jobStatus === 'completed') {
+      if (typeof marked !== 'undefined') {
+        html += '<div class="report-content">' + marked.parse(aiAnalysis) + '</div>';
+      } else {
+        html += '<div class="report-content">' + aiAnalysis + '</div>';
+      }
+    } else if (jobStatus !== 'completed') {
+      html += '<div class="empty-state">' + I18n.t('job.reportNotReady') + '</div>';
+    } else {
+      html += '<div class="empty-state">' + I18n.t('job.noReport') + '</div>';
     }
 
-    // Render markdown if available
-    if (typeof marked !== 'undefined') {
-      aiAnalysis = marked.parse(aiAnalysis);
+    // Citations section
+    if (citations.length > 0) {
+      html += '<div class="citations-section">' +
+        '<h3>References (' + citations.length + ')</h3>' +
+        '<div class="citations-list">';
+
+      citations.forEach(function(citation, index) {
+        html += '<div class="citation-item">' +
+          '<div class="citation-number">' + (index + 1) + '</div>' +
+          '<div class="citation-content">' +
+            '<div class="citation-title">' + escapeHtml(citation.title || 'Untitled') + '</div>' +
+            '<div class="citation-meta">' +
+              (citation.journal ? '<span class="citation-journal">' + escapeHtml(citation.journal) + '</span>' : '') +
+              (citation.year ? '<span class="citation-year">' + citation.year + '</span>' : '') +
+            '</div>';
+
+        if (citation.doi || citation.pubmed_id) {
+          html += '<div class="citation-links">';
+          if (citation.pubmed_id) {
+            html += '<a href="https://pubmed.ncbi.nlm.nih.gov/' + citation.pubmed_id + '" target="_blank" class="citation-link">PubMed</a>';
+          }
+          if (citation.doi) {
+            html += '<a href="https://doi.org/' + citation.doi + '" target="_blank" class="citation-link">DOI</a>';
+          }
+          html += '</div>';
+        }
+
+        html += '</div></div>';
+      });
+
+      html += '</div></div>';
     }
 
-    return '<div class="report-section"><div class="report-content">' + aiAnalysis + '</div></div>';
+    html += '</div>';
+    return html;
   }
 
   // ========== View: Create Job ==========

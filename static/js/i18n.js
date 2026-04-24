@@ -54,6 +54,11 @@
       'interactions.noInteractions': '暂未发现靶点间相互作用',
       'interactions.network': '相互作用网络',
 
+      // Logs
+      'log.title': '运行日志',
+      'log.waiting': '等待任务开始...',
+      'log.currentStep': '当前步骤',
+
       // Create Job
       'create.title': '新建评估任务',
       'create.jobName': '任务名称',
@@ -133,6 +138,8 @@
       'common.filterPaused': '已暂停',
 
       // Log
+      'log.title': '运行日志',
+      'log.waiting': '等待任务开始...',
       'log.currentStep': '当前步骤',
       'log.noLogs': '暂无日志'
     },
@@ -266,6 +273,8 @@
       'common.filterPaused': 'Paused',
 
       // Log
+      'log.title': 'Run Logs',
+      'log.waiting': 'Waiting for task to start...',
       'log.currentStep': 'Current Step',
       'log.noLogs': 'No logs yet'
     }

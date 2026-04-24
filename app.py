@@ -308,6 +308,6 @@ if __name__ == '__main__':
         host=config.HOST,
         port=config.PORT,
         debug=config.DEBUG,
-        threaded=False,
+        threaded=True,
         processes=1
     )
