@@ -120,17 +120,16 @@
     // Check if we're on a job detail page
     if (path.startsWith('/jobs/') && path !== '/jobs/new') {
       var jobId = path.split('/')[2];
-      // Add back and restart buttons for job detail
+      // Add back and action button for job detail
       var existingDetailActions = document.getElementById('detail-actions');
       if (!existingDetailActions) {
         var detailActions = document.createElement('div');
         detailActions.id = 'detail-actions';
         detailActions.style.cssText = 'display:flex;gap:8px;margin-right:12px;';
-        detailActions.innerHTML =
-          '<a href="#\/" class="btn btn-secondary btn-sm">' + I18n.t('common.back') + '</a>' +
-          '<button class="btn btn-secondary btn-sm" onclick="jobAction(\'restart\')">' + I18n.t('job.restart') + '</button>';
         headerActions.insertBefore(detailActions, headerActions.firstChild);
       }
+      // Update button based on job status (will be updated after job data loads)
+      updateHeaderActionButton();
     } else {
       // Remove detail actions when not on job detail page
       var detailActions = document.getElementById('detail-actions');
@@ -138,6 +137,27 @@
         detailActions.remove();
       }
     }
+  }
+
+  // Update header action button based on job status
+  function updateHeaderActionButton() {
+    var detailActions = document.getElementById('detail-actions');
+    if (!detailActions) return;
+
+    var job = AppState.selectedJob;
+    var actionButton = '';
+
+    if (job && job.status === 'pending') {
+      // pending状态显示开始按钮
+      actionButton = '<button class="btn btn-success btn-sm" onclick="jobAction(\'start\')">' + I18n.t('job.start') + '</button>';
+    } else {
+      // 其他状态显示重启按钮
+      actionButton = '<button class="btn btn-secondary btn-sm" onclick="jobAction(\'restart\')">' + I18n.t('job.restart') + '</button>';
+    }
+
+    detailActions.innerHTML =
+      '<a href="#\/" class="btn btn-secondary btn-sm">' + I18n.t('common.back') + '</a>' +
+      actionButton;
   }
 
   function updateActiveNav(path) {
@@ -508,6 +528,9 @@
     AppState.selectedJob = job;
     AppState.selectedJobId = job.job_id;
 
+    // Update header action button based on status
+    updateHeaderActionButton();
+
     // Get first target for UniProt info card
     var firstTarget = targets[0] || {};
 
@@ -716,9 +739,13 @@
     var html = '';
     var status = job.status;
 
-    // Show start button for pending, failed, or initial states
-    if (status === 'pending' || status === 'failed' || status === 'created' || status === 'initialized' || status === 'ready') {
+    // Show start button for pending status (not restart)
+    if (status === 'pending') {
       html += '<button class="btn btn-success" onclick="jobAction(\'start\')">' + I18n.t('job.start') + '</button>';
+    }
+    // Show restart button for failed, completed, or initial states
+    if (status === 'failed' || status === 'completed' || status === 'created' || status === 'initialized' || status === 'ready') {
+      html += '<button class="btn btn-secondary" onclick="jobAction(\'restart\')">' + I18n.t('job.restart') + '</button>';
     }
     if (status === 'processing' || status === 'running') {
       html += '<button class="btn btn-secondary" onclick="jobAction(\'pause\')">' + I18n.t('job.pause') + '</button>';
@@ -729,7 +756,6 @@
     if (status !== 'completed' && status !== 'cancelled') {
       html += '<button class="btn btn-danger" onclick="jobAction(\'cancel\')">' + I18n.t('job.cancel') + '</button>';
     }
-    html += '<button class="btn btn-secondary" onclick="jobAction(\'restart\')">' + I18n.t('job.restart') + '</button>';
 
     return html;
   }
