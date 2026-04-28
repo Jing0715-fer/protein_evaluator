@@ -490,28 +490,10 @@ export const JobDetail: React.FC = () => {
     }
   }, [jobId, selectedJob?.job?.status]);
 
-  // AI Report - select appropriate language version based on UI language
-  const rawReport = language === 'en'
-    ? (selectedJob?.job?.report_content_en || selectedJob?.job?.report_content || '')
-    : (selectedJob?.job?.report_content || '');
-
-  // Find AI content starting from markers (works for both Chinese and English)
-  const getAIContent = (content: string): string => {
-    if (!content) return '';
-    const markers = language === 'en'
-      ? ['## Summary', '# Human', '## AI Analysis', '## AI', '# Summary']
-      : ['## 摘要', '# 人', '## AI分析'];
-    let aiStartIndex = -1;
-    for (const marker of markers) {
-      const idx = content.indexOf(marker);
-      if (idx !== -1 && (aiStartIndex === -1 || idx < aiStartIndex)) {
-        aiStartIndex = idx;
-      }
-    }
-    return aiStartIndex !== -1 ? content.substring(aiStartIndex) : content;
-  };
-
-  const aiReport = getAIContent(rawReport);
+  // AI Report - use interaction_ai_analysis (LLM-generated) instead of report_content (template-filled)
+  const aiReport = language === 'en'
+    ? (selectedJob?.job?.interaction_ai_analysis_en || selectedJob?.job?.interaction_ai_analysis || '')
+    : (selectedJob?.job?.interaction_ai_analysis || selectedJob?.job?.report_content || '');
 
   // Literature references from PDB citations - with deduplication and grouped PDB IDs
   const literature = React.useMemo(() => {

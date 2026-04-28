@@ -326,9 +326,11 @@ def get_multi_target_job(job_id: int):
             targets = session.query(Target).filter_by(job_id=job_id).order_by(Target.target_index).all()
 
             # Regenerate AI interaction analysis if job is completed and force_refresh or AI not available in cache
+            # Trigger if: have relationships OR have chain_interaction_analysis with direct_interactions
+            has_chain_interactions = bool(job.chain_interaction_analysis and job.chain_interaction_analysis.get('direct_interactions'))
             if job.status == 'completed' and targets:
                 relationships = session.query(TargetRelationship).filter_by(job_id=job_id).all()
-                if relationships and (force_refresh or not job.interaction_ai_analysis or not job.interaction_ai_analysis_en):
+                if (relationships or has_chain_interactions) and (force_refresh or not job.interaction_ai_analysis or not job.interaction_ai_analysis_en):
                     _ensure_interaction_analysis(job, targets, relationships, session)
 
             # 获取任务详情
@@ -1492,10 +1494,14 @@ def get_interaction_analysis(job_id: int):
 def _ensure_interaction_analysis(job, targets, relationships, session):
     """Ensure interaction analysis exists in both languages (called from get_multi_target_job).
 
-    This function ONLY uses template-based analysis to avoid blocking page load.
-    AI generation is handled separately by the /interaction-analysis/<job_id> endpoint.
+    This function uses AI generation when available, falls back to template otherwise.
+    Uses chain_interaction_analysis if relationships is empty.
     """
     try:
+        from src.ai_client_wrapper import get_ai_client_wrapper
+        ai_wrapper = get_ai_client_wrapper()
+        ai_available = ai_wrapper.is_available()
+
         # Build interaction summary
         target_map = {t.target_id: t for t in targets}
         target_pdb_map = {}
@@ -1508,48 +1514,99 @@ def _ensure_interaction_analysis(job, targets, relationships, session):
         interaction_summary = []
         seen_pairs = set()
 
-        for rel in relationships:
-            key = tuple(sorted([rel.source_target_id, rel.target_target_id]))
-            if key in seen_pairs:
-                continue
-            seen_pairs.add(key)
+        # Try to get interactions from relationships first, then fallback to chain_interaction_analysis
+        if relationships:
+            for rel in relationships:
+                key = tuple(sorted([rel.source_target_id, rel.target_target_id]))
+                if key in seen_pairs:
+                    continue
+                seen_pairs.add(key)
 
-            source = target_map.get(rel.source_target_id)
-            target = target_map.get(rel.target_target_id)
+                source = target_map.get(rel.source_target_id)
+                target = target_map.get(rel.target_target_id)
 
-            if not source or not target:
-                continue
+                if not source or not target:
+                    continue
 
-            src_pdb = target_pdb_map.get(source.uniprot_id, [])
-            tgt_pdb = target_pdb_map.get(target.uniprot_id, [])
-            common_pdb = set(src_pdb) & set(tgt_pdb)
-            final_score = 1.0 if common_pdb else rel.score
+                src_pdb = target_pdb_map.get(source.uniprot_id, [])
+                tgt_pdb = target_pdb_map.get(target.uniprot_id, [])
+                common_pdb = set(src_pdb) & set(tgt_pdb)
+                final_score = 1.0 if common_pdb else rel.score
 
-            interaction_summary.append({
-                'source': source.uniprot_id,
-                'source_name': source.protein_name or source.gene_name or '',
-                'target': target.uniprot_id,
-                'target_name': target.protein_name or target.gene_name or '',
-                'common_structures': list(common_pdb) if common_pdb else [],
-                'raw_score': rel.score,
-                'final_score': final_score,
-                'source_db': rel.relationship_metadata.get('source_db', []) if rel.relationship_metadata else []
-            })
+                interaction_summary.append({
+                    'source': source.uniprot_id,
+                    'source_name': source.protein_name or source.gene_name or '',
+                    'target': target.uniprot_id,
+                    'target_name': target.protein_name or target.gene_name or '',
+                    'common_structures': list(common_pdb) if common_pdb else [],
+                    'raw_score': rel.score,
+                    'final_score': final_score,
+                    'source_db': rel.relationship_metadata.get('source_db', []) if rel.relationship_metadata else []
+                })
+        elif job.chain_interaction_analysis:
+            # Fallback to chain_interaction_analysis if no relationships
+            chain_data = job.chain_interaction_analysis
+            direct_interactions = chain_data.get('direct_interactions', [])
+            for interaction in direct_interactions:
+                key = tuple(sorted([interaction.get('source_uniprot', ''), interaction.get('target_uniprot', '')]))
+                if key in seen_pairs:
+                    continue
+                seen_pairs.add(key)
 
-        # Only use template-based analysis to avoid blocking page load
-        # AI generation is handled by /interaction-analysis/<job_id> endpoint
+                source_uniprot = interaction.get('source_uniprot', '')
+                target_uniprot = interaction.get('target_uniprot', '')
+
+                interaction_summary.append({
+                    'source': source_uniprot,
+                    'source_name': '',
+                    'target': target_uniprot,
+                    'target_name': '',
+                    'common_structures': interaction.get('pdb_ids', []),
+                    'raw_score': interaction.get('score', 0),
+                    'final_score': interaction.get('score', 1.0),
+                    'source_db': ['chain_analysis']
+                })
+
+        logger.info(f"Built interaction summary with {len(interaction_summary)} interactions for job {job.job_id}")
+
+        # Generate Chinese analysis - try AI first if available
         if not job.interaction_ai_analysis:
-            job.interaction_ai_analysis = _generate_template_interaction_analysis(
-                targets, interaction_summary, lang='zh'
-            )
+            if ai_available:
+                analysis_zh = _generate_ai_interaction_analysis(
+                    job, targets, interaction_summary, job.name or '', lang='zh'
+                )
+                if analysis_zh:
+                    job.interaction_ai_analysis = analysis_zh
+                    logger.info(f"AI interaction analysis (ZH) generated for job {job.job_id}")
+                else:
+                    job.interaction_ai_analysis = _generate_template_interaction_analysis(
+                        targets, interaction_summary, lang='zh'
+                    )
+            else:
+                job.interaction_ai_analysis = _generate_template_interaction_analysis(
+                    targets, interaction_summary, lang='zh'
+                )
+                logger.warning(f"AI not available, using template for job {job.job_id}")
 
+        # Generate English analysis - try AI first if available
         if not job.interaction_ai_analysis_en:
-            job.interaction_ai_analysis_en = _generate_template_interaction_analysis(
-                targets, interaction_summary, lang='en'
-            )
+            if ai_available:
+                analysis_en = _generate_ai_interaction_analysis(
+                    job, targets, interaction_summary, job.name or '', lang='en'
+                )
+                if analysis_en:
+                    job.interaction_ai_analysis_en = analysis_en
+                    logger.info(f"AI interaction analysis (EN) generated for job {job.job_id}")
+                else:
+                    job.interaction_ai_analysis_en = _generate_template_interaction_analysis(
+                        targets, interaction_summary, lang='en'
+                    )
+            else:
+                job.interaction_ai_analysis_en = _generate_template_interaction_analysis(
+                    targets, interaction_summary, lang='en'
+                )
 
         session.commit()
-        logger.info(f"Interaction analysis (template) ensured for job {job.job_id}")
 
     except Exception as e:
         logger.error(f"Failed to ensure interaction analysis: {e}")
@@ -1784,12 +1841,11 @@ def _generate_ai_interaction_analysis(
 
         if result.get('success') and result.get('analysis'):
             logger.info(f"AI interaction analysis generated successfully ({lang})")
-            # Return tuple of (analysis, prompt)
-            return result['analysis'], prompt
+            return result['analysis']
         else:
             error = result.get('error', 'Unknown error')
-            logger.warning(f"AI interaction analysis failed: {error}, using template fallback")
-            return None, prompt  # Still return prompt even if AI fails
+            logger.warning(f"AI interaction analysis failed: {error}")
+            return None
 
     except Exception as e:
         logger.error(f"AI interaction analysis error: {e}")
