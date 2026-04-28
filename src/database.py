@@ -159,6 +159,73 @@ def _run_migrations(engine):
             "Added ai_analysis_en column to protein_evaluations"
         )
 
+        # v3: add ai_prompt_en to protein_evaluations
+        run_migration(
+            "v3_ai_prompt_en",
+            "ALTER TABLE protein_evaluations ADD COLUMN ai_prompt_en TEXT",
+            "Added ai_prompt_en column to protein_evaluations"
+        )
+
+        # Auto-sync: detect and add any columns missing from model definitions
+        _auto_sync_schema(conn)
+
+
+def _auto_sync_schema(conn):
+    """Automatically sync database schema with model definitions.
+
+    Compares actual table columns with SQLAlchemy model columns and adds
+    any missing columns. This is a safety net for when developers add
+    columns to models but forget to add migrations.
+    """
+    from sqlalchemy import inspect
+    from .models import ProteinEvaluation, PromptTemplate, BatchEvaluation, ProteinInteraction
+
+    inspector = inspect(conn)
+
+    table_models = {
+        'protein_evaluations': ProteinEvaluation,
+        'prompt_templates': PromptTemplate,
+        'batch_evaluations': BatchEvaluation,
+        'protein_interactions': ProteinInteraction,
+    }
+
+    for table_name, model_class in table_models.items():
+        try:
+            actual_columns = {col['name'] for col in inspector.get_columns(table_name)}
+        except Exception:
+            continue  # Table doesn't exist yet
+
+        try:
+            model_columns = {col.name for col in model_class.__table__.columns}
+        except Exception:
+            continue
+
+        missing = model_columns - actual_columns
+        for col_name in missing:
+            col = model_class.__table__.columns.get(col_name)
+            if col is None:
+                continue
+
+            # Map SQLAlchemy types to SQLite types
+            col_type = str(col.type).upper()
+            sqlite_type = 'TEXT'
+            if 'INTEGER' in col_type:
+                sqlite_type = 'INTEGER'
+            elif 'FLOAT' in col_type or 'NUMERIC' in col_type or 'DECIMAL' in col_type:
+                sqlite_type = 'REAL'
+            elif 'BLOB' in col_type:
+                sqlite_type = 'BLOB'
+
+            try:
+                sql = f"ALTER TABLE {table_name} ADD COLUMN {col_name} {sqlite_type}"
+                conn.execute(text(sql))
+                conn.commit()
+                logger.info(f"Auto-synced: added {col_name} ({sqlite_type}) to {table_name}")
+            except Exception as e:
+                err_str = str(e).lower()
+                if 'duplicate column' not in err_str and 'already exists' not in err_str:
+                    logger.warning(f"Auto-sync failed for {table_name}.{col_name}: {e}")
+
 
 # Create session factory — bind=engine is a _EngineProxy that defers to _get_engine()
 # expire_on_commit=False prevents SQLAlchemy from closing connections on commit,

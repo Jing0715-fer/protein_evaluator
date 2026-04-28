@@ -132,8 +132,18 @@ export const Settings: React.FC = () => {
     }
   };
 
-  const handleSetDefault = (modelId: string) => {
-    setModels(models.map(m => ({ ...m, isDefault: m.id === modelId })));
+  const handleSetDefault = async (modelId: string) => {
+    const newModels = models.map(m => ({ ...m, isDefault: m.id === modelId }));
+    setModels(newModels);
+
+    // 保存到后端
+    const result = await configApi.saveModels(newModels);
+    if (result.success) {
+      setSuccessMessage(language === 'zh' ? '已设为默认模型' : 'Set as default model');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } else {
+      setError(result.error || (language === 'zh' ? '设置失败' : 'Failed to set default'));
+    }
   };
 
   const handleDeleteModel = async (modelId: string) => {
