@@ -1502,14 +1502,33 @@ def _ensure_interaction_analysis(job, targets, relationships, session):
         ai_wrapper = get_ai_client_wrapper()
         ai_available = ai_wrapper.is_available()
 
-        # Build interaction summary
+        # Build interaction summary with full target data (including homology info)
         target_map = {t.target_id: t for t in targets}
-        target_pdb_map = {}
+        target_data_map = {}
         for t in targets:
+            target_info = {
+                'uniprot_id': t.uniprot_id,
+                'protein_name': t.protein_name or '',
+                'gene_name': t.gene_name or '',
+                'pdb_ids': [],
+                'homology_info': None,
+                'ai_analysis': None
+            }
             if t.evaluation and t.evaluation.pdb_data:
                 pdb_data = t.evaluation.pdb_data
-                pdb_ids = pdb_data.get('pdb_ids', []) if isinstance(pdb_data, dict) else []
-                target_pdb_map[t.uniprot_id] = pdb_ids
+                target_info['pdb_ids'] = pdb_data.get('pdb_ids', []) if isinstance(pdb_data, dict) else []
+            if t.evaluation and t.evaluation.ai_analysis:
+                ai_data = t.evaluation.ai_analysis
+                target_info['ai_analysis'] = ai_data
+                # Extract homology info from ai_analysis
+                if isinstance(ai_data, dict):
+                    target_info['homology_info'] = ai_data.get('homology_stats') or ai_data.get('homology')
+            # Extract homology info from blast_results
+            if t.evaluation and t.evaluation.blast_results:
+                blast_data = t.evaluation.blast_results
+                if isinstance(blast_data, dict) and blast_data.get('results'):
+                    target_info['homology_info'] = blast_data['results']
+            target_data_map[t.uniprot_id] = target_info
 
         interaction_summary = []
         seen_pairs = set()
@@ -1569,14 +1588,18 @@ def _ensure_interaction_analysis(job, targets, relationships, session):
 
         logger.info(f"Built interaction summary with {len(interaction_summary)} interactions for job {job.job_id}")
 
+        # Build target info with homology for prompt
+        target_info_list = [target_data_map.get(t.uniprot_id, {}) for t in targets]
+
         # Generate Chinese analysis - try AI first if available
         if not job.interaction_ai_analysis:
             if ai_available:
-                analysis_zh = _generate_ai_interaction_analysis(
-                    job, targets, interaction_summary, job.name or '', lang='zh'
+                analysis_zh, prompt_zh = _generate_ai_interaction_analysis(
+                    job, targets, interaction_summary, target_info_list, job.name or '', lang='zh'
                 )
                 if analysis_zh:
                     job.interaction_ai_analysis = analysis_zh
+                    job.interaction_prompt = prompt_zh
                     logger.info(f"AI interaction analysis (ZH) generated for job {job.job_id}")
                 else:
                     job.interaction_ai_analysis = _generate_template_interaction_analysis(
@@ -1591,11 +1614,12 @@ def _ensure_interaction_analysis(job, targets, relationships, session):
         # Generate English analysis - try AI first if available
         if not job.interaction_ai_analysis_en:
             if ai_available:
-                analysis_en = _generate_ai_interaction_analysis(
-                    job, targets, interaction_summary, job.name or '', lang='en'
+                analysis_en, prompt_en = _generate_ai_interaction_analysis(
+                    job, targets, interaction_summary, target_info_list, job.name or '', lang='en'
                 )
                 if analysis_en:
                     job.interaction_ai_analysis_en = analysis_en
+                    job.interaction_prompt_en = prompt_en
                     logger.info(f"AI interaction analysis (EN) generated for job {job.job_id}")
                 else:
                     job.interaction_ai_analysis_en = _generate_template_interaction_analysis(
@@ -1617,9 +1641,10 @@ def _generate_ai_interaction_analysis(
     job,
     targets: List[Target],
     interaction_summary: List[Dict],
+    target_info_list: List[Dict],
     job_name: str,
     lang: str = 'zh'
-) -> Optional[str]:
+) -> tuple:
     """Generate interaction analysis using AI in the specified language.
 
     Args:
@@ -1737,6 +1762,58 @@ def _generate_ai_interaction_analysis(
 
 """
 
+            # Add target homology information
+            if target_info_list:
+                homology_targets = [t for t in target_info_list if t.get('homology_info')]
+                if homology_targets:
+                    prompt += "### Target Homology Structure Information\n\n"
+                    for tgt in homology_targets:
+                        uniprot = tgt.get('uniprot_id', '')
+                        name = tgt.get('protein_name') or tgt.get('gene_name') or uniprot
+                        prompt += f"**{name}** ({uniprot})\n"
+                        hom_info = tgt.get('homology_info', {})
+                        # Handle list format from blast_results
+                        if isinstance(hom_info, list):
+                            if hom_info:
+                                prompt += "  Homologous structures:\n"
+                                for s in hom_info[:10]:  # Limit to first 10
+                                    pdb = s.get('pdb_id') or s.get('pdb') or 'N/A'
+                                    identity = s.get('identity', 'N/A')
+                                    evalue = s.get('evalue', 'N/A')
+                                    title = s.get('title', s.get('description', ''))
+                                    pmid = s.get('pmid') or s.get('pubmed_id') or ''
+                                    if pmid:
+                                        prompt += f"    - {pdb} (Identity: {identity}%, E-value: {evalue}) - PMID: {pmid}\n"
+                                        if title:
+                                            prompt += f"      {title}\n"
+                                    else:
+                                        prompt += f"    - {pdb} (Identity: {identity}%, E-value: {evalue})\n"
+                                        if title:
+                                            prompt += f"      {title}\n"
+                        elif isinstance(hom_info, dict):
+                            # Handle dict format with 'structures' key
+                            structures = hom_info.get('structures', []) or hom_info.get('homologous_structures', [])
+                            if structures:
+                                prompt += "  Homologous structures:\n"
+                                for s in structures[:10]:  # Limit to first 10
+                                    pdb = s.get('pdb_id') or s.get('pdb') or 'N/A'
+                                    identity = s.get('identity', s.get('sequence_identity', 'N/A'))
+                                    evalue = s.get('evalue', s.get('e_value', 'N/A'))
+                                    desc = s.get('description', s.get('desc', ''))
+                                    pmid = s.get('pmid') or s.get('pubmed_id') or ''
+                                    if pmid:
+                                        prompt += f"    - {pdb} (Identity: {identity}%, E-value: {evalue}) - PMID: {pmid}\n"
+                                        if desc:
+                                            prompt += f"      {desc}\n"
+                                    else:
+                                        prompt += f"    - {pdb} (Identity: {identity}%, E-value: {evalue})\n"
+                                        if desc:
+                                            prompt += f"      {desc}\n"
+                            else:
+                                # Fallback: just show the homology info as-is
+                                prompt += f"  {hom_info}\n"
+                        prompt += "\n"
+
             # Add chain-level interaction data if available
             if chain_details:
                 prompt += "### Chain-Level Interaction Details (from PDB structures)\n\n"
@@ -1802,6 +1879,58 @@ def _generate_ai_interaction_analysis(
 
 """
 
+            # Add target homology information
+            if target_info_list:
+                homology_targets = [t for t in target_info_list if t.get('homology_info')]
+                if homology_targets:
+                    prompt += "### 靶点同源结构信息\n\n"
+                    for tgt in homology_targets:
+                        uniprot = tgt.get('uniprot_id', '')
+                        name = tgt.get('protein_name') or tgt.get('gene_name') or uniprot
+                        prompt += f"**{name}** ({uniprot})\n"
+                        hom_info = tgt.get('homology_info', {})
+                        # Handle list format from blast_results
+                        if isinstance(hom_info, list):
+                            if hom_info:
+                                prompt += "  同源结构:\n"
+                                for s in hom_info[:10]:  # Limit to first 10
+                                    pdb = s.get('pdb_id') or s.get('pdb') or 'N/A'
+                                    identity = s.get('identity', 'N/A')
+                                    evalue = s.get('evalue', 'N/A')
+                                    title = s.get('title', s.get('description', ''))
+                                    pmid = s.get('pmid') or s.get('pubmed_id') or ''
+                                    if pmid:
+                                        prompt += f"    - {pdb} (一致性: {identity}%, E值: {evalue}) - PMID: {pmid}\n"
+                                        if title:
+                                            prompt += f"      {title}\n"
+                                    else:
+                                        prompt += f"    - {pdb} (一致性: {identity}%, E值: {evalue})\n"
+                                        if title:
+                                            prompt += f"      {title}\n"
+                        elif isinstance(hom_info, dict):
+                            # Handle dict format with 'structures' key
+                            structures = hom_info.get('structures', []) or hom_info.get('homologous_structures', [])
+                            if structures:
+                                prompt += "  同源结构:\n"
+                                for s in structures[:10]:  # Limit to first 10
+                                    pdb = s.get('pdb_id') or s.get('pdb') or 'N/A'
+                                    identity = s.get('identity', s.get('sequence_identity', 'N/A'))
+                                    evalue = s.get('evalue', s.get('e_value', 'N/A'))
+                                    desc = s.get('description', s.get('desc', ''))
+                                    pmid = s.get('pmid') or s.get('pubmed_id') or ''
+                                    if pmid:
+                                        prompt += f"    - {pdb} (一致性: {identity}%, E值: {evalue}) - PMID: {pmid}\n"
+                                        if desc:
+                                            prompt += f"      {desc}\n"
+                                    else:
+                                        prompt += f"    - {pdb} (一致性: {identity}%, E值: {evalue})\n"
+                                        if desc:
+                                            prompt += f"      {desc}\n"
+                            else:
+                                # Fallback: just show the homology info as-is
+                                prompt += f"  {hom_info}\n"
+                        prompt += "\n"
+
             # Add chain-level interaction data if available
             if chain_details:
                 prompt += "### 链级相互作用详细信息（来自PDB结构）\n\n"
@@ -1841,11 +1970,11 @@ def _generate_ai_interaction_analysis(
 
         if result.get('success') and result.get('analysis'):
             logger.info(f"AI interaction analysis generated successfully ({lang})")
-            return result['analysis']
+            return result['analysis'], prompt
         else:
             error = result.get('error', 'Unknown error')
             logger.warning(f"AI interaction analysis failed: {error}")
-            return None
+            return None, prompt
 
     except Exception as e:
         logger.error(f"AI interaction analysis error: {e}")

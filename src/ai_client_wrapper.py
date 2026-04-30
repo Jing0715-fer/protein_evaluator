@@ -451,8 +451,40 @@ You are a senior **structural biologist** and **drug discovery researcher** with
             if homology_details:
                 result['homology_details'] = homology_details
                 result['homology_stats'] = extract_homology_statistics(homology_details)
+            else:
+                # Fallback: check for 'results' field which contains homology data in a different format
+                results_list = blast_results.get('results', [])
+                if results_list:
+                    # Transform 'results' to homology_details format
+                    homology_details = self._transform_blast_results_to_homology(results_list)
+                    if homology_details:
+                        result['homology_details'] = homology_details
+                        result['homology_stats'] = extract_homology_statistics(homology_details)
+                        logger.info(f"Extracted {len(homology_details)} homology details from blast_results['results']")
 
         return result
+
+    def _transform_blast_results_to_homology(self, results_list: List[Dict]) -> List[Dict]:
+        """Transform blast results list to homology_details format."""
+        homology_details = []
+        for r in results_list:
+            # Transform to the format expected by extract_homology_statistics
+            # Original fields: pdb_id, identity, evalue, score, title
+            # Expected fields: pdb_id, percent_identity, e_value, sourceUniProtId, coverage_percentage
+            pdb_id = r.get('pdb_id') or r.get('pdb')
+            if not pdb_id:
+                continue
+            homolog = {
+                'pdb_id': pdb_id,
+                'percent_identity': r.get('identity', 0),
+                'e_value': r.get('evalue', r.get('e_value', 0)),
+                'sourceUniProtId': r.get('source_uniprot_id') or r.get('sourceUniProtId') or r.get('uniprot_id'),
+                'coverage_percentage': r.get('coverage', r.get('coverage_percentage', 0)),
+                'quality_assessment': r.get('quality', r.get('quality_assessment', 'moderate')),
+                'description': r.get('title', r.get('description', ''))
+            }
+            homology_details.append(homolog)
+        return homology_details
 
     def _build_variable_prompt(
         self,
